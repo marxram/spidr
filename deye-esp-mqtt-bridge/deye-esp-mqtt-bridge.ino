@@ -1,9 +1,10 @@
+#include <Arduino.h>
+
 // ESP8266WiFi Built-In by Ivan Grokhotkov Version 1.0.0
 #include <ESP8266WiFi.h> 
 
 // Extra library: PubSubClient by Nick O'Leary <nick.oleary@gmail.com>  V2.8.0
 #include <PubSubClient.h>
-
 
 // DISPLAY
 //
@@ -13,9 +14,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+// Web and WiFi
+#include <WiFiClient.h>
+#include <base64.h>
 
+///////////////////////////////////////////////////////////////////////
 // Configuration and user settings
-#include arduino_secrets.h
+#include "arduino_secrets.h"
 
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
@@ -49,12 +54,12 @@ String INVERTER_WEBACCESS_PWD = SECRET_INVERTER_WEBACCESS_PWD;
 
 ///////////////////////////////////////////////////////////////////////
 // Other rather static parameters
-String status_page_url = "status.html"
+String status_page_url = "status.html" ;
 
 
 ///////////////////////////////////////////////////////////////////////
 // Global variables
-float energy_today_kWh = 0;
+float energy_today_kWh = 0 ;
 float energy_total_kWh = 0;
 float power_actual_W = 0;
 
@@ -82,6 +87,7 @@ void display_status();
 
 void web_getDataFromWeb(String url, String web_user, String web_password);
 void web_parseResponse(String response);
+String parseVariable(const String &response, const String &variableName);
 
 
 
@@ -106,7 +112,7 @@ void loop() {
   
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
     
-    web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD)
+    web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
 
 
 
@@ -145,9 +151,67 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
 
     // 1 Login and get Status Page
 
+// Create an instance of WiFiClient
+  WiFiClient client;
+
+  // Connect to the server
+  if (client.connect(url, 80)) {
+    // Prepare the HTTP request headers including the Authorization header
+    String authHeaderValue = "Basic " + base64::encode(web_user + ":" + web_password);
+
+    client.println("GET /path/to/resource HTTP/1.1");
+    client.println("Host: " + String(url));
+    client.println("Authorization: " + authHeaderValue);
+    client.println("Connection: close");
+    client.println();
+
+    // Wait for the server's response
+    String response = "";
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        response += c;
+      }
+    }
+
+    client.stop();
+
+    // Parse the response for specific variables
+    String webdata_today_e = parseVariable(response, "webdata_today_e");
+
+    if (!webdata_today_e.isEmpty()) {
+        Serial.println("webdata_today_e: " + webdata_today_e);
+    } else {
+        Serial.println("webdata_today_e not found in response.");
+    }
+
+
+
+
+    // Print the entire response
+    Serial.print(response);
+  } else {
+    Serial.println("Failed to connect to server.");
+  }
+
+
     // 2 get Response
 
 }
+
+String parseVariable(const String &response, const String &variableName) {
+  String startTag = "var " + variableName + " = \"";
+  int startIndex = response.indexOf(startTag);
+  if (startIndex != -1) {
+    startIndex += startTag.length();
+    int endIndex = response.indexOf("\";", startIndex);
+    if (endIndex != -1) {
+      return response.substring(startIndex, endIndex);
+    }
+  }
+  return "";
+}
+
 
 void web_parseResponse(String response){
 
@@ -168,6 +232,19 @@ void display_status(){
 
 }
 
+void display_invert_blink(int times, int delay_ms){
+    for (int i =0; i < times ; i++){
+        display.invertDisplay(true);
+        display.display();
+        delay(delay_ms);
+        display.invertDisplay(false);
+        display.display();
+    }
+
+}
+
+
+
 
 ////////////////////////////////////////////////////////////////////
 // MQTT SECTION
@@ -179,16 +256,19 @@ void mqtt_submit_data(){
     mqtt_client.loop();
 
     // Publish data to a topic
-    String data = "Hello from bridge";
+    String data = "";
+    
+    data = "Hello from bridge";
     mqtt_client.publish("MQTT_BROKER_MAINTOPIC", data.c_str());
-    String data = power_actual_W.toString();
+    
+    data = power_actual_W;
     mqtt_client.publish("MQTT_BROKER_MAINTOPIC/power", data.c_str());
 
 
     // Global variables
-    energy_today_kWh
-    energy_total_kWh
-    power_actual_W
+    //energy_today_kWh
+    //energy_total_kWh
+    //power_actual_W
 
     mqtt_client.disconnect();
 }
@@ -197,7 +277,7 @@ void mqtt_reconnect() {
   while (!mqtt_client.connected()) {
     Serial.print("Attempting MQTT connection...");
     
-    if (mqtt_client.connect("deye-esp-solar-bridge", MQTT_BROKER_USER, MQTT_BROKER_PWD)) {
+    if (mqtt_client.connect("deye-esp-solar-bridge", MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str())) {
       Serial.println("connected");
     } else {
       Serial.print("failed, rc=");
