@@ -1,11 +1,13 @@
-# Deye ESP WiFi Bridge 👁️📡
+# Deye ESP WiFi Bridge📡
 
 ![ESP Animation](./doc/img/deye-esp-mqtt-bridge-animation_gif.gif)
 
 
 ## Project Overview 🌟
 
-The Deye ESP WiFi Bridge project aims to provide a simple and effective solution for bridging data between your IoT devices and the Deye Cloud Platform. This readme will guide you through the hardware and software requirements, as well as the steps to get started with this project.
+The Deye ESP WiFi Bridge project aims to provide a simple and effective solution for bridging data between your solar-inverter and you smart home or 3rd party applications. The easy way would be to just deluver the data to a local mqtt broker as a well-known data inteface. 
+
+This readme will guide you through the hardware and software requirements, as well as the steps to get started with this project.
 
 ![ESP Architecture](./doc/img/deye-esp-mqtt-bridge_architecture.png)
 
@@ -14,7 +16,7 @@ The Deye ESP WiFi Bridge project aims to provide a simple and effective solution
 
 The Deye solar inverters are known to communicate with the Solarman Cloud, which utilizes servers located in the US and China. However, for individuals and organizations in Europe 🇪🇺, there is a growing concern about data privacy and legal restrictions associated with transferring data outside of the European Union (EU). This project, "deye-esp-solar-bridge," has been developed to address these concerns and provide a solution for users in Europe.
 
-### Project Workflow 🔄
+### Workflow 🔄
 
 The general workflow of the "deye-esp-solar-bridge" project is designed to give users control over their solar energy data while ensuring compliance with EU data protection regulations:
 
@@ -62,46 +64,47 @@ To get started with the Deye ESP WiFi Bridge, follow these steps:
 2. **Required Libraries**:
    - Install the necessary libraries for your ESP controller and display. You can find these libraries in the project's repository or refer to the project documentation for specific library requirements.
 
-3. **Deye Cloud Platform Account**:
-   - Create an account on the Deye Cloud Platform if you haven't already. You will need this account to configure the ESP WiFi Bridge to communicate with the platform.
+3. **Local MQTT Broker**:
+   - Create local MQTT broker and a technical user an account. Also external MQTT brokers are possible.
 
-### Installation 🔧
-
-Provide instructions on how to install and configure your project. Include any code snippets or configuration steps needed.
 
 ## Configuration 🛠️
 
-8. Duplicate the "arduino_secrets-template.h" file provided in the project and rename it to "arduino_secrets.h."
+4. Duplicate the "arduino_secrets-template.h" file provided in the project and rename it to "arduino_secrets.h."
 
-9. In the "arduino_secrets.h" file, update the following configurations:
+5. In the "arduino_secrets.h" file, update the following configurations:
 
    - **WiFi Credentials**: Change the SSID and password to match your solar inverter's network and home network.
 
    - **MQTT Broker**: Configure the MQTT broker details, including the server address, port, and credentials.
 
+   
+6. Specific adaptions to the project 
    - **Display Settings**: Adjust settings such as I2C address, pixel size, or any other display-specific configuration as needed.
 
 ## Build and Flash 🚀
 
-10. Open the Arduino IDE and load the project's main sketch.
+7. Open the Arduino IDE and load the project's main sketch.
 
-11. Go to "Tools" > "Board" and select the correct board (ESP8266 or ESP32) that matches your hardware.
+8. Go to "Tools" > "Board" and select the correct board (ESP8266 or ESP32) that matches your hardware.
 
-12. Compile the code by clicking the checkmark icon or selecting "Sketch" > "Verify/Compile."
+9. Compile the code by clicking the checkmark icon or selecting "Sketch" > "Verify/Compile."
 
-13. Once the compilation is successful, connect your ESP board to your computer.
+10. Once the compilation is successful, connect your ESP board to your computer.
 
-14. Go to "Tools" > "Port" and select the COM port to which your ESP board is connected.
+11. Go to "Tools" > "Port" and select the COM port to which your ESP board is connected.
 
-15. Upload the binary to your ESP board by clicking the arrow icon or selecting "Sketch" > "Upload."
+12. Upload the binary to your ESP board by clicking the arrow icon or selecting "Sketch" > "Upload."
 
-16. Monitor the Serial log output in the Arduino IDE for information and debugging. You can access the Serial Monitor by clicking "Tools" > "Serial Monitor."
+13. Monitor the Serial log output in the Arduino IDE for information and debugging. You can access the Serial Monitor by clicking "Tools" > "Serial Monitor."
 
 ## Roadmap 🗺️
 
 The project's roadmap includes the following planned features and improvements:
 
 - **Local Configuration Webpage**: Develop a local webpage that allows users to configure settings directly from the browser, simplifying setup.
+
+- **Flashing via Browser USB-Serial**: Make installation easier, by flashing an image in the browser.
 
 - **Reset Daily Energy Production Counter**: Implement functionality to reset the daily energy production counter, especially if the inverter lacks synchronization with the Solarman Cloud.
 
@@ -127,5 +130,5 @@ Feel free to explore these projects to enhance your experience with the Deye ESP
 
 If you have a related project and would like it to be featured here, please reach out and let us know!
 
-© 2023 [Your Project Name]
+© 2023 [deye-esp-mqtt-bridge]
 
