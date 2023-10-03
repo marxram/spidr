@@ -1,6 +1,6 @@
 # Deye ESP WiFi Bridge📡
 
-![ESP Animation](./doc/img/deye-esp-mqtt-bridge-animation_gif.gif)
+![ESP Animation](./doc/img/deye-esp-mqtt-bridge-animation.gif)
 
 
 ## Project Overview 🌟
