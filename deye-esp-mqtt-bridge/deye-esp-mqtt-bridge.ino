@@ -18,9 +18,16 @@
 #include <WiFiClient.h>
 #include <base64.h>
 
+// Inverter Data handling 
+#include "Inverter.h"
+
+
 ///////////////////////////////////////////////////////////////////////
 // Configuration and user settings
 #include "arduino_secrets.h"
+
+
+
 
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
@@ -73,6 +80,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
 
+Inverter inverter;
+
 
 ////////////////////////////////////////////////////////////////////
 // Function declarations
@@ -83,12 +92,9 @@ void log_status();
 
 void wifi_connect(String ssid, String passkey, String comment);
 
-void display_status();
-
 void web_getDataFromWeb(String url, String web_user, String web_password);
-void web_parseResponse(String response);
-String parseVariable(const String &response, const String &variableName);
 
+void displayInverterStatus(const Inverter& inverter);
 
 
 ////////////////////////////////////////////////////////////////////
@@ -114,6 +120,10 @@ void loop() {
     
     web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
 
+    displayInverterStatus(inverter);
+
+    // Update every 5 seconds (adjust as necessary)
+    delay(5000);
 
 
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
@@ -130,17 +140,50 @@ delay(5000); // Adjust the publishing interval as needed
 void wifi_connect(String ssid, String passkey, String comment){
 
 // Connect to Wi-Fi
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.println(F("Connecting to"));
+  display.println(ssid);
+  display.display();
+  
+  
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, passkey);
 
-  while (WiFi.status() != WL_CONNECTED) {
+ 
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) { // 10 sec timeout
     delay(500);
+    display.print(F("."));
+    display.display();
+
     Serial.print(".");
+    
+    attempts++;
   }
-  Serial.println("");
-  Serial.println("WiFi connected");
+
+  display.clearDisplay();
+  display.setCursor(0,0);
+  if(WiFi.status() == WL_CONNECTED) {
+    display.println(F("Connected!"));
+    display.print(F("IP: "));
+    display.println(WiFi.localIP());
+
+    Serial.println("");
+    Serial.println("WiFi connected");
+
+
+  } else {
+    display.println(F("Failed to connect"));
+    display.println(F("to WiFi. Check"));
+    display.println(F("credentials"));
+  }
+  display.display();
+  delay(2000);
 
 }
 
@@ -148,8 +191,6 @@ void wifi_connect(String ssid, String passkey, String comment){
 ////////////////////////////////////////////////////////////////////
 // Web Parsing Section
 void web_getDataFromWeb(String url, String web_user, String web_password){
-
-    // 1 Login and get Status Page
 
 // Create an instance of WiFiClient
   WiFiClient client;
@@ -174,46 +215,15 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
       }
     }
 
+    inverter.updateData(response);
+
     client.stop();
-
-    // Parse the response for specific variables
-    String webdata_today_e = parseVariable(response, "webdata_today_e");
-
-    if (!webdata_today_e.isEmpty()) {
-        Serial.println("webdata_today_e: " + webdata_today_e);
-    } else {
-        Serial.println("webdata_today_e not found in response.");
-    }
-
-
-
 
     // Print the entire response
     Serial.print(response);
   } else {
     Serial.println("Failed to connect to server.");
   }
-
-
-    // 2 get Response
-
-}
-
-String parseVariable(const String &response, const String &variableName) {
-  String startTag = "var " + variableName + " = \"";
-  int startIndex = response.indexOf(startTag);
-  if (startIndex != -1) {
-    startIndex += startTag.length();
-    int endIndex = response.indexOf("\";", startIndex);
-    if (endIndex != -1) {
-      return response.substring(startIndex, endIndex);
-    }
-  }
-  return "";
-}
-
-
-void web_parseResponse(String response){
 
 }
 
@@ -228,8 +238,28 @@ void log_status(){
 ////////////////////////////////////////////////////////////////////
 // DISPLAY Section
 
-void display_status(){
+void displayInverterStatus(const Inverter& inverter) {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  
+  // Display Power
+  display.setCursor(0,0);
+  display.print("Power: ");
+  display.print(inverter.getWebdataNowP(), 2);
+  display.println(" W");
 
+  // Display Energy Today
+  display.print("Energy Today: ");
+  display.print(inverter.getWebdataTodayE(), 2);
+  display.println(" kWh");
+
+  // Display Total Energy
+  display.print("Total Energy: ");
+  display.print(inverter.getWebdataTotalE(), 2);
+  display.println(" kWh");
+
+  display.display();
 }
 
 void display_invert_blink(int times, int delay_ms){
@@ -242,7 +272,6 @@ void display_invert_blink(int times, int delay_ms){
     }
 
 }
-
 
 
 
