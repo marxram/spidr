@@ -1,6 +1,7 @@
 {
-    "configuration": "xtal=80,vt=flash,exception=disabled,stacksmash=disabled,ssl=all,mmu=3232,non32xfer=fast,FlashMode=dout,FlashFreq=40,eesz=4M2M,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600",
-    "board": "esp8266:esp8266:d1_mini_clone",
+    "configuration": "xtal=80,vt=flash,exception=disabled,stacksmash=disabled,ssl=all,mmu=3232,non32xfer=fast,ResetMethod=nodemcu,CrystalFreq=26,FlashFreq=40,FlashMode=dout,eesz=1M64,led=2,sdk=nonosdk_190703,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=115200",
+    "board": "esp8266:esp8266:generic",
     "port": "COM3",
-    "sketch": "deye-esp-mqtt-bridge\\deye-esp-mqtt-bridge.ino"
+    "sketch": "deye-esp-mqtt-bridge\\deye-esp-mqtt-bridge.ino",
+    "output": "../ArduinoOutput"
 }

@@ -31,6 +31,7 @@ public:
   String getStatusB() const;
   String getStatusC() const;
   unsigned long getLastUpdateTimestamp() const;
+  void printVariables() const;
 
 private:
   // Member variables
@@ -58,6 +59,9 @@ private:
   String status_b;
   String status_c;
   unsigned long lastUpdateTimestamp;
+  void extractVariables(const String& html);
+  String extractValue(const String& html, const String& variableName) const;
+  float extractFloatValue(const String& html, const String& variableName) const;
 };
 
 #endif

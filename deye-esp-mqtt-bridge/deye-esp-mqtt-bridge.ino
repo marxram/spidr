@@ -27,8 +27,6 @@
 #include "arduino_secrets.h"
 
 
-
-
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
 
@@ -66,9 +64,9 @@ String status_page_url = "status.html" ;
 
 ///////////////////////////////////////////////////////////////////////
 // Global variables
-float energy_today_kWh = 0 ;
-float energy_total_kWh = 0;
-float power_actual_W = 0;
+float energy_today_kWh = -1.0 ;
+float energy_total_kWh = -1.0;
+float power_actual_W = -1.0;
 
 ////////////////////////////////////////////////////////////////////
 // Intializations 
@@ -104,7 +102,13 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
-  
+  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+
+  Serial.println("Initialize inverter");
+  inverter.printVariables();
 
   // Connect to MQTT broker
   mqtt_client.setServer(MQTT_BROKER_HOST.c_str(),MQTT_BROKER_PORT);
@@ -118,8 +122,14 @@ void loop() {
   
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
     
+    delay(1000);
+
     web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
 
+    Serial.println("Print Inverter");
+    inverter.printVariables();
+
+    delay(1000);
     displayInverterStatus(inverter);
 
     // Update every 5 seconds (adjust as necessary)
@@ -139,7 +149,9 @@ delay(5000); // Adjust the publishing interval as needed
 
 void wifi_connect(String ssid, String passkey, String comment){
 
-// Connect to Wi-Fi
+WiFi.disconnect();
+  delay(1000);
+  // Connect to Wi-Fi
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
@@ -191,36 +203,64 @@ void wifi_connect(String ssid, String passkey, String comment){
 ////////////////////////////////////////////////////////////////////
 // Web Parsing Section
 void web_getDataFromWeb(String url, String web_user, String web_password){
+  
+  String serverIp = WiFi.gatewayIP().toString();
+  String website = "http://" + serverIp + "/" + url;
 
-// Create an instance of WiFiClient
+  Serial.print("url: ");
+  Serial.println(website);
+
+  // Create an instance of WiFiClient
   WiFiClient client;
 
   // Connect to the server
-  if (client.connect(url, 80)) {
+  if (client.connect(serverIp.c_str(), 80)) {
     // Prepare the HTTP request headers including the Authorization header
+    
+    Serial.println("Client connected: trying Basic Auth");
     String authHeaderValue = "Basic " + base64::encode(web_user + ":" + web_password);
 
-    client.println("GET /path/to/resource HTTP/1.1");
-    client.println("Host: " + String(url));
+    client.println("GET /" + url + " HTTP/1.1");
+    client.println("Host: " + serverIp);
     client.println("Authorization: " + authHeaderValue);
     client.println("Connection: close");
     client.println();
 
     // Wait for the server's response
     String response = "";
+    String line = "";
     while (client.connected()) {
-      if (client.available()) {
+      while (client.available()) {
         char c = client.read();
-        response += c;
+            if (c == '\n') {
+                // Check if line starts with "var " and append it to the response string
+                if (line.startsWith("var ")) {
+                    response += line + "\n";
+                }
+                // Clear the line string for the next line
+                line = "";
+            } else if (c != '\r') {
+                line += c;
+            }
       }
     }
 
+    // Print the entire response
+    Serial.print(response);
     inverter.updateData(response);
 
     client.stop();
 
-    // Print the entire response
-    Serial.print(response);
+    // updating variables  
+    power_actual_W = inverter.getWebdataNowP();
+    energy_today_kWh = inverter.getWebdataTodayE();
+    energy_total_kWh = inverter.getWebdataTotalE();
+
+    Serial.printf("Power now: %f", power_actual_W);
+    Serial.printf("Energy today: %f", energy_today_kWh);
+    Serial.printf("Energy total: %f", energy_total_kWh);
+
+    
   } else {
     Serial.println("Failed to connect to server.");
   }
@@ -282,17 +322,17 @@ void mqtt_submit_data(){
         mqtt_reconnect();
     }
   
+    Serial.println("Connected to MQTT server");
     mqtt_client.loop();
 
     // Publish data to a topic
     String data = "";
-    
-    data = "Hello from bridge";
-    mqtt_client.publish("MQTT_BROKER_MAINTOPIC", data.c_str());
-    
+        
     data = power_actual_W;
-    mqtt_client.publish("MQTT_BROKER_MAINTOPIC/power", data.c_str());
+    String topic = MQTT_BROKER_MAINTOPIC + "/power";
+    mqtt_client.publish(topic.c_str() , data.c_str());
 
+  	Serial.println("> MQTT data published");
 
     // Global variables
     //energy_today_kWh
@@ -300,6 +340,7 @@ void mqtt_submit_data(){
     //power_actual_W
 
     mqtt_client.disconnect();
+    Serial.println("> MQTT CLOSED");
 }
 
 void mqtt_reconnect() {
