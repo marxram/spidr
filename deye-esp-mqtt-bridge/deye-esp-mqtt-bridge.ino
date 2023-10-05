@@ -18,6 +18,10 @@
 #include <WiFiClient.h>
 #include <base64.h>
 
+// AT Commands
+#include <WiFiUdp.h>
+
+
 // Inverter Data handling 
 #include "Inverter.h"
 
@@ -59,13 +63,17 @@ String INVERTER_WEBACCESS_PWD = SECRET_INVERTER_WEBACCESS_PWD;
 ///////////////////////////////////////////////////////////////////////
 // Other rather static parameters
 String status_page_url = "status.html" ;
-
+const int udpServerPort = 48899;
+String udpLogin = "WIFIKIT-214028-READ";
 
 ///////////////////////////////////////////////////////////////////////
 // Global variables
 float energy_today_kWh = -1.0 ;
 float energy_total_kWh = -1.0;
 float power_actual_W = -1.0;
+
+//udp buffer
+char buffer[50];
 
 ////////////////////////////////////////////////////////////////////
 // Intializations 
@@ -78,6 +86,8 @@ WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
 
 Inverter inverter;
+
+WiFiUDP udp;
 
 
 ////////////////////////////////////////////////////////////////////
@@ -117,31 +127,152 @@ void setup() {
 
 void loop() {
   
-    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
+    //wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
     
     delay(1000);
 
-    web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
+    //web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
 
-    Serial.println("Print Inverter");
-    inverter.printVariables();
-
-    delay(1000);
-    displayInverterStatus(inverter);
-
-    // Update every 5 seconds (adjust as necessary)
-    delay(5000);
-
-
-
-
-
+    Serial.println("Starte UPD");
+     // Send the "MYSECRET" welcome message
+    
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
 
-    mqtt_submit_data();
+    String udpServer = "10.1.1.10";
+    //WiFi.gatewayIP()
+
+    Serial.print("verbinde mit Server: ");
+    Serial.print(udpServer);
+    Serial.print("  Port: " );
+    Serial.println(udpServerPort);
+    
+
+      udp.beginPacket(udpServer.c_str(), udpServerPort);
+      udp.print(udpLogin); // ohne '\n'
+      udp.endPacket();
+      
+      delay(1000);
+
+      udp.beginPacket(udpServer.c_str(), udpServerPort);
+      udp.print("+ok"); // ohne '\n'
+      udp.endPacket();
+
+      delay(1000);
+
+      udp.beginPacket(udpServer.c_str(), udpServerPort);
+      udp.print("AT+WAP\n");
+      udp.endPacket();
 
 
-delay(5000); // Adjust the publishing interval as needed
+
+      Serial.print("Login sent: ");
+      Serial.println(udpLogin);
+
+      unsigned long startTime = millis();
+      unsigned long timeout = 20000;  // Set a timeout of 5 seconds (adjust as needed)
+      boolean responseReceived = false;
+
+      while (millis() - startTime < timeout) {
+        int packets = udp.parsePacket();
+        if (packets > 0) {
+          Serial.println("\nPackets received: " + String(packets));
+
+          int len = udp.read(buffer, 255);
+          buffer[len] = 0;
+          Serial.println("Received: " + String(buffer));
+
+          responseReceived = true;
+          break;  // Exit the loop if a response is received
+        }
+
+        delay(500); // Wait for a short period before checking again
+      }
+
+      if (!responseReceived) {
+        Serial.println("No response received within the timeout period.");
+      }
+      udp.beginPacket(udpServer.c_str(), udpServerPort);
+      udp.print("AT+\n");
+      udp.endPacket();
+
+    /*
+
+    udp.beginPacket(udpServer.c_str(), udpServerPort);
+    udp.print( udpLogin );
+    udp.endPacket();
+
+    //udp.beginPacket(udpServer.c_str(), udpServerPort);
+    //udp.print( "+OK" );
+    //udp.endPacket();
+
+    Serial.print("Login gesendet: ");
+    Serial.println(udpLogin);
+
+    // init buffer for read
+
+    Serial.print("Wait for reply: ");
+    for (int i = 0 ; i<80; i++){
+      Serial.print(".");
+      delay(500);
+      int packets = udp.parsePacket();
+      if ( packets > 0 ){
+        Serial.print("\nPackets ");
+        Serial.println(packets);
+
+        int len = udp.read(buffer, 255);
+        Serial.print("Length ");
+        Serial.println(len);
+
+        buffer[len] = 0;
+        Serial.println("Received: " + String(buffer));
+      }
+    }    
+
+     //int packetSize = udp.parsePacket();
+    
+
+    */
+    
+/*
+    udp.parsePacket();
+    Serial.println("Packet Size >0");
+      int len = udp.read(buffer, 255);
+      Serial.print("Length = ");
+      Serial.print(len);
+      
+      if (len > 0) {
+        buffer[len] = 0;
+        Serial.println("Received: " + String(buffer));
+
+        // Send the "AT+" command
+        if (strcmp(buffer, "+OK") == 0) {
+          udp.beginPacket(udpServer.c_str(), udpServerPort);
+          udp.print("AT+\n");
+          udp.endPacket();
+        }
+      }
+    
+*/
+
+    //Serial.println("Print Inverter");
+    //inverter.printVariables();
+
+    //delay(1000);
+    //displayInverterStatus(inverter);
+
+    // Update every 5 seconds (adjust as necessary)
+    //delay(5000);
+
+
+
+
+
+    //wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+
+    //mqtt_submit_data();
+
+
+  //delay(5000); // Adjust the publishing interval as needed
 }
 
 
