@@ -66,20 +66,21 @@ String status_page_url = "status.html" ;
 const int udpServerPort = 48899;
 String udpLogin = "WIFIKIT-214028-READ";
 
-unsigned int localPort = 9999;
+
 
 unsigned long startTime =  0;
 unsigned long udpTimeout = 20000;  // Set a timeout of 20000 seconds (adjust as needed)
 boolean responseReceived = false;
 
+
+
 ///////////////////////////////////////////////////////////////////////
 // Global variables
-float energy_today_kWh = -1.0 ;
-float energy_total_kWh = -1.0;
-float power_actual_W = -1.0;
 
-//udp buffer
+//udp Settings and variables
 char buffer[50];
+String udpServer = "";
+unsigned int localPort = 9999;
 
 ////////////////////////////////////////////////////////////////////
 // Intializations 
@@ -134,53 +135,72 @@ void setup() {
 
 void loop() {
   
+    // INVERTER NETWORK 
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
-    
-    delay(1000);
+    web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
 
-    //web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
+    udpServer = WiFi.gatewayIP().toString();   
+    udp_initialize_connection(WiFi.gatewayIP().toString(), udpServerPort, 10);
 
-    Serial.println("Starte UPD");
-     // Send the "MYSECRET" welcome message
-    
-    //wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+    udp.beginPacket(udpServer.c_str(), udpServerPort);
+    udp.print("AT+WAP\n");
+    udp.endPacket();     
 
+    //while (millis() - startTime < udpTimeout) {
+    for (int attempts = 0; attempts < 20 ; attempts++){
+      responseReceived = false;
+      int packets = udp.parsePacket();
+      if (packets > 0) {
+        Serial.println("\nPacket received: " + String(packets));
+
+        int len = udp.read(buffer, 255);
+        buffer[len] = 0;
+        Serial.println("Received: " + String(buffer));
+      }else {
+        Serial.print(".");
+        delay(500); // Wait for a short period before checking again
+      }
+    }
+
+    // Stopping local UDP Server
+    udp_stop();
+
+    // Output Information 
+    Serial.println("Print Inverter");
+    inverter.printVariables();
+    displayInverterStatus(inverter);
+
+    // Update every 5 seconds (adjust as necessary)
+    delay(5000);
+
+    // Home Network
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+    mqtt_submit_data();
+
+    delay(5000); // Adjust the publishing interval as needed
+}
+
+////////////////////////////////////////////////////////////////////
+// UDP Client Section
+bool udp_initialize_connection(String server, int port, int timeout_s){
     udp.begin(localPort);
-
-
-    String udpServer = "10.1.1.10";
-    //WiFi.gatewayIP()
-
-    Serial.print("verbinde mit Server: ");
-    Serial.print(udpServer);
+    Serial.print("\nBegin UCP connection to ");
+    Serial.print(server);
     Serial.print("  Port: " );
-    Serial.println(udpServerPort);
+    Serial.println(port);
     
 
-      udp.beginPacket(udpServer.c_str(), udpServerPort);
+      udp.beginPacket(server.c_str(), port);
       udp.print(udpLogin); // ohne '\n'
       udp.endPacket();
       
-      Serial.print("Login sent: ");
+      Serial.print("UDP Login sent: ");
       Serial.println(udpLogin);
 
-
       delay(1000);
-
-      //udp.beginPacket(udpServer.c_str(), udpServerPort);
-      //udp.print("+ok"); // ohne '\n'
-      //udp.endPacket();
-
-      delay(1000);
-
-      udp.beginPacket(udpServer.c_str(), udpServerPort);
-      udp.print("AT+WAP\n");
-      udp.endPacket();     
-
-
+    
       //while (millis() - startTime < udpTimeout) {
-      for (int attempts = 0; attempts < 20 ; attempts++){
+      for (int attempts = 0; attempts <= timeout_s ; attempts++){
         responseReceived = false;
         int packets = udp.parsePacket();
         if (packets > 0) {
@@ -189,97 +209,24 @@ void loop() {
           int len = udp.read(buffer, 255);
           buffer[len] = 0;
           Serial.println("Received: " + String(buffer));
+          
+          //ToDo: Check if the packet was what we are looking for 
+          return true;
+
         }else {
           Serial.print(".");
-          delay(500); // Wait for a short period before checking again
+          delay(1000); // Wait for a short period before checking again
         }
       }
-
-    Serial.println("Stopping local port");
-         udp.stop();
- delay(1000); 
-
-
-
-    /*
-
-    udp.beginPacket(udpServer.c_str(), udpServerPort);
-    udp.print( udpLogin );
-    udp.endPacket();
-
-    //udp.beginPacket(udpServer.c_str(), udpServerPort);
-    //udp.print( "+OK" );
-    //udp.endPacket();
-
-    Serial.print("Login gesendet: ");
-    Serial.println(udpLogin);
-
-    // init buffer for read
-
-    Serial.print("Wait for reply: ");
-    for (int i = 0 ; i<80; i++){
-      Serial.print(".");
-      delay(500);
-      int packets = udp.parsePacket();
-      if ( packets > 0 ){
-        Serial.print("\nPackets ");
-        Serial.println(packets);
-
-        int len = udp.read(buffer, 255);
-        Serial.print("Length ");
-        Serial.println(len);
-
-        buffer[len] = 0;
-        Serial.println("Received: " + String(buffer));
-      }
-    }    
-
-     //int packetSize = udp.parsePacket();
-    
-
-    */
-    
-/*
-    udp.parsePacket();
-    Serial.println("Packet Size >0");
-      int len = udp.read(buffer, 255);
-      Serial.print("Length = ");
-      Serial.print(len);
-      
-      if (len > 0) {
-        buffer[len] = 0;
-        Serial.println("Received: " + String(buffer));
-
-        // Send the "AT+" command
-        if (strcmp(buffer, "+OK") == 0) {
-          udp.beginPacket(udpServer.c_str(), udpServerPort);
-          udp.print("AT+\n");
-          udp.endPacket();
-        }
-      }
-    
-*/
-
-    //Serial.println("Print Inverter");
-    //inverter.printVariables();
-
-    //delay(1000);
-    //displayInverterStatus(inverter);
-
-    // Update every 5 seconds (adjust as necessary)
-    //delay(5000);
-
-
-
-
-
-    //wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
-
-    //mqtt_submit_data();
-
-
-  //delay(5000); // Adjust the publishing interval as needed
+    return false;
 }
+
+void udp_stop() {
+  Serial.println("Stopping local udp port");
+  udp.stop();
+  delay(500);  
+}
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -300,9 +247,9 @@ void wifi_connect(String ssid, String passkey, String comment){
   display.display();
   
   
-  Serial.println();
+  Serial.println("----------------------------------------------------");
   Serial.print("Connecting to ");
-  Serial.println(ssid);
+  Serial.print(ssid);
   WiFi.begin(ssid, passkey);
 
  
@@ -323,9 +270,7 @@ void wifi_connect(String ssid, String passkey, String comment){
     display.println(F(" OK"));
     display.print(F("IP: "));
     display.println(WiFi.localIP());
-
-    Serial.println("");
-    Serial.println("WiFi connected");
+    Serial.println("--> connected");
     display.display();
     delay(3000);
 
@@ -396,19 +341,14 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
     }
 
     // Print the entire response
-    Serial.print(response);
+    //Serial.print(response);
     inverter.updateData(response);
 
     client.stop();
 
-    // updating variables  
-    power_actual_W = inverter.getInverterPowerNow_W();
-    energy_today_kWh = inverter.getInverterEnergyToday_kWh();
-    energy_total_kWh = inverter.getInverterEnergyTotal_kWh();
-
-    Serial.printf("\nPower now: %f\n", power_actual_W);
-    Serial.printf("Energy today: %\nf", energy_today_kWh);
-    Serial.printf("Energy total: %f\n", energy_total_kWh);
+    Serial.printf("\nPower now: %f\n", inverter.getInverterPowerNow_W());
+    Serial.printf("Energy today: %f\n", inverter.getInverterEnergyToday_kWh());
+    Serial.printf("Energy total: %f\n", inverter.getInverterEnergyTotal_kWh());
 
     display.println(F("> Parsing > OK"));
     display.display();
