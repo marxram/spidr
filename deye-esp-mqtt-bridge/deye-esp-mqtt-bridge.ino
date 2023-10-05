@@ -66,6 +66,12 @@ String status_page_url = "status.html" ;
 const int udpServerPort = 48899;
 String udpLogin = "WIFIKIT-214028-READ";
 
+unsigned int localPort = 9999;
+
+unsigned long startTime =  0;
+unsigned long udpTimeout = 20000;  // Set a timeout of 20000 seconds (adjust as needed)
+boolean responseReceived = false;
+
 ///////////////////////////////////////////////////////////////////////
 // Global variables
 float energy_today_kWh = -1.0 ;
@@ -119,6 +125,7 @@ void setup() {
 
   // Connect to MQTT broker
   mqtt_client.setServer(MQTT_BROKER_HOST.c_str(),MQTT_BROKER_PORT);
+
 }
 
 
@@ -127,7 +134,7 @@ void setup() {
 
 void loop() {
   
-    //wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
+    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
     
     delay(1000);
 
@@ -136,7 +143,11 @@ void loop() {
     Serial.println("Starte UPD");
      // Send the "MYSECRET" welcome message
     
+    //wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+    udp.begin(localPort);
+
 
     String udpServer = "10.1.1.10";
     //WiFi.gatewayIP()
@@ -151,49 +162,44 @@ void loop() {
       udp.print(udpLogin); // ohne '\n'
       udp.endPacket();
       
+      Serial.print("Login sent: ");
+      Serial.println(udpLogin);
+
+
       delay(1000);
 
-      udp.beginPacket(udpServer.c_str(), udpServerPort);
-      udp.print("+ok"); // ohne '\n'
-      udp.endPacket();
+      //udp.beginPacket(udpServer.c_str(), udpServerPort);
+      //udp.print("+ok"); // ohne '\n'
+      //udp.endPacket();
 
       delay(1000);
 
       udp.beginPacket(udpServer.c_str(), udpServerPort);
       udp.print("AT+WAP\n");
-      udp.endPacket();
+      udp.endPacket();     
 
 
-
-      Serial.print("Login sent: ");
-      Serial.println(udpLogin);
-
-      unsigned long startTime = millis();
-      unsigned long timeout = 20000;  // Set a timeout of 5 seconds (adjust as needed)
-      boolean responseReceived = false;
-
-      while (millis() - startTime < timeout) {
+      //while (millis() - startTime < udpTimeout) {
+      for (int attempts = 0; attempts < 20 ; attempts++){
+        responseReceived = false;
         int packets = udp.parsePacket();
         if (packets > 0) {
-          Serial.println("\nPackets received: " + String(packets));
+          Serial.println("\nPacket received: " + String(packets));
 
           int len = udp.read(buffer, 255);
           buffer[len] = 0;
           Serial.println("Received: " + String(buffer));
-
-          responseReceived = true;
-          break;  // Exit the loop if a response is received
+        }else {
+          Serial.print(".");
+          delay(500); // Wait for a short period before checking again
         }
-
-        delay(500); // Wait for a short period before checking again
       }
 
-      if (!responseReceived) {
-        Serial.println("No response received within the timeout period.");
-      }
-      udp.beginPacket(udpServer.c_str(), udpServerPort);
-      udp.print("AT+\n");
-      udp.endPacket();
+    Serial.println("Stopping local port");
+         udp.stop();
+ delay(1000); 
+
+
 
     /*
 
