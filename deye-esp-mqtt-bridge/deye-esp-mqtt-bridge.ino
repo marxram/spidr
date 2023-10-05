@@ -184,7 +184,7 @@ void loop() {
 // UDP Client Section
 bool udp_initialize_connection(String server, int port, int timeout_s){
     udp.begin(localPort);
-    Serial.print("\nBegin UCP connection to ");
+    Serial.print("\nBegin UDP connection to ");
     Serial.print(server);
     Serial.print("  Port: " );
     Serial.println(port);
