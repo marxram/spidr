@@ -18,12 +18,11 @@
 #include <WiFiClient.h>
 #include <base64.h>
 
-// AT Commands
-#include <WiFiUdp.h>
-
-
 // Inverter Data handling 
 #include "Inverter.h"
+
+// Include Udp Channel inverter communication
+#include "InverterUdp.h"
 
 ///////////////////////////////////////////////////////////////////////
 // Configuration and user settings
@@ -63,24 +62,14 @@ String INVERTER_WEBACCESS_PWD = SECRET_INVERTER_WEBACCESS_PWD;
 ///////////////////////////////////////////////////////////////////////
 // Other rather static parameters
 String status_page_url = "status.html" ;
-const int udpServerPort = 48899;
-String udpLogin = "WIFIKIT-214028-READ";
-
-
 
 unsigned long startTime =  0;
-unsigned long udpTimeout = 20000;  // Set a timeout of 20000 seconds (adjust as needed)
-boolean responseReceived = false;
-
 
 
 ///////////////////////////////////////////////////////////////////////
 // Global variables
 
-//udp Settings and variables
-char buffer[50];
-String udpServer = "";
-unsigned int localPort = 9999;
+
 
 ////////////////////////////////////////////////////////////////////
 // Intializations 
@@ -93,8 +82,7 @@ WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
 
 Inverter inverter;
-
-WiFiUDP udp;
+InverterUdp inverterUdp;
 
 
 ////////////////////////////////////////////////////////////////////
@@ -121,8 +109,8 @@ void setup() {
     for(;;); // Don't proceed, loop forever
   }
 
-  Serial.println("Initialize inverter");
-  inverter.printVariables();
+  //Serial.println("Initialize inverter");
+  //inverter.printVariables();
 
   // Connect to MQTT broker
   mqtt_client.setServer(MQTT_BROKER_HOST.c_str(),MQTT_BROKER_PORT);
@@ -139,31 +127,14 @@ void loop() {
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
     web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
 
-    udpServer = WiFi.gatewayIP().toString();   
-    udp_initialize_connection(WiFi.gatewayIP().toString(), udpServerPort, 10);
+    // Starting Connection inside the AP Network of inverter
+    inverterUdp = InverterUdp(WiFi.gatewayIP().toString());
+    bool res = inverterUdp.inverter_connect();
 
-    udp.beginPacket(udpServer.c_str(), udpServerPort);
-    udp.print("AT+WAP\n");
-    udp.endPacket();     
+    String response = inverterUdp.inverter_readtime();
 
-    //while (millis() - startTime < udpTimeout) {
-    for (int attempts = 0; attempts < 20 ; attempts++){
-      responseReceived = false;
-      int packets = udp.parsePacket();
-      if (packets > 0) {
-        Serial.println("\nPacket received: " + String(packets));
+    inverterUdp.inverter_close();
 
-        int len = udp.read(buffer, 255);
-        buffer[len] = 0;
-        Serial.println("Received: " + String(buffer));
-      }else {
-        Serial.print(".");
-        delay(500); // Wait for a short period before checking again
-      }
-    }
-
-    // Stopping local UDP Server
-    udp_stop();
 
     // Output Information 
     Serial.println("Print Inverter");
@@ -178,53 +149,6 @@ void loop() {
     mqtt_submit_data();
 
     delay(5000); // Adjust the publishing interval as needed
-}
-
-////////////////////////////////////////////////////////////////////
-// UDP Client Section
-bool udp_initialize_connection(String server, int port, int timeout_s){
-    udp.begin(localPort);
-    Serial.print("\nBegin UDP connection to ");
-    Serial.print(server);
-    Serial.print("  Port: " );
-    Serial.println(port);
-    
-
-      udp.beginPacket(server.c_str(), port);
-      udp.print(udpLogin); // ohne '\n'
-      udp.endPacket();
-      
-      Serial.print("UDP Login sent: ");
-      Serial.println(udpLogin);
-
-      delay(1000);
-    
-      //while (millis() - startTime < udpTimeout) {
-      for (int attempts = 0; attempts <= timeout_s ; attempts++){
-        responseReceived = false;
-        int packets = udp.parsePacket();
-        if (packets > 0) {
-          Serial.println("\nPacket received: " + String(packets));
-
-          int len = udp.read(buffer, 255);
-          buffer[len] = 0;
-          Serial.println("Received: " + String(buffer));
-          
-          //ToDo: Check if the packet was what we are looking for 
-          return true;
-
-        }else {
-          Serial.print(".");
-          delay(1000); // Wait for a short period before checking again
-        }
-      }
-    return false;
-}
-
-void udp_stop() {
-  Serial.println("Stopping local udp port");
-  udp.stop();
-  delay(500);  
 }
 
 
