@@ -1,0 +1,257 @@
+
+/* From https://github.com/s10l/deye-logger-at-cmd/blob/main/src/main.go
+if fModBus != nil && *fModBus != "" {
+		checkForArgConflicts()
+
+		if len(*fModBus) != 8 {
+			fmt.Println("xmb needs first register address and length")
+			fmt.Println("First register 0x0012")
+			fmt.Println("Length 0x0001")
+			fmt.Println("-> 00120001")
+			fmt.Println()
+			flag.Usage()
+			os.Exit(1)
+		}
+		handler = modBusReadHandler
+	}
+
+	if fModBusW != nil && *fModBusW != "" {
+		checkForArgConflicts()
+
+		if len(*fModBusW) < 14 {
+			fmt.Println("xmbw needs first register address, length, value length, and value")
+			fmt.Println("First register 0x0028")
+			fmt.Println("Length 0x0001")
+			fmt.Println("Value length 0x02")
+			fmt.Println("Value 0x0064")
+			fmt.Println("-> 00280001020064")
+			fmt.Println()
+			flag.Usage()
+			os.Exit(1)
+
+
+func modBusReadHandler(conn *net.UDPConn) {
+	prefix := "0103" // Slave ID + Function
+	cmd := fmt.Sprintf("%s%s", prefix, (*fModBus))
+	modBusHandler(conn, prefix, cmd)
+}
+
+Example: $ 
+
+./main.exe -t 10.1.1.10:48899 -xmb 00220001 -xv
+2023/10/08 13:27:39 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 13:27:39 > WIFIKIT-214028-READ
+2023/10/08 13:27:40 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 13:27:40 > +ok
+2023/10/08 13:27:41 > AT+INVDATA=8,0103002200012400
+2023/10/08 13:27:42 < +ok=010302139CB51D
+2023/10/08 13:27:42 +ok=010302139CB51D
+2023/10/08 13:27:42 > AT+Q
+2023/10/08 13:27:43
+
+0103002200012400 --> CRC 2400
+
+currently got 13:28:50.656 -> Modbus CRC: AA4B
+13:28:50.656 -> Modbus Send Full Command : 010300220001AA4B
+
+
+		}*/
+
+
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10 -xvmb 00220001
+flag provided but not defined: -xvmb
+Usage of C:\Users\micro\OneDrive\Hacking\Solar\Serial_AT\main.exe:
+  -t string
+        The IP and port of the loggers assistant endpoint [10.10.100.254:48899]
+  -xat string
+        Send AT command instead of credentials
+  -xc string
+        WiFi configuration code [WIFIKIT-214028-READ or HF-A11ASSISTHREAD] (default "WIFIKIT-214028-READ")
+  -xmb string
+        Send Modbus read register instead of credentials [00120001] -> Read register 0x0012, length = 1
+  -xs string
+        Local source address
+  -xv
+        Outputs all communication with the logger
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10 -xmb 00220001 -xv
+2023/10/08 13:27:33 address 10.1.1.10: missing port in address
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00220001 -xv
+2023/10/08 13:27:39 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 13:27:39 > WIFIKIT-214028-READ
+2023/10/08 13:27:40 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 13:27:40 > +ok
+2023/10/08 13:27:41 > AT+INVDATA=8,0103002200012400
+2023/10/08 13:27:42 < +ok=010302139CB51D
+2023/10/08 13:27:42 +ok=010302139CB51D
+2023/10/08 13:27:42 > AT+Q
+2023/10/08 13:27:43
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00220001 -xv
+2023/10/08 14:12:40 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:12:40 > WIFIKIT-214028-READ
+2023/10/08 14:12:41 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:12:41 > +ok
+2023/10/08 14:12:48 read udp 10.1.1.30:58243->10.1.1.10:48899: i/o timeout
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00230001 -xv
+2023/10/08 14:12:53 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:12:53 > WIFIKIT-214028-READ
+2023/10/08 14:12:54 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:12:54 > +ok
+2023/10/08 14:12:55 > AT+INVDATA=8,01030023000175c0
+2023/10/08 14:12:56 < +ok=010302002CB999
+2023/10/08 14:12:56 +ok=010302002CB999
+2023/10/08 14:12:56 > AT+Q
+2023/10/08 14:12:57
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00240001 -xv
+2023/10/08 14:13:01 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:13:01 > WIFIKIT-214028-READ
+2023/10/08 14:13:02 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:13:02 > +ok
+2023/10/08 14:13:03 > AT+INVDATA=8,010300240001c401
+2023/10/08 14:13:04 < +ok=0103020000B844
+2023/10/08 14:13:04 +ok=0103020000B844
+2023/10/08 14:13:04 > AT+Q
+2023/10/08 14:13:05
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00200001 -xv
+2023/10/08 14:13:26 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:13:26 > WIFIKIT-214028-READ
+2023/10/08 14:13:27 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:13:27 > +ok
+2023/10/08 14:13:28 > AT+INVDATA=8,01030020000185c0
+2023/10/08 14:13:29 < +ok=0103020000B844
+2023/10/08 14:13:29 +ok=0103020000B844
+2023/10/08 14:13:29 > AT+Q
+2023/10/08 14:13:30
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00160001 -xv
+2023/10/08 14:13:35 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:13:35 > WIFIKIT-214028-READ
+2023/10/08 14:13:36 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:13:36 > +ok
+2023/10/08 14:13:37 > AT+INVDATA=8,01030016000165ce
+2023/10/08 14:13:38 < +ok=0103023000AC44
+2023/10/08 14:13:38 +ok=0103023000AC44
+2023/10/08 14:13:38 > AT+Q
+2023/10/08 14:13:39
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00100001 -xv
+2023/10/08 14:14:04 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:14:04 > WIFIKIT-214028-READ
+2023/10/08 14:14:05 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:14:05 > +ok
+2023/10/08 14:14:06 > AT+INVDATA=8,01030010000185cf
+2023/10/08 14:14:07 < +ok=0103021770B650
+2023/10/08 14:14:07 +ok=0103021770B650
+2023/10/08 14:14:07 > AT+Q
+2023/10/08 14:14:08
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb FFF90002 -xv
+2023/10/08 14:15:09 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:15:09 > WIFIKIT-214028-READ
+2023/10/08 14:15:10 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:15:10 > +ok
+2023/10/08 14:15:11 > AT+INVDATA=8,0103FFF90002242e
+2023/10/08 14:15:12 < +ok=no data
+2023/10/08 14:15:12 +ok=no data
+2023/10/08 14:15:12 > AT+Q
+2023/10/08 14:15:13
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb FFF90001 -xv
+2023/10/08 14:15:36 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:15:36 > WIFIKIT-214028-READ
+2023/10/08 14:15:37 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:15:37 > +ok
+2023/10/08 14:15:38 > AT+INVDATA=8,0103FFF90001642f
+2023/10/08 14:15:39 < +ok=no data
+2023/10/08 14:15:39 +ok=no data
+2023/10/08 14:15:39 > AT+Q
+2023/10/08 14:15:40
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00000001 -xv
+2023/10/08 14:16:32 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:16:32 > WIFIKIT-214028-READ
+2023/10/08 14:16:33 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:16:33 > +ok
+2023/10/08 14:16:34 > AT+INVDATA=8,010300000001840a
+2023/10/08 14:16:35 < +ok=0103020004B987
+2023/10/08 14:16:35 +ok=0103020004B987
+2023/10/08 14:16:35 > AT+Q
+2023/10/08 14:16:36
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00100001 -xv
+2023/10/08 14:17:07 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:17:07 > WIFIKIT-214028-READ
+2023/10/08 14:17:08 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:17:08 > +ok
+2023/10/08 14:17:09 > AT+INVDATA=8,01030010000185cf
+2023/10/08 14:17:10 < +ok=0103021770B650
+2023/10/08 14:17:10 +ok=0103021770B650
+2023/10/08 14:17:10 > AT+Q
+2023/10/08 14:17:11
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00220001 -xv
+2023/10/08 14:17:54 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:17:54 > WIFIKIT-214028-READ
+2023/10/08 14:17:55 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:17:55 > +ok
+2023/10/08 14:17:56 > AT+INVDATA=8,0103002200012400
+2023/10/08 14:17:57 < +ok=010302139CB51D
+2023/10/08 14:17:57 +ok=010302139CB51D
+2023/10/08 14:17:57 > AT+Q
+2023/10/08 14:17:58
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00230001 -xv
+2023/10/08 14:18:10 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:18:10 > WIFIKIT-214028-READ
+2023/10/08 14:18:11 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:18:11 > +ok
+2023/10/08 14:18:12 > AT+INVDATA=8,01030023000175c0
+2023/10/08 14:18:13 < +ok=010302002CB999
+2023/10/08 14:18:13 +ok=010302002CB999
+2023/10/08 14:18:13 > AT+Q
+2023/10/08 14:18:14
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00240001 -xv
+2023/10/08 14:18:18 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:18:18 > WIFIKIT-214028-READ
+2023/10/08 14:18:19 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:18:19 > +ok
+2023/10/08 14:18:20 > AT+INVDATA=8,010300240001c401
+2023/10/08 14:18:21 < +ok=0103020000B844
+2023/10/08 14:18:21 +ok=0103020000B844
+2023/10/08 14:18:21 > AT+Q
+2023/10/08 14:18:22
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00220003 -xv
+2023/10/08 14:18:30 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:18:30 > WIFIKIT-214028-READ
+2023/10/08 14:18:31 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:18:31 > +ok
+2023/10/08 14:18:32 > AT+INVDATA=8,010300220003a5c1
+2023/10/08 14:18:33 < +ok=010306139C002C00003203
+2023/10/08 14:18:33 +ok=010306139C002C00003203
+2023/10/08 14:18:33 > AT+Q
+2023/10/08 14:18:34

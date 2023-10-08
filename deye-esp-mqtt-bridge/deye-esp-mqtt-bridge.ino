@@ -68,7 +68,7 @@ unsigned long startTime =  0;
 
 ///////////////////////////////////////////////////////////////////////
 // Global variables
-
+bool connected = false;
 
 
 ////////////////////////////////////////////////////////////////////
@@ -84,6 +84,10 @@ PubSubClient mqtt_client(espClient);
 Inverter inverter;
 InverterUdp inverterUdp;
 
+const int udpServerPort = 50000; // manual port
+const int udpLocalPort = 48899; // Fixed port of deye inverter
+const int udpTimeoput_s = 10; // 10 Seconds Timeout 
+    
 
 ////////////////////////////////////////////////////////////////////
 // Function declarations
@@ -125,19 +129,18 @@ void loop() {
   
     // INVERTER NETWORK 
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
-    web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
+    if (connected) {
+      //web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
+      // Starting Connection inside the AP Network of inverter
+      bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
+      
+      String response = inverterUdp.inverter_readtime();
 
-    // Starting Connection inside the AP Network of inverter
-    inverterUdp = InverterUdp(WiFi.gatewayIP().toString());
-    bool res = inverterUdp.inverter_connect();
-
-    String response = inverterUdp.inverter_readtime();
-
-    inverterUdp.inverter_close();
-
+      inverterUdp.inverter_close();
+    }
 
     // Output Information 
-    Serial.println("Print Inverter");
+    Serial.println("Print WebInverter");
     inverter.printVariables();
     displayInverterStatus(inverter);
 
@@ -146,7 +149,9 @@ void loop() {
 
     // Home Network
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
-    mqtt_submit_data();
+    if (connected) {
+        mqtt_submit_data();
+    }
 
     delay(5000); // Adjust the publishing interval as needed
 }
@@ -157,7 +162,7 @@ void loop() {
 // WiFi Functions
 
 void wifi_connect(String ssid, String passkey, String comment){
-
+  connected = false;
   WiFi.disconnect();
   delay(1000);
   // Connect to Wi-Fi
@@ -182,15 +187,14 @@ void wifi_connect(String ssid, String passkey, String comment){
     display.print(F("."));
     display.display();
     delay(500);
-
     Serial.print(".");
-    
     attempts++;
   }
 
   //display.clearDisplay();
   //display.setCursor(0,0);
   if(WiFi.status() == WL_CONNECTED) {
+    connected = true;
     display.println(F(" OK"));
     display.print(F("IP: "));
     display.println(WiFi.localIP());
@@ -199,6 +203,7 @@ void wifi_connect(String ssid, String passkey, String comment){
     delay(3000);
 
   } else {
+    connected = false;
     display.println(F("Failed to connect"));
     display.println(F("Check credential"));
     display.println(F("or availability"));
