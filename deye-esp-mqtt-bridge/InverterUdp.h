@@ -17,9 +17,9 @@ public:
 
 private:
   String readModbus(String address, String length);
-  const char* ModbusCrc(const char* dataStr);
   void Modbus(const uint8_t* data, uint8_t dataLength, uint8_t* output);
   void hexStringToBytes(const char* hexString, uint8_t* byteData, uint8_t byteDataLength);
+  String byteToHexString(const uint8_t* byteArray, size_t length);
   void send_message(String message);
   String getResponse();
   String noResponse;

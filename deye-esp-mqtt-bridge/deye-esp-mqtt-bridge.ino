@@ -343,9 +343,10 @@ void display_invert_blink(int times, int delay_ms){
     for (int i =0; i < times ; i++){
         display.invertDisplay(true);
         display.display();
-        delay(delay_ms);
+        delay(delay_ms/2);
         display.invertDisplay(false);
         display.display();
+        delay(delay_ms/2);
     }
 
 }

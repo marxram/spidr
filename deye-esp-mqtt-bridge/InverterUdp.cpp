@@ -7,6 +7,8 @@
 #include <WiFiUdp.h>
 
 #include <stdint.h>
+#include <stdio.h> // For sprintf()
+#include <stdlib.h> // For strtol()
 
 #define MODBUS 0xA001  // CRC variable
 
@@ -48,13 +50,21 @@ String InverterUdp::inverter_readtime(){
 
 
 String InverterUdp::readModbus(String address, String  length){    
-    
+
     String cmd = "0103"+address+length;
     Serial.println("Modbus Send Command : "+ cmd);
-    String crc = ModbusCrc(cmd.c_str());
+ 
+    //const char* hexDataStr = "01030022000";
+    uint8_t binaryData[6];  // Ensure the size is half the length of hexDataStr
+    hexStringToBytes(cmd.c_str(), binaryData, sizeof(binaryData));
+    uint8_t crc_bytes[2];
+    Modbus(binaryData, sizeof(binaryData), crc_bytes);
+    
+    
+    String crc = byteToHexString(crc_bytes,2);
     Serial.println("Modbus CRC: "+ crc);
  
-    cmd = cmd +crc;
+    cmd = cmd + crc;
 
     Serial.println("Modbus Send Full Command : "+ cmd );
 
@@ -77,8 +87,6 @@ String InverterUdp::readModbus(String address, String  length){
     // ToDo: reformatting
     return response;
 }
-
-
 
 
 
@@ -145,6 +153,9 @@ String InverterUdp::getResponse(){
 }
 
 bool InverterUdp::inverter_close(){
+  
+  send_message("AT+Q");
+  delay(500); 
   Serial.println("Stopping local udp port");
   udp.stop();
   delay(500); 
@@ -153,40 +164,13 @@ bool InverterUdp::inverter_close(){
 }
 
 void InverterUdp::send_message(String message){
+    message.toLowerCase();
     Serial.println("> Sending Message: "+ message);
-
+    
     udp.beginPacket(udpServer.c_str(), remotePort);
     udp.print(message);
     udp.endPacket();
 }
-
-
-
-const char* InverterUdp::ModbusCrc(const char* dataStr) {
-    static char outputStr[5];  // 4 characters for the hex value + 1 for the null terminator
-    uint16_t crc = 0xFFFF;
-    uint8_t dataLength = strlen(dataStr);
-
-    for (uint8_t dataIndex = 0; dataIndex < dataLength; dataIndex++) {
-        crc = crc ^ (uint16_t) dataStr[dataIndex];
-        for (uint8_t i = 0; i < 8; i++) {
-            if (crc & 0x0001) {
-                crc = (crc >> 1) ^ MODBUS;
-            } else {
-                crc = crc >> 1;
-            }
-        }
-    }
-
-    // Convert the CRC to a string and return it
-    sprintf(outputStr, "%04X", crc);
-    return outputStr;
-}
-
-// Example usage:
-// const char* dataStr = "someData";
-// const char* outputStr = ModbusCrc(dataStr);
-
 
 
 // Function to convert a hex string to binary data
@@ -220,3 +204,19 @@ void InverterUdp::Modbus(const uint8_t* data, uint8_t dataLength, uint8_t* outpu
 // hexStringToBytes(hexDataStr, binaryData, sizeof(binaryData));
 // uint8_t output[2];
 // Modbus(binaryData, sizeof(binaryData), output);
+
+String InverterUdp::byteToHexString(const uint8_t* byteArray, size_t length) {
+  String hexString = "";
+  for(size_t i = 0; i < length; i++) {
+    if(byteArray[i] < 16) {
+      hexString += "0"; // pad with zero
+    }
+    hexString += String(byteArray[i], HEX);
+  }
+  hexString.toUpperCase();
+  return hexString;
+}
+
+// Example usage:
+// uint8_t crc[2] = {0x24, 0x00}; // or whatever your CRC calculation provides
+// String crcString = byteToHexString(crc, 2);
