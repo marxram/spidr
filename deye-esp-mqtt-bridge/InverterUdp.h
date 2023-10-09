@@ -21,7 +21,10 @@ private:
   void hexStringToBytes(const char* hexString, uint8_t* byteData, uint8_t byteDataLength);
   String byteToHexString(const uint8_t* byteArray, size_t length);
   void send_message(String message);
-  String getResponse();
+  String getResponse(bool deleteNewlines);
+  void removeByte(char* buffer, char byteToRemove, size_t bufferSize);
+  long calculateUnixTimestamp(int year, int month, int day, int hour, int minute, int second);
+  void parseDateTime(const char* inputStr);
   String noResponse;
   bool connected;
   // Member variables
@@ -34,6 +37,10 @@ private:
   String udpServer;
   int remotePort;
   int localPort;
+  String modbusIntro;
+  String modbusOutro;
+  String modbusWriteToken;
+  String modbusReadToken;
 };
 
 #endif

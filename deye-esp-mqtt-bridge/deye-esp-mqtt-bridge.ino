@@ -113,10 +113,10 @@ void setup() {
     for(;;); // Don't proceed, loop forever
   }
 
-  //Serial.println("Initialize inverter");
-  //inverter.printVariables();
+  Serial.println("Initialize inverter");
+  inverter.printVariables();
 
-  // Connect to MQTT broker
+  // Prepare MQTT client
   mqtt_client.setServer(MQTT_BROKER_HOST.c_str(),MQTT_BROKER_PORT);
 
 }
@@ -128,30 +128,43 @@ void setup() {
 void loop() {
   
     // INVERTER NETWORK 
-    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
+//    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
+    
+    wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+
     if (connected) {
       //web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
       // Starting Connection inside the AP Network of inverter
-      bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
+//      bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
       
+      bool startCon =  inverterUdp.inverter_connect("10.1.1.10",udpServerPort, udpLocalPort, udpTimeoput_s);
+
+
       String response = inverterUdp.inverter_readtime();
 
       inverterUdp.inverter_close();
     }
 
     // Output Information 
+    /*
+
     Serial.println("Print WebInverter");
     inverter.printVariables();
     displayInverterStatus(inverter);
 
+
+
     // Update every 5 seconds (adjust as necessary)
     delay(5000);
+
 
     // Home Network
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
     if (connected) {
         mqtt_submit_data();
     }
+
+     */
 
     delay(5000); // Adjust the publishing interval as needed
 }
