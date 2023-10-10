@@ -1,3 +1,82 @@
+INIT] >>>Begin UDP connection to 10.1.1.10  Port: 48899
+.Other response like Hello Message 10.1.1.10,E8FDF876F8A8,4162130212
+................................................[INIT] >>> Response was: 10.1.1.10,E8FDF876F8A8,4162130212
+[INIT] >>> Handshake complete
+Modbus Send Full Command : AT+INVDATA=8,010300160003E40F
+
+.Valid MODBUS response received: +ok=010306170A0A112F33B5AB
+
+
+Response was: +ok=010306170A0A112F33B5AB
+
+
+Response was: +ok=010306170A0A112F33B5AB
+
+
+[PARSER] >>> Parsing: +ok=010306170A0A112F33B5AB
+
+
+[PARSER] >>> ASCII values of received string:
+43 111 107 61 48 49 48 51 48 54 49 55 48 65 48 65 49 49 50 70 51 51 66 53 65 66 13 10 13 10 
+
+Year: 17 Month: 0A Day:  -- Hour: 11 Minute: 2F Second 33
+
+
+
+
+
+
+
+
+
+
+17:59:45.232 -> Modbus Send Command : 010300160003
+17:59:45.232 -> Modbus CRC: E40F
+17:59:45.232 -> Modbus Send Full Command : AT+INVDATA=8,010300160003E40F
+17:59:45.232 -> 
+17:59:45.232 -> > Sending Message: AT+INVDATA=8,010300160003E40F
+17:59:45.232 -> 
+17:59:45.232 -> .
+17:59:45.418 -> Packet received with size: 41  Content: +ok=010306170A09113A2CFAB7
+17:59:45.418 -> 
+17:59:45.418 -> 
+17:59:45.418 -> Response was: +ok=010306170A09113A2CFAB7
+
+Let's evaluate the string +ok=010306170A09113A2CFAB7 using the previous format specification:
+
+    Prefix: +ok=
+    Payload size: 06 bytes
+    Year: 17 => 23 in decimal (adding 2000 = 2023)
+    Month: 0A => 10 in decimal
+    Day: 09 => 9 in decimal
+    Hour: 11 => 17 in decimal
+    Minute: 3A => 58 in decimal
+    Second: 2C => 44 in decimal
+    CRC (presumably): FAB7
+
+
+
+17:59:45.418 -> 
+17:59:45.418 -> 
+17:59:45.418 -> Invalid payload size or string length!
+17:59:45.418 -> Modbus Send Command : 010300220003
+17:59:45.418 -> Modbus CRC: A5C1
+17:59:45.418 -> Modbus Send Full Command : AT+INVDATA=8,010300220003A5C1
+17:59:45.418 -> 
+17:59:45.418 -> > Sending Message: AT+INVDATA=8,010300220003A5C1
+17:59:45.465 -> 
+17:59:45.465 -> .
+17:59:45.651 -> Packet received with size: 41  Content: +ok=010306139C002C00003203
+17:59:45.651 -> 
+17:59:45.651 -> 
+17:59:45.651 -> Response was: +ok=010306139C002C00003203
+17:59:45.651 -> 
+17:59:45.651 -> 
+17:59:45.651 -> Invalid payload size or string length!
+17:59:45.651 -> Response was: +ok=010306139C002C00003203
+
+
+
 
 /* From https://github.com/s10l/deye-logger-at-cmd/blob/main/src/main.go
 if fModBus != nil && *fModBus != "" {
@@ -50,6 +129,7 @@ Example: $
 2023/10/08 13:27:43
 
 0103002200012400 --> CRC 2400
+
 
 currently got 13:28:50.656 -> Modbus CRC: AA4B
 13:28:50.656 -> Modbus Send Full Command : 010300220001AA4B
