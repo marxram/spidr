@@ -1,3 +1,136 @@
+17:16:55.230 -> Parsed DateTime: 2023/10/14 16:20:9
+17:16:55.230 -> Triggering a time setting
+17:16:55.230 -> Time String: 170A0E111036
+17:16:55.230 -> Command Length: 22
+17:16:55.230 -> PayloadLength Length: 06
+17:16:55.230 -> Modbus Send Full Command : AT+INVDATA=15,01100016000306170A0E10140961CC
+
+
+--
+
+17:08:19.596 -> Parsed DateTime: 2023/10/14 16:20:9
+17:08:19.596 -> Triggering a time setting
+17:08:19.596 -> Time String: 170A0E110812
+17:08:19.596 -> Command Length: 22
+17:08:19.596 -> PayloadLength Length: 06
+17:08:19.596 -> Modbus Send Full Command : AT+INVDATA=15,01100016000306170A0E11081261CC
+
+
+AT+INVDATA=15,01100016000306170A0E11081261CC
+AT+INVDATA=15,01100016000306170A0E1014095007
+---
+
+17:05:27.249 -> Parsed DateTime: 2023/10/14 16:20:9
+17:05:27.249 -> Triggering a time setting
+17:05:27.249 -> Time String: 170A0E11051A
+17:05:27.249 -> year_monstring String: 170A
+17:05:27.249 -> Command Length: 14
+17:05:27.249 -> PayloadLength Length: 02
+17:05:27.249 -> Modbus Send Full Command : AT+INVDATA=15,01100016000102170AE00D
+
+AT+INVDATA=15,01100016000102170AE00D
+AT+INVDATA=15,01100016000306170A0E1014095007
+
+---
+Funktionierendes OPaket: 
+AT+INVDATA=15,0110 0016 0003 06 170A0E101409 5007
+
+
+--
+
+
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmb 00280001
+2023/10/14 16:56:05 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:56:13 read udp 172.26.223.99:51260->10.1.1.10:48899: i/o timeout
+exit status 1
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmb 00280001
+2023/10/14 16:56:43 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:56:46 +ok=0103020064B9AF
+2023/10/14 16:56:47
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000102170A
+2023/10/14 16:57:41 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:57:49 read udp 172.26.223.99:59205->10.1.1.10:48899: i/o timeout
+exit status 1
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000102170A
+2023/10/14 16:57:52 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:57:55 +ok=011000160001E00D
+2023/10/14 16:57:56
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000102170A
+2023/10/14 16:58:33 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:58:36 +ERR=-1
+2023/10/14 16:58:37
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000102170A
+2023/10/14 16:58:39 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:58:42 +ok=011000160001E00D
+2023/10/14 16:58:43
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000306170A0E101409
+2023/10/14 16:59:20 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:59:23 +ok=01100016000361CC
+2023/10/14 16:59:24
+
+
+---
+
+16:41:30.711 -> Time String: 170A0E10291E
+16:41:30.711 -> year_monstring String: 170A
+16:41:30.711 -> Command Length: 14
+16:41:30.711 -> PayloadLength Length: 02
+16:41:30.711 -> Modbus Send Full Command : AT+INVDATA=14,0110 0016000102 170A E00D
+
+---
+
+16:35:32.253 -> Parsed DateTime: 2023/10/14 16:35:31
+16:35:32.253 -> Triggering a time setting
+16:35:32.253 -> Time String: 170A0E10231F
+16:35:32.253 -> year_monstring String: 170A
+16:35:32.253 -> Command Length: 9
+16:35:32.253 -> PayloadLength Length: 02
+16:35:32.253 -> Modbus Send Full Command : AT+INVDATA=9,0110	0016 0001 0217 0A 		E00D
+
+
+16:35:17.758 -> Modbus Send Full Command : AT+INVDATA=8,0103	0016 0003 				E40F
+---
+
+16:20:10.638 -> Parsed DateTime: 2023/10/14 16:20:9
+16:20:10.638 -> Triggering a time setting
+16:20:10.638 -> Time String: 170A0E101409
+16:20:10.638 -> year_monstring String: 170A
+16:20:10.638 -> Modbus Send Full Command : AT+INVDATA=8,0110 0016 0001 02 170A E00D
+
+
+---
+Parsed DateTime: 2023/10/14 16:16:30
+Triggering a time setting
+Time String: 170A0E10101E
+year_monstring String: 170A
+Modbus Send Full Command : AT+INVDATA=8,0110 0016 0001 02 170A0E10101E E00D
+
+..................................................[ERROR] No Response in time or Parsing Error! 
+[ERROR] No Response in time or Parsing Error 
+----------------------------------------------------------
+
+
+
+---
+
+Parsed DateTime: 2023/10/14 16:11:58
+Triggering a time setting
+Time String: 170A0E100B3A
+Modbus Send Full Command : AT+INVDATA=8,0110 0016 0003 06 | 17 0A 0E 10 0B 3A | 61CC
+
+---
+Parsed DateTime: 2023/10/14 16:2:56
+Triggering a time setting
+Time String: 170A0E100238
+Modbus Send Full Command : AT+INVDATA=8,011000160003170A0E10023861CC
+
+Parsed DateTime: 2023/10/14 16:2:56
+Triggering a time setting
+Time String: 170A0E100238
+Modbus Send Full Command : AT+INVDATA=8,0110 0016 0003 170A 0E10 0238 61CC
+
+----
+
 INIT] >>>Begin UDP connection to 10.1.1.10  Port: 48899
 .Other response like Hello Message 10.1.1.10,E8FDF876F8A8,4162130212
 ................................................[INIT] >>> Response was: 10.1.1.10,E8FDF876F8A8,4162130212

@@ -28,6 +28,10 @@
 // Configuration and user settings
 #include "arduino_secrets.h"
 
+// TimeSynchronization and handling
+#include <NTPClient.h>
+#include <TimeLib.h>
+
 
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
@@ -88,6 +92,13 @@ const int udpServerPort = 50000; // manual port
 const int udpLocalPort = 48899; // Fixed port of deye inverter
 const int udpTimeoput_s = 10; // 10 Seconds Timeout 
     
+// Time Synchronization
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
+unsigned long updateInterval = 20000; // 1 minute
+long lastUpdate;
+const int maxNtpRetries = 5;
+
 
 ////////////////////////////////////////////////////////////////////
 // Function declarations
@@ -114,10 +125,16 @@ void setup() {
   }
 
   Serial.println("Initialize inverter");
-  inverter.printVariables();
+  //inverter.printVariables();
 
   // Prepare MQTT client
   mqtt_client.setServer(MQTT_BROKER_HOST.c_str(),MQTT_BROKER_PORT);
+
+  delay (1000);
+
+  Serial.print("Init Time Client "); 
+  timeClient.begin();
+  timeClient.setTimeOffset(7200);
 
 }
 
@@ -126,11 +143,45 @@ void setup() {
 // MAIN LOOP
 
 void loop() {
-  
     // INVERTER NETWORK 
-//    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
+    // wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
     
+    // temporary testing with home network
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+    unsigned long epochTime = 0;
+    // Home Network Only
+    if (connected){
+        Serial.println("Getting time...");
+        int retries = 0;
+        while (retries < maxNtpRetries) {
+            timeClient.update();
+            epochTime = timeClient.getEpochTime();
+            if (epochTime > 0) {  // If time is valid
+                tmElements_t tm;
+                breakTime(epochTime, tm);
+
+                String timestring = "+ok=010306" 
+                          + inverterUdp.decToHex((tm.Year + 1970) % 100) 
+                          + inverterUdp.decToHex(tm.Month)
+                          + inverterUdp.decToHex(tm.Day)
+                          + inverterUdp.decToHex(tm.Hour)
+                          + inverterUdp.decToHex(tm.Minute)
+                          + inverterUdp.decToHex(tm.Second)
+                          + "B5AB";  // Dummy CRC
+
+                inverterUdp.parseDateTime(timestring);
+                lastUpdate = millis();
+
+                break; // Exit the while loop if time was retrieved and processed successfully
+            } else {
+                retries++;
+                Serial.println("Failed to get time, retrying...");
+                delay(1000); // Delay for a second before retrying
+            }
+      }
+      
+    }
+
 
     if (connected) {
       //web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
@@ -139,8 +190,12 @@ void loop() {
       
       bool startCon =  inverterUdp.inverter_connect("10.1.1.10",udpServerPort, udpLocalPort, udpTimeoput_s);
 
-
       String response = inverterUdp.inverter_readtime();
+
+
+      Serial.println("Triggering a time setting");
+      inverterUdp.inverter_settime(epochTime);
+
 
       inverterUdp.inverter_close();
     }
@@ -152,11 +207,8 @@ void loop() {
     inverter.printVariables();
     displayInverterStatus(inverter);
 
-
-
     // Update every 5 seconds (adjust as necessary)
     delay(5000);
-
 
     // Home Network
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");

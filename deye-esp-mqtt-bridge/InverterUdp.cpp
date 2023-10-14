@@ -9,10 +9,10 @@
 #include <stdint.h>
 #include <stdio.h> // For sprintf()
 #include <stdlib.h> // For strtol()
+#include "RTClib.h"
+#include <TimeLib.h>
 
 #define MODBUS 0xA001  // CRC variable
-
-
 
 // Constructor
 InverterUdp::InverterUdp() {
@@ -22,7 +22,7 @@ InverterUdp::InverterUdp() {
     connected = false;
     String noResponse = "NoData";
 
-    modbusIntro = "AT+INVDATA=8,";
+    modbusIntro = "AT+INVDATA=";
     modbusOutro = "\n";
     modbusWriteToken = "0110";
     modbusReadToken = "0103";
@@ -37,48 +37,94 @@ bool InverterUdp::isconnected(){
 
 String InverterUdp::inverter_readtime(){    
     //send_message("AT+WAP\n");
+    String RESP_TIME_UNSET = "+ok=0103063000000000002485";
     String response;
     
+    // Read 0x0003 bytes after address 0x0016 
     response = readModbus("0016", "0003");
     
     if (response != noResponse){
         Serial.print("Response was: ");
         Serial.println(response);
         connected = true; 
-        String(buffer);
+        //String(buffer);
 
-        // Parse if makes sense
-        parseDateTime(response.c_str());
-
+        if (response.startsWith(RESP_TIME_UNSET)){
+            Serial.println("Inverter Time is unset ");
+        }else{
+            // Parse if makes sense
+            Serial.println("Checking Inverter Time >" + response + "<");
+            parseDateTime(response);
+        }
+        
     } else {
         Serial.print("[ERROR] No Response in time or Parsing Error ");
         Serial.println(response);
         connected = false;  
     }
-
-
-    //Sending Message: AT+INVDATA=8,0103 0022 0001 2400
-    // response; +ok=0103 02 139C B51D
-
-    // AT+INVDATA=8,01030023000175C0
-    // +ok=0103 02 002C B999
-
-    // AT+INVDATA=8,0103 0024 0001 C401
-    // +ok=0103 02 0000 B844
-
-
-    // ToDo: reformatting
-    //String response = readModbus("0022", "0003");
-    //+ok=010306139C002C00003203
-    // Response == 010306139C002C00003203
-    //      len  
-    // 0103 06   13 9C 002C 0000 3203
-
     return response;
-
-
-
 }
+
+
+String InverterUdp::inverter_settime(unsigned long epochTime){    
+    tmElements_t tm;
+    breakTime(epochTime, tm);
+
+    String time_reg = decToHex((tm.Year + 1970) % 100) 
+            + decToHex(tm.Month)
+            + decToHex(tm.Day)
+            + decToHex(tm.Hour)
+            + decToHex(tm.Minute)
+            + decToHex(tm.Second);
+    
+    Serial.print("Time String: ");
+    Serial.println(time_reg);
+    
+    // "0016000306170A0E101409" 
+    //Funktionierendes OPaket: 
+    //AT+INVDATA=15,0110 0016 0003 06 170A0E101409 5007
+    //AT+INVDATA=15,0110 0016 0003 06 170A0E101409 61CC --> Checksumme ist falsch! ToDo
+    String testtime = "170A0E101409";
+
+    String response;
+    
+    // Write 3 time registers 0x0003 bytes after address 0x0016 
+    //response = writeModbus("0016", "0003", time_reg, "06");
+    response = writeModbus("0016", "0003", testtime, "06");
+
+    
+    //String year_monstring = decToHex((tm.Year + 1970) % 100) + decToHex(tm.Month);
+    
+    //Serial.print("year_monstring String: ");
+    //Serial.println(year_monstring);
+
+    //response = writeModbus("0016", "0001", year_monstring, "02");
+
+
+    if (response != noResponse){
+        Serial.print("Response was: ");
+        Serial.println(response);
+        connected = true; 
+        //String(buffer);
+
+        /*
+        if (response.startsWith(RESP_TIME_UNSET)){
+            Serial.println("Inverter Time is unset ");
+        }else{
+            // Parse if makes sense
+            Serial.println("Checking Inverter Time >" + response + "<");
+            parseDateTime(response);
+        }
+        */
+        
+    } else {
+        Serial.print("[ERROR] No Response in time or Parsing Error ");
+        Serial.println(response);
+        connected = false;  
+    }
+    return response;
+}
+
 
 
 String InverterUdp::readModbus(String address, String  length){    
@@ -96,7 +142,59 @@ String InverterUdp::readModbus(String address, String  length){
     String crc = byteToHexString(crc_bytes,2);
     //Serial.println("Modbus CRC: "+ crc);
 
-    cmd = modbusIntro + cmd + crc + modbusOutro;
+    //ToDo:  8 is for most commands OK, but needs calculation
+    cmd = modbusIntro+ "8," + cmd + crc + modbusOutro;
+
+    Serial.println("Modbus Send Full Command : "+ cmd );
+
+    send_message(cmd);
+
+    String response = getResponse(true);
+
+
+    if (response != noResponse){
+        //Serial.print("Response was: ");
+        //Serial.println(response);
+        connected = true; 
+        String(buffer);
+    } else {
+        Serial.print("[ERROR] No Response in time or Parsing Error! ");
+        Serial.println(response);
+        connected = false;  
+    }
+
+    // ToDo: reformatting
+    return response;
+}
+
+String InverterUdp::writeModbus(String address, String  length, String payload, String payloadlength){    
+
+    
+    String message =  address+length+payloadlength+payload;
+    String cmd = modbusWriteToken+message;
+
+    //Serial.println("Modbus Send Command : "+ cmd);
+ 
+    //const char* hexDataStr = "01030022000";
+    uint8_t binaryData[6];  // Ensure the size is half the length of hexDataStr
+    hexStringToBytes(cmd.c_str(), binaryData, sizeof(binaryData));
+    uint8_t crc_bytes[2];
+    Modbus(binaryData, sizeof(binaryData), crc_bytes);
+    
+    
+    String crc = byteToHexString(crc_bytes,2);
+    //Serial.println("Modbus CRC: "+ crc);
+    String msg_length = String(message.length());
+    
+    Serial.println("Command Length: "+ msg_length);
+    
+    Serial.println("PayloadLength Length: "+ payloadlength);
+
+    //cmd = modbusIntro + msg_length + "," + cmd + crc + modbusOutro;
+
+    cmd = modbusIntro + "15," + cmd + crc + modbusOutro;
+
+
 
     Serial.println("Modbus Send Full Command : "+ cmd );
 
@@ -312,82 +410,44 @@ void InverterUdp::removeByte(char* buffer, char byteToRemove, size_t bufferSize)
 }
 
 
-void InverterUdp::parseDateTime(const char* inputStr) {
-    Serial.println("[PARSER] >>> Parsing: " + String(inputStr));
-    
-    Serial.println("[PARSER] >>> ASCII values of received string:");
-    for(int i = 0; i < strlen(inputStr); i++) {
-        Serial.print((int)inputStr[i]);
-        Serial.print(" ");
-    }
-    Serial.println();
-
-    String timestring = inputStr;
+void InverterUdp::parseDateTime(String timestring) {
     
     // INTO    |size| year  | month | day   | hour | min  | sec  | CRC
     // 12345678|9 10| 11 12 | 13 14 | 15 16 | 17 18| 19 20| 21 22|  23
     // +ok=0103|0  6|  3  0 |  0  0 |  0  0 |  0  0|  0  0|  0  0|  2485
 
-
     if (timestring.startsWith("+ok=010306")){
-        // seems to be a valid 6 bytes response Modbus response 
+    int index = 10;
 
-        int index = 10;
-        String year_str = timestring.substring(index,index+2);
-        index+=2; 
-        String month_str = timestring.substring(index,index+2);
-        index+=2;
-        String day_str = timestring.substring(index,index+2);
-        index+=2;
-        String hour_str = timestring.substring(index,index+2);
-        index+=2;
-        String minute_str = timestring.substring(index,index+2);
-        index+=2;
-        String second_str = timestring.substring(index,index+2);
-        index+=2;
-        
-        Serial.println("\nYear: "+ year_str +" Month: " + month_str + " Day:  -- Hour: " + hour_str + " Minute: " +minute_str+ " Second " + second_str);
+    int year, month, day, hour, minute, second;
+    bool isValidYear = hexStringToDec(timestring.substring(index, index + 2), year);
+    index += 2; 
+    bool isValidMonth = hexStringToDec(timestring.substring(index, index + 2), month);
+    index += 2;
+    bool isValidDay = hexStringToDec(timestring.substring(index, index + 2), day);
+    index += 2;
+    bool isValidHour = hexStringToDec(timestring.substring(index, index + 2), hour);
+    index += 2;
+    bool isValidMinute = hexStringToDec(timestring.substring(index, index + 2), minute);
+    index += 2;
+    bool isValidSecond = hexStringToDec(timestring.substring(index, index + 2), second);
+    
+    // Additional basic validations for the datetime components
+    isValidYear = isValidYear && (year >= 0 && year <= 99);
+    isValidMonth = isValidMonth && (month >= 1 && month <= 12);
+    isValidDay = isValidDay && (day >= 1 && day <= 31);
+    isValidHour = isValidHour && (hour >= 0 && hour <= 23);
+    isValidMinute = isValidMinute && (minute >= 0 && minute <= 59);
+    isValidSecond = isValidSecond && (second >= 0 && second <= 59);
 
-
-
+    if(isValidYear && isValidMonth && isValidDay && isValidHour && isValidMinute && isValidSecond) {
+      DateTime dt((year + 2000), month, day, hour, minute, second);
+      Serial.println("Parsed DateTime: " + String(dt.year()) + "/" + String(dt.month()) + "/" + String(dt.day()) + " " + String(dt.hour()) + ":" + String(dt.minute()) + ":" + String(dt.second()));
+    } 
+    else {
+      Serial.println("Invalid hexadecimal or invalid date/time components in string: " + timestring);
     }
-
-
-    // // Check if inputStr starts with "+ok="
-    // if(strncmp(inputStr, "+ok=", 4) != 0) {
-    //     Serial.println("[PARSER] >>> Invalid input string!");
-    //     return;
-    // }
-
-    // // Get payload size
-    // int payloadSize = strtol(inputStr + 8, NULL, 16);
-    // Serial.println("[PARSER] >>> Expected payload size: " + String(payloadSize) + " bytes");
-
-    // // Check if payload size is valid
-    // if(payloadSize < 0 || inputStr[4 + 2 + payloadSize * 2] == '\0') {
-    //     Serial.println("[PARSER] >>>  Invalid payload size or string length!");
-    //     return;
-    // }
-
-    // // Parsing year, month, day, hour, minute, and second from the payload
-    // int year   = strtol(inputStr + 10, NULL, 16) + 2000;
-    // Serial.println("Parsed Year: " + String(year));
-    // int month  = strtol(inputStr + 12, NULL, 16);
-    // Serial.println("Parsed Month: " + String(month));
-    // int day    = strtol(inputStr + 14, NULL, 16);
-    // Serial.println("Parsed Day: " + String(day));
-    // int hour   = strtol(inputStr + 16, NULL, 16);
-    // Serial.println("Parsed Hour: " + String(hour));
-    // int minute = strtol(inputStr + 18, NULL, 16);
-    // Serial.println("Parsed Minute: " + String(minute));
-    // int second = strtol(inputStr + 20, NULL, 16);
-    // Serial.println("Parsed Second: " + String(second));
-    // // Calculating Unix timestamp
-    // long timestamp = calculateUnixTimestamp(year, month, day, hour, minute, second);
-
-    // // Displaying Unix timestamp
-    // Serial.print("Unix Timestamp: ");
-    // Serial.println(timestamp);
+  }
 }
 
 long InverterUdp::calculateUnixTimestamp(int year, int month, int day, int hour, int minute, int second) {
@@ -407,3 +467,21 @@ long InverterUdp::calculateUnixTimestamp(int year, int month, int day, int hour,
     return ((days * 24L + hour) * 60 + minute) * 60 + second;
 }
 
+bool InverterUdp::hexStringToDec(String hexString, int& output) {
+  char* endptr;
+  long decNum = strtol(hexString.c_str(), &endptr, 16);
+  bool isValid = (*endptr == '\0') && (hexString.length() > 0);
+  output = static_cast<int>(decNum);
+  return isValid;
+}
+
+String InverterUdp::decToHex(int dec) {
+    String hexString;
+    if (dec < 16) {
+        hexString = "0" + String(dec, HEX);
+    } else {
+        hexString = String(dec, HEX);
+    }
+    hexString.toUpperCase();
+    return hexString;
+}

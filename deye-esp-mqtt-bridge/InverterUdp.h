@@ -10,9 +10,12 @@ public:
   InverterUdp();
   bool inverter_connect(String udpSrv, int remPort, int locPort, int timeOut);
   String inverter_readtime();
-  bool inverter_settime();
   bool inverter_close();
   bool isconnected();
+  void parseDateTime(String timestring);
+  bool hexStringToDec(String hexString, int& output) ;
+  String decToHex(int dec);
+  String inverter_settime(unsigned long epochTime);
 
 
 private:
@@ -24,7 +27,8 @@ private:
   String getResponse(bool deleteNewlines);
   void removeByte(char* buffer, char byteToRemove, size_t bufferSize);
   long calculateUnixTimestamp(int year, int month, int day, int hour, int minute, int second);
-  void parseDateTime(const char* inputStr);
+  String writeModbus(String address, String  length, String payload, String payloadlength);
+
   String noResponse;
   bool connected;
   // Member variables
