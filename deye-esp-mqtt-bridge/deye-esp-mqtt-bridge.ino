@@ -98,6 +98,8 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org");
 unsigned long updateInterval = 20000; // 1 minute
 long lastUpdate;
 const int maxNtpRetries = 5;
+unsigned long epochTime = 0;
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -144,65 +146,23 @@ void setup() {
 
 void loop() {
     // INVERTER NETWORK 
-    // wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
-    
-    // temporary testing with home network
-    wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
-    unsigned long epochTime = 0;
-    // Home Network Only
-    if (connected){
-        Serial.println("Getting time...");
-        int retries = 0;
-        while (retries < maxNtpRetries) {
-            timeClient.update();
-            epochTime = timeClient.getEpochTime();
-            if (epochTime > 0) {  // If time is valid
-                tmElements_t tm;
-                breakTime(epochTime, tm);
-
-                String timestring = "+ok=010306" 
-                          + inverterUdp.decToHex((tm.Year + 1970) % 100) 
-                          + inverterUdp.decToHex(tm.Month)
-                          + inverterUdp.decToHex(tm.Day)
-                          + inverterUdp.decToHex(tm.Hour)
-                          + inverterUdp.decToHex(tm.Minute)
-                          + inverterUdp.decToHex(tm.Second)
-                          + "B5AB";  // Dummy CRC
-
-                inverterUdp.parseDateTime(timestring);
-                lastUpdate = millis();
-
-                break; // Exit the while loop if time was retrieved and processed successfully
-            } else {
-                retries++;
-                Serial.println("Failed to get time, retrying...");
-                delay(1000); // Delay for a second before retrying
-            }
-      }
-      
-    }
-
-
+    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
     if (connected) {
-      //web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
+      web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
       // Starting Connection inside the AP Network of inverter
-//      bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
+      bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
       
-      bool startCon =  inverterUdp.inverter_connect("10.1.1.10",udpServerPort, udpLocalPort, udpTimeoput_s);
-
       String response = inverterUdp.inverter_readtime();
-
+      
+      // ToDo: Add a getTime from Inverter, that returns a epoch time
 
       Serial.println("Triggering a time setting");
       inverterUdp.inverter_settime(epochTime);
-
 
       inverterUdp.inverter_close();
     }
 
     // Output Information 
-    /*
-
     Serial.println("Print WebInverter");
     inverter.printVariables();
     displayInverterStatus(inverter);
@@ -214,13 +174,38 @@ void loop() {
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
     if (connected) {
         mqtt_submit_data();
+
+        syncTime();
+
+        displayTime();
+        delay(5000) ;
     }
-
-     */
-
     delay(5000); // Adjust the publishing interval as needed
 }
 
+
+////////////////////////////////////////////////////////////////////
+// Sync Time
+bool syncTime (){
+    bool synced = false;
+    Serial.println("Syncing time...");
+        int retries = 0;
+        while (retries < maxNtpRetries) {
+            timeClient.update();
+            epochTime = timeClient.getEpochTime();
+            if (epochTime > 0) {  // If time is valid
+                synced = true;
+                lastUpdate = millis();
+                break; // Exit the while loop if time was retrieved and processed successfully
+            } else {
+                retries++;
+                Serial.println("Failed to get time, retrying...");
+                delay(1000); // Delay for a second before retrying
+            }
+      }
+    return synced;
+
+}
 
 
 ////////////////////////////////////////////////////////////////////
@@ -398,6 +383,49 @@ void displayInverterStatus(const Inverter& inverter) {
   display.print(inverter.getInverterEnergyTotal_kWh(), 0);
   display.setCursor(col2,24);
   display.println(" kWh");
+
+  display.display();
+}
+
+void displayTime() {
+  int col1 = 70;
+  int col2 = 100;
+
+  tmElements_t tm;
+  breakTime(epochTime, tm);
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  
+  // Connect to Wi-Fi
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.println("++ Time Sync ++");
+
+  // Display Power
+
+  display.print("Date ");
+  display.setCursor(col1,8);
+  display.print(String((tm.Year + 1970) % 100) +"."+ String(tm.Month) +"."+ String(tm.Day) );
+  display.setCursor(col2,8);
+  display.println("");
+
+  // Display Energy Today
+  display.print("Time");
+  display.setCursor(col1,16);
+  display.print(String(tm.Hour) +":"+ String(tm.Minute) +":"+ String(tm.Second) );
+  display.setCursor(col2,16);
+  display.println(" ");
+
+  // Display Total Energy
+  display.print("Sync");
+  display.setCursor(col1,24);
+  display.print(String( lastUpdate - millis() ) );
+  display.setCursor(col2,24);
+  display.println(" ");
 
   display.display();
 }

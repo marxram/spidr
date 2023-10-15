@@ -80,42 +80,15 @@ String InverterUdp::inverter_settime(unsigned long epochTime){
     Serial.print("Time String: ");
     Serial.println(time_reg);
     
-    // "0016000306170A0E101409" 
-    //Funktionierendes OPaket: 
-    //AT+INVDATA=15,0110 0016 0003 06 170A0E101409 5007
-    //AT+INVDATA=15,0110 0016 0003 06 170A0E101409 61CC --> Checksumme ist falsch! ToDo
-    String testtime = "170A0E101409";
-
     String response;
     
     // Write 3 time registers 0x0003 bytes after address 0x0016 
-    //response = writeModbus("0016", "0003", time_reg, "06");
-    response = writeModbus("0016", "0003", testtime, "06");
-
-    
-    //String year_monstring = decToHex((tm.Year + 1970) % 100) + decToHex(tm.Month);
-    
-    //Serial.print("year_monstring String: ");
-    //Serial.println(year_monstring);
-
-    //response = writeModbus("0016", "0001", year_monstring, "02");
-
+    response = writeModbus("0016", "0003", time_reg, "06");
 
     if (response != noResponse){
         Serial.print("Response was: ");
         Serial.println(response);
         connected = true; 
-        //String(buffer);
-
-        /*
-        if (response.startsWith(RESP_TIME_UNSET)){
-            Serial.println("Inverter Time is unset ");
-        }else{
-            // Parse if makes sense
-            Serial.println("Checking Inverter Time >" + response + "<");
-            parseDateTime(response);
-        }
-        */
         
     } else {
         Serial.print("[ERROR] No Response in time or Parsing Error ");
@@ -169,14 +142,15 @@ String InverterUdp::readModbus(String address, String  length){
 
 String InverterUdp::writeModbus(String address, String  length, String payload, String payloadlength){    
 
-    
     String message =  address+length+payloadlength+payload;
     String cmd = modbusWriteToken+message;
 
     //Serial.println("Modbus Send Command : "+ cmd);
  
-    //const char* hexDataStr = "01030022000";
-    uint8_t binaryData[6];  // Ensure the size is half the length of hexDataStr
+    //const char* hexDataStr = "01030022000"; --> 6 bytes
+    //const char* hexDataStr = "0110 0016 0003 0617 0A0E 1014 09" --> 3 bytes
+    // ToDo: Make this generic! currently only for 6 bytes of data + copmmand etc. 
+    uint8_t binaryData[13];  // Ensure the size is half the length of hexDataStr
     hexStringToBytes(cmd.c_str(), binaryData, sizeof(binaryData));
     uint8_t crc_bytes[2];
     Modbus(binaryData, sizeof(binaryData), crc_bytes);
@@ -192,6 +166,7 @@ String InverterUdp::writeModbus(String address, String  length, String payload, 
 
     //cmd = modbusIntro + msg_length + "," + cmd + crc + modbusOutro;
 
+    // ToDo: Make 15 generic and calculated...
     cmd = modbusIntro + "15," + cmd + crc + modbusOutro;
 
 
@@ -202,10 +177,10 @@ String InverterUdp::writeModbus(String address, String  length, String payload, 
 
     String response = getResponse(true);
 
-
     if (response != noResponse){
         //Serial.print("Response was: ");
         //Serial.println(response);
+
         connected = true; 
         String(buffer);
     } else {
@@ -267,7 +242,7 @@ bool InverterUdp::inverter_connect(String udpSrv, int remPort, int locPort, int 
 
 }
 
-String InverterUdp::getResponse(bool deleteNewlines){
+String InverterUdp::getResponse(bool deleteSeparatorChars){
     int delay_loop_ms = 200;
     String response = noResponse;
 
@@ -283,6 +258,10 @@ String InverterUdp::getResponse(bool deleteNewlines){
             
             response = String(buffer);
             
+            // Modbus Write Response example. Writing 3 bytes after address 0x0016
+            // +ok=01100016000361CC  // response to a modbus wrtite  
+            // +ok=010306170A0F083715EF7A // response to a modbus read
+            
             // Check the response
             if(response.startsWith("+ERR=")) {
                 // Handle the error case, log it and continue listening
@@ -291,26 +270,32 @@ String InverterUdp::getResponse(bool deleteNewlines){
                 break;
             } else if(response.startsWith("+ok=01")) {
                 // Handle the valid case
-                Serial.println("Valid MODBUS response received: " + response);
-                // If newline characters should be removed, do so here
+                //Serial.println("Valid MODBUS response received: " + response);
                 
-                if (deleteNewlines){
+                // If special separator  should be removed, do so here
+                if (deleteSeparatorChars){
                     removeByte(buffer, 0x10, len);
                 }
                 
-                if(String(buffer).startsWith("+ok=0103"))
+                if(String(buffer).startsWith("+ok=0103")){
                     response = String(buffer);
-                else
+                    Serial.println("\nValid MODBUS-READ response received: " + response);
+                } else if (String(buffer).startsWith("+ok=0110")){
+                    response = String(buffer);
+                    Serial.println("\nValid MODBUS WRITE response received: " + response);
+                } else {
                     response = noResponse;   
-                break; // Exit the loop as the response is valid
+                } 
+
+                break;
             } else {
                 // Handle unexpected cases
                 Serial.println("Other response like Hello Message " + response);
                 break; 
                 //response = noResponse;
-            }
+                }
         } else {
-            Serial.print(".");
+            Serial.print("+");
             delay(delay_loop_ms); // Wait for a short period before checking again
         }
     }

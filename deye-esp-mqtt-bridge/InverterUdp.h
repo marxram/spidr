@@ -24,7 +24,7 @@ private:
   void hexStringToBytes(const char* hexString, uint8_t* byteData, uint8_t byteDataLength);
   String byteToHexString(const uint8_t* byteArray, size_t length);
   void send_message(String message);
-  String getResponse(bool deleteNewlines);
+  String getResponse(bool deleteSeparatorChars);
   void removeByte(char* buffer, char byteToRemove, size_t bufferSize);
   long calculateUnixTimestamp(int year, int month, int day, int hour, int minute, int second);
   String writeModbus(String address, String  length, String payload, String payloadlength);
