@@ -30,6 +30,7 @@ private:
   String writeModbus(String address, String  length, String payload, String payloadlength);
 
   String noResponse;
+  String RESP_TIME_UNSET;
   bool connected;
   // Member variables
   String webdata_sn;

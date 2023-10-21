@@ -21,6 +21,7 @@ InverterUdp::InverterUdp() {
     //char buffer[64];
     connected = false;
     String noResponse = "NoData";
+    String RESP_TIME_UNSET = "+ok=0103063000000000002485";
 
     modbusIntro = "AT+INVDATA=";
     modbusOutro = "\n";
@@ -37,7 +38,7 @@ bool InverterUdp::isconnected(){
 
 String InverterUdp::inverter_readtime(){    
     //send_message("AT+WAP\n");
-    String RESP_TIME_UNSET = "+ok=0103063000000000002485";
+    
     String response;
     
     // Read 0x0003 bytes after address 0x0016 
@@ -105,8 +106,8 @@ String InverterUdp::readModbus(String address, String  length){
     String cmd = modbusReadToken+address+length;
     //Serial.println("Modbus Send Command : "+ cmd);
  
-    //const char* hexDataStr = "01030022000";
-    uint8_t binaryData[6];  // Ensure the size is half the length of hexDataStr
+    // ToDo: Ensure the size is half the length of hexDataStr
+    uint8_t binaryData[6];  
     hexStringToBytes(cmd.c_str(), binaryData, sizeof(binaryData));
     uint8_t crc_bytes[2];
     Modbus(binaryData, sizeof(binaryData), crc_bytes);
@@ -115,7 +116,7 @@ String InverterUdp::readModbus(String address, String  length){
     String crc = byteToHexString(crc_bytes,2);
     //Serial.println("Modbus CRC: "+ crc);
 
-    //ToDo:  8 is for most commands OK, but needs calculation
+    //ToDo:  "8" is fine for most commands OK, but needs calculation
     cmd = modbusIntro+ "8," + cmd + crc + modbusOutro;
 
     Serial.println("Modbus Send Full Command : "+ cmd );
@@ -136,7 +137,6 @@ String InverterUdp::readModbus(String address, String  length){
         connected = false;  
     }
 
-    // ToDo: reformatting
     return response;
 }
 
@@ -147,9 +147,9 @@ String InverterUdp::writeModbus(String address, String  length, String payload, 
 
     //Serial.println("Modbus Send Command : "+ cmd);
  
-    //const char* hexDataStr = "01030022000"; --> 6 bytes
-    //const char* hexDataStr = "0110 0016 0003 0617 0A0E 1014 09" --> 3 bytes
-    // ToDo: Make this generic! currently only for 6 bytes of data + copmmand etc. 
+    //const char* hexDataStr = "01030022000"; --> 6 bytes payload
+    //const char* hexDataStr = "0110 0016 0003 0617 0A0E 1014 09" --> 13 bytes 
+    // ToDo: Make this generic! currently only for 6 bytes of data + commmand etc. 
     uint8_t binaryData[13];  // Ensure the size is half the length of hexDataStr
     hexStringToBytes(cmd.c_str(), binaryData, sizeof(binaryData));
     uint8_t crc_bytes[2];
@@ -166,10 +166,8 @@ String InverterUdp::writeModbus(String address, String  length, String payload, 
 
     //cmd = modbusIntro + msg_length + "," + cmd + crc + modbusOutro;
 
-    // ToDo: Make 15 generic and calculated...
+    // ToDo: Make "15" generic and calculated...
     cmd = modbusIntro + "15," + cmd + crc + modbusOutro;
-
-
 
     Serial.println("Modbus Send Full Command : "+ cmd );
 
@@ -315,8 +313,6 @@ bool InverterUdp::inverter_close(){
 }
 
 void InverterUdp::send_message(String message){
-    //message.toLowerCase();
-
     //Serial.println("> Sending Message: "+ message);
     udp.beginPacket(udpServer.c_str(), remotePort);
     udp.print(message);
@@ -398,7 +394,7 @@ void InverterUdp::removeByte(char* buffer, char byteToRemove, size_t bufferSize)
 void InverterUdp::parseDateTime(String timestring) {
     
     // INTO    |size| year  | month | day   | hour | min  | sec  | CRC
-    // 12345678|9 10| 11 12 | 13 14 | 15 16 | 17 18| 19 20| 21 22|  23
+    // 12345678|9 10| 11 12 | 13 14 | 15 16 | 17 18| 19 20| 21 22|  23      // Position
     // +ok=0103|0  6|  3  0 |  0  0 |  0  0 |  0  0|  0  0|  0  0|  2485
 
     if (timestring.startsWith("+ok=010306")){

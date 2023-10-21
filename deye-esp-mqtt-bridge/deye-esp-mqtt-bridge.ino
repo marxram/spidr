@@ -43,6 +43,9 @@
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 
+#define DURATION_SLEEP_IN_HOME_NETWORK 200  // Seconds
+
+
 ///////////////////////////////////////////////////////////////////////
 // User Secrets imported
 String WIFI_HOME_SSID = SECRET_WIFI_HOME_SSID;
@@ -99,6 +102,7 @@ unsigned long updateInterval = 20000; // 1 minute
 long lastUpdate;
 const int maxNtpRetries = 5;
 unsigned long epochTime = 0;
+bool ntpTimeAvailable = false;
 
 
 
@@ -138,6 +142,15 @@ void setup() {
   timeClient.begin();
   timeClient.setTimeOffset(7200);
 
+  wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+    Serial.print("Connecting to Home Network first to get the time from NTP "); 
+    if (connected) {
+        delay(2000);
+        ntpTimeAvailable = syncTime();
+        displayTime();
+        delay(5000);
+    }
+
 }
 
 
@@ -147,18 +160,25 @@ void setup() {
 void loop() {
     // INVERTER NETWORK 
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
+    // If connected with the Solar Inverter
     if (connected) {
+      // ToDo-Option: Replace Web scraping by Modbus Read commands
       web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
-      // Starting Connection inside the AP Network of inverter
+      
+      // Starting UDP Connection inside the AP Network of inverter
       bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
       
+      // Getting time from inverter, stored in inverterUDP object
       String response = inverterUdp.inverter_readtime();
       
-      // ToDo: Add a getTime from Inverter, that returns a epoch time
+      if (ntpTimeAvailable){
+        Serial.println("Triggering time update");
+        inverterUdp.inverter_settime(epochTime);
+      } else {
+        Serial.println("No NTP time available. Skipping sync");
+      }
 
-      Serial.println("Triggering a time setting");
-      inverterUdp.inverter_settime(epochTime);
-
+      // Close connection before leaving to Home Network
       inverterUdp.inverter_close();
     }
 
@@ -167,20 +187,25 @@ void loop() {
     inverter.printVariables();
     displayInverterStatus(inverter);
 
-    // Update every 5 seconds (adjust as necessary)
-    delay(5000);
-
-    // Home Network
+    // Switching to Home Network
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
     if (connected) {
         mqtt_submit_data();
-
-        syncTime();
-
+        delay(3000); // Show data for 3 Seconds
+        ntpTimeAvailable = syncTime();
         displayTime();
-        delay(5000) ;
+        int secondsInHomeNetwork =0;
+        while (secondsInHomeNetwork < DURATION_SLEEP_IN_HOME_NETWORK ){
+          // Toggle between Time and Solar Production Screen
+          displayInverterStatus(inverter);
+          delay(5000);
+          secondsInHomeNetwork+=5;
+          
+          displayTime();
+          delay(5000);
+          secondsInHomeNetwork+=5;
+        }
     }
-    delay(5000); // Adjust the publishing interval as needed
 }
 
 
@@ -210,7 +235,6 @@ bool syncTime (){
 
 ////////////////////////////////////////////////////////////////////
 // WiFi Functions
-
 void wifi_connect(String ssid, String passkey, String comment){
   connected = false;
   WiFi.disconnect();
@@ -343,7 +367,6 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
 }
 
 
-
 ////////////////////////////////////////////////////////////////////
 // DISPLAY Section
 void displayInverterStatus(const Inverter& inverter) {
@@ -403,7 +426,7 @@ void displayTime() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0,0);
-  display.println("++ Time Sync ++");
+  display.println("   ++ Time Sync ++");
 
   // Display Power
 
@@ -430,8 +453,6 @@ void displayTime() {
   display.display();
 }
 
-
-
 void display_invert_blink(int times, int delay_ms){
     for (int i =0; i < times ; i++){
         display.invertDisplay(true);
@@ -445,6 +466,7 @@ void display_invert_blink(int times, int delay_ms){
 }
 
 
+// ToDo: TLS Based MQTT connection
 
 ////////////////////////////////////////////////////////////////////
 // MQTT SECTION
@@ -585,8 +607,6 @@ void mqtt_submit_data(){
 
       display.print(" > published");
       display.display();
-      delay(3000);
-
 
     }else{
       display.println(" > FAIL !");
