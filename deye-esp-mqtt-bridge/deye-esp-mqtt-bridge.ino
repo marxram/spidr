@@ -18,16 +18,19 @@
 #include <WiFiClient.h>
 #include <base64.h>
 
-// AT Commands
-#include <WiFiUdp.h>
-
-
 // Inverter Data handling 
 #include "Inverter.h"
+
+// Include Udp Channel inverter communication
+#include "InverterUdp.h"
 
 ///////////////////////////////////////////////////////////////////////
 // Configuration and user settings
 #include "arduino_secrets.h"
+
+// TimeSynchronization and handling
+#include <NTPClient.h>
+#include <TimeLib.h>
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -39,6 +42,9 @@
 
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+
+#define DURATION_SLEEP_IN_HOME_NETWORK 200  // Seconds
+
 
 ///////////////////////////////////////////////////////////////////////
 // User Secrets imported
@@ -63,24 +69,14 @@ String INVERTER_WEBACCESS_PWD = SECRET_INVERTER_WEBACCESS_PWD;
 ///////////////////////////////////////////////////////////////////////
 // Other rather static parameters
 String status_page_url = "status.html" ;
-const int udpServerPort = 48899;
-String udpLogin = "WIFIKIT-214028-READ";
-
-
 
 unsigned long startTime =  0;
-unsigned long udpTimeout = 20000;  // Set a timeout of 20000 seconds (adjust as needed)
-boolean responseReceived = false;
-
 
 
 ///////////////////////////////////////////////////////////////////////
 // Global variables
+bool connected = false;
 
-//udp Settings and variables
-char buffer[50];
-String udpServer = "";
-unsigned int localPort = 9999;
 
 ////////////////////////////////////////////////////////////////////
 // Intializations 
@@ -93,8 +89,21 @@ WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
 
 Inverter inverter;
+InverterUdp inverterUdp;
 
-WiFiUDP udp;
+const int udpServerPort = 50000; // manual port
+const int udpLocalPort = 48899; // Fixed port of deye inverter
+const int udpTimeoput_s = 10; // 10 Seconds Timeout 
+    
+// Time Synchronization
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
+unsigned long updateInterval = 20000; // 1 minute
+long lastUpdate;
+const int maxNtpRetries = 5;
+unsigned long epochTime = 0;
+bool ntpTimeAvailable = false;
+
 
 
 ////////////////////////////////////////////////////////////////////
@@ -122,10 +131,25 @@ void setup() {
   }
 
   Serial.println("Initialize inverter");
-  inverter.printVariables();
+  //inverter.printVariables();
 
-  // Connect to MQTT broker
+  // Prepare MQTT client
   mqtt_client.setServer(MQTT_BROKER_HOST.c_str(),MQTT_BROKER_PORT);
+
+  delay (1000);
+
+  Serial.print("Init Time Client "); 
+  timeClient.begin();
+  timeClient.setTimeOffset(7200);
+
+  wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+    Serial.print("Connecting to Home Network first to get the time from NTP "); 
+    if (connected) {
+        delay(2000);
+        ntpTimeAvailable = syncTime();
+        displayTime();
+        delay(5000);
+    }
 
 }
 
@@ -134,106 +158,85 @@ void setup() {
 // MAIN LOOP
 
 void loop() {
-  
     // INVERTER NETWORK 
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
-    web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
-
-    udpServer = WiFi.gatewayIP().toString();   
-    udp_initialize_connection(WiFi.gatewayIP().toString(), udpServerPort, 10);
-
-    udp.beginPacket(udpServer.c_str(), udpServerPort);
-    udp.print("AT+WAP\n");
-    udp.endPacket();     
-
-    //while (millis() - startTime < udpTimeout) {
-    for (int attempts = 0; attempts < 20 ; attempts++){
-      responseReceived = false;
-      int packets = udp.parsePacket();
-      if (packets > 0) {
-        Serial.println("\nPacket received: " + String(packets));
-
-        int len = udp.read(buffer, 255);
-        buffer[len] = 0;
-        Serial.println("Received: " + String(buffer));
-      }else {
-        Serial.print(".");
-        delay(500); // Wait for a short period before checking again
+    // If connected with the Solar Inverter
+    if (connected) {
+      // ToDo-Option: Replace Web scraping by Modbus Read commands
+      web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
+      
+      // Starting UDP Connection inside the AP Network of inverter
+      bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
+      
+      // Getting time from inverter, stored in inverterUDP object
+      String response = inverterUdp.inverter_readtime();
+      
+      if (ntpTimeAvailable){
+        Serial.println("Triggering time update");
+        inverterUdp.inverter_settime(epochTime);
+      } else {
+        Serial.println("No NTP time available. Skipping sync");
       }
+
+      // Close connection before leaving to Home Network
+      inverterUdp.inverter_close();
     }
 
-    // Stopping local UDP Server
-    udp_stop();
-
     // Output Information 
-    Serial.println("Print Inverter");
+    Serial.println("Print WebInverter");
     inverter.printVariables();
     displayInverterStatus(inverter);
 
-    // Update every 5 seconds (adjust as necessary)
-    delay(5000);
-
-    // Home Network
+    // Switching to Home Network
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
-    mqtt_submit_data();
-
-    delay(5000); // Adjust the publishing interval as needed
+    if (connected) {
+        mqtt_submit_data();
+        delay(3000); // Show data for 3 Seconds
+        ntpTimeAvailable = syncTime();
+        displayTime();
+        int secondsInHomeNetwork =0;
+        while (secondsInHomeNetwork < DURATION_SLEEP_IN_HOME_NETWORK ){
+          // Toggle between Time and Solar Production Screen
+          displayInverterStatus(inverter);
+          delay(5000);
+          secondsInHomeNetwork+=5;
+          
+          displayTime();
+          delay(5000);
+          secondsInHomeNetwork+=5;
+        }
+    }
 }
+
 
 ////////////////////////////////////////////////////////////////////
-// UDP Client Section
-bool udp_initialize_connection(String server, int port, int timeout_s){
-    udp.begin(localPort);
-    Serial.print("\nBegin UDP connection to ");
-    Serial.print(server);
-    Serial.print("  Port: " );
-    Serial.println(port);
-    
-
-      udp.beginPacket(server.c_str(), port);
-      udp.print(udpLogin); // ohne '\n'
-      udp.endPacket();
-      
-      Serial.print("UDP Login sent: ");
-      Serial.println(udpLogin);
-
-      delay(1000);
-    
-      //while (millis() - startTime < udpTimeout) {
-      for (int attempts = 0; attempts <= timeout_s ; attempts++){
-        responseReceived = false;
-        int packets = udp.parsePacket();
-        if (packets > 0) {
-          Serial.println("\nPacket received: " + String(packets));
-
-          int len = udp.read(buffer, 255);
-          buffer[len] = 0;
-          Serial.println("Received: " + String(buffer));
-          
-          //ToDo: Check if the packet was what we are looking for 
-          return true;
-
-        }else {
-          Serial.print(".");
-          delay(1000); // Wait for a short period before checking again
-        }
+// Sync Time
+bool syncTime (){
+    bool synced = false;
+    Serial.println("Syncing time...");
+        int retries = 0;
+        while (retries < maxNtpRetries) {
+            timeClient.update();
+            epochTime = timeClient.getEpochTime();
+            if (epochTime > 0) {  // If time is valid
+                synced = true;
+                lastUpdate = millis();
+                break; // Exit the while loop if time was retrieved and processed successfully
+            } else {
+                retries++;
+                Serial.println("Failed to get time, retrying...");
+                delay(1000); // Delay for a second before retrying
+            }
       }
-    return false;
-}
+    return synced;
 
-void udp_stop() {
-  Serial.println("Stopping local udp port");
-  udp.stop();
-  delay(500);  
 }
-
 
 
 ////////////////////////////////////////////////////////////////////
 // WiFi Functions
-
 void wifi_connect(String ssid, String passkey, String comment){
-
+  connected = false;
   WiFi.disconnect();
   delay(1000);
   // Connect to Wi-Fi
@@ -258,15 +261,14 @@ void wifi_connect(String ssid, String passkey, String comment){
     display.print(F("."));
     display.display();
     delay(500);
-
     Serial.print(".");
-    
     attempts++;
   }
 
   //display.clearDisplay();
   //display.setCursor(0,0);
   if(WiFi.status() == WL_CONNECTED) {
+    connected = true;
     display.println(F(" OK"));
     display.print(F("IP: "));
     display.println(WiFi.localIP());
@@ -275,6 +277,7 @@ void wifi_connect(String ssid, String passkey, String comment){
     delay(3000);
 
   } else {
+    connected = false;
     display.println(F("Failed to connect"));
     display.println(F("Check credential"));
     display.println(F("or availability"));
@@ -364,7 +367,6 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
 }
 
 
-
 ////////////////////////////////////////////////////////////////////
 // DISPLAY Section
 void displayInverterStatus(const Inverter& inverter) {
@@ -408,20 +410,63 @@ void displayInverterStatus(const Inverter& inverter) {
   display.display();
 }
 
+void displayTime() {
+  int col1 = 70;
+  int col2 = 100;
 
+  tmElements_t tm;
+  breakTime(epochTime, tm);
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  
+  // Connect to Wi-Fi
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.println("   ++ Time Sync ++");
+
+  // Display Power
+
+  display.print("Date ");
+  display.setCursor(col1,8);
+  display.print(String((tm.Year + 1970) % 100) +"."+ String(tm.Month) +"."+ String(tm.Day) );
+  display.setCursor(col2,8);
+  display.println("");
+
+  // Display Energy Today
+  display.print("Time");
+  display.setCursor(col1,16);
+  display.print(String(tm.Hour) +":"+ String(tm.Minute) +":"+ String(tm.Second) );
+  display.setCursor(col2,16);
+  display.println(" ");
+
+  // Display Total Energy
+  display.print("Sync");
+  display.setCursor(col1,24);
+  display.print(String( lastUpdate - millis() ) );
+  display.setCursor(col2,24);
+  display.println(" ");
+
+  display.display();
+}
 
 void display_invert_blink(int times, int delay_ms){
     for (int i =0; i < times ; i++){
         display.invertDisplay(true);
         display.display();
-        delay(delay_ms);
+        delay(delay_ms/2);
         display.invertDisplay(false);
         display.display();
+        delay(delay_ms/2);
     }
 
 }
 
 
+// ToDo: TLS Based MQTT connection
 
 ////////////////////////////////////////////////////////////////////
 // MQTT SECTION
@@ -562,8 +607,6 @@ void mqtt_submit_data(){
 
       display.print(" > published");
       display.display();
-      delay(3000);
-
 
     }else{
       display.println(" > FAIL !");

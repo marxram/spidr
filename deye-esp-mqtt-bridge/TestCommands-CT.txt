@@ -1,0 +1,470 @@
+17:16:55.230 -> Parsed DateTime: 2023/10/14 16:20:9
+17:16:55.230 -> Triggering a time setting
+17:16:55.230 -> Time String: 170A0E111036
+17:16:55.230 -> Command Length: 22
+17:16:55.230 -> PayloadLength Length: 06
+17:16:55.230 -> Modbus Send Full Command : AT+INVDATA=15,01100016000306170A0E10140961CC
+
+
+--
+
+17:08:19.596 -> Parsed DateTime: 2023/10/14 16:20:9
+17:08:19.596 -> Triggering a time setting
+17:08:19.596 -> Time String: 170A0E110812
+17:08:19.596 -> Command Length: 22
+17:08:19.596 -> PayloadLength Length: 06
+17:08:19.596 -> Modbus Send Full Command : AT+INVDATA=15,01100016000306170A0E11081261CC
+
+
+AT+INVDATA=15,01100016000306170A0E11081261CC
+AT+INVDATA=15,01100016000306170A0E1014095007
+---
+
+17:05:27.249 -> Parsed DateTime: 2023/10/14 16:20:9
+17:05:27.249 -> Triggering a time setting
+17:05:27.249 -> Time String: 170A0E11051A
+17:05:27.249 -> year_monstring String: 170A
+17:05:27.249 -> Command Length: 14
+17:05:27.249 -> PayloadLength Length: 02
+17:05:27.249 -> Modbus Send Full Command : AT+INVDATA=15,01100016000102170AE00D
+
+AT+INVDATA=15,01100016000102170AE00D
+AT+INVDATA=15,01100016000306170A0E1014095007
+
+---
+Funktionierendes OPaket: 
+AT+INVDATA=15,0110 0016 0003 06 170A0E101409 5007
+
+
+--
+
+
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmb 00280001
+2023/10/14 16:56:05 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:56:13 read udp 172.26.223.99:51260->10.1.1.10:48899: i/o timeout
+exit status 1
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmb 00280001
+2023/10/14 16:56:43 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:56:46 +ok=0103020064B9AF
+2023/10/14 16:56:47
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000102170A
+2023/10/14 16:57:41 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:57:49 read udp 172.26.223.99:59205->10.1.1.10:48899: i/o timeout
+exit status 1
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000102170A
+2023/10/14 16:57:52 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:57:55 +ok=011000160001E00D
+2023/10/14 16:57:56
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000102170A
+2023/10/14 16:58:33 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:58:36 +ERR=-1
+2023/10/14 16:58:37
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000102170A
+2023/10/14 16:58:39 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:58:42 +ok=011000160001E00D
+2023/10/14 16:58:43
+eso@WorkStation11:~/git/deye-logger-at-cmd/src$ go run main.go -t 10.1.1.10:48899 -xmbw 0016000306170A0E101409
+2023/10/14 16:59:20 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/14 16:59:23 +ok=01100016000361CC
+2023/10/14 16:59:24
+
+
+---
+
+16:41:30.711 -> Time String: 170A0E10291E
+16:41:30.711 -> year_monstring String: 170A
+16:41:30.711 -> Command Length: 14
+16:41:30.711 -> PayloadLength Length: 02
+16:41:30.711 -> Modbus Send Full Command : AT+INVDATA=14,0110 0016000102 170A E00D
+
+---
+
+16:35:32.253 -> Parsed DateTime: 2023/10/14 16:35:31
+16:35:32.253 -> Triggering a time setting
+16:35:32.253 -> Time String: 170A0E10231F
+16:35:32.253 -> year_monstring String: 170A
+16:35:32.253 -> Command Length: 9
+16:35:32.253 -> PayloadLength Length: 02
+16:35:32.253 -> Modbus Send Full Command : AT+INVDATA=9,0110	0016 0001 0217 0A 		E00D
+
+
+16:35:17.758 -> Modbus Send Full Command : AT+INVDATA=8,0103	0016 0003 				E40F
+---
+
+16:20:10.638 -> Parsed DateTime: 2023/10/14 16:20:9
+16:20:10.638 -> Triggering a time setting
+16:20:10.638 -> Time String: 170A0E101409
+16:20:10.638 -> year_monstring String: 170A
+16:20:10.638 -> Modbus Send Full Command : AT+INVDATA=8,0110 0016 0001 02 170A E00D
+
+
+---
+Parsed DateTime: 2023/10/14 16:16:30
+Triggering a time setting
+Time String: 170A0E10101E
+year_monstring String: 170A
+Modbus Send Full Command : AT+INVDATA=8,0110 0016 0001 02 170A0E10101E E00D
+
+..................................................[ERROR] No Response in time or Parsing Error! 
+[ERROR] No Response in time or Parsing Error 
+----------------------------------------------------------
+
+
+
+---
+
+Parsed DateTime: 2023/10/14 16:11:58
+Triggering a time setting
+Time String: 170A0E100B3A
+Modbus Send Full Command : AT+INVDATA=8,0110 0016 0003 06 | 17 0A 0E 10 0B 3A | 61CC
+
+---
+Parsed DateTime: 2023/10/14 16:2:56
+Triggering a time setting
+Time String: 170A0E100238
+Modbus Send Full Command : AT+INVDATA=8,011000160003170A0E10023861CC
+
+Parsed DateTime: 2023/10/14 16:2:56
+Triggering a time setting
+Time String: 170A0E100238
+Modbus Send Full Command : AT+INVDATA=8,0110 0016 0003 170A 0E10 0238 61CC
+
+----
+
+INIT] >>>Begin UDP connection to 10.1.1.10  Port: 48899
+.Other response like Hello Message 10.1.1.10,E8FDF876F8A8,4162130212
+................................................[INIT] >>> Response was: 10.1.1.10,E8FDF876F8A8,4162130212
+[INIT] >>> Handshake complete
+Modbus Send Full Command : AT+INVDATA=8,010300160003E40F
+
+.Valid MODBUS response received: +ok=010306170A0A112F33B5AB
+
+
+Response was: +ok=010306170A0A112F33B5AB
+
+
+Response was: +ok=010306170A0A112F33B5AB
+
+
+[PARSER] >>> Parsing: +ok=010306170A0A112F33B5AB
+
+
+[PARSER] >>> ASCII values of received string:
+43 111 107 61 48 49 48 51 48 54 49 55 48 65 48 65 49 49 50 70 51 51 66 53 65 66 13 10 13 10 
+
+Year: 17 Month: 0A Day:  -- Hour: 11 Minute: 2F Second 33
+
+
+
+
+
+
+
+
+
+
+17:59:45.232 -> Modbus Send Command : 010300160003
+17:59:45.232 -> Modbus CRC: E40F
+17:59:45.232 -> Modbus Send Full Command : AT+INVDATA=8,010300160003E40F
+17:59:45.232 -> 
+17:59:45.232 -> > Sending Message: AT+INVDATA=8,010300160003E40F
+17:59:45.232 -> 
+17:59:45.232 -> .
+17:59:45.418 -> Packet received with size: 41  Content: +ok=010306170A09113A2CFAB7
+17:59:45.418 -> 
+17:59:45.418 -> 
+17:59:45.418 -> Response was: +ok=010306170A09113A2CFAB7
+
+Let's evaluate the string +ok=010306170A09113A2CFAB7 using the previous format specification:
+
+    Prefix: +ok=
+    Payload size: 06 bytes
+    Year: 17 => 23 in decimal (adding 2000 = 2023)
+    Month: 0A => 10 in decimal
+    Day: 09 => 9 in decimal
+    Hour: 11 => 17 in decimal
+    Minute: 3A => 58 in decimal
+    Second: 2C => 44 in decimal
+    CRC (presumably): FAB7
+
+
+
+17:59:45.418 -> 
+17:59:45.418 -> 
+17:59:45.418 -> Invalid payload size or string length!
+17:59:45.418 -> Modbus Send Command : 010300220003
+17:59:45.418 -> Modbus CRC: A5C1
+17:59:45.418 -> Modbus Send Full Command : AT+INVDATA=8,010300220003A5C1
+17:59:45.418 -> 
+17:59:45.418 -> > Sending Message: AT+INVDATA=8,010300220003A5C1
+17:59:45.465 -> 
+17:59:45.465 -> .
+17:59:45.651 -> Packet received with size: 41  Content: +ok=010306139C002C00003203
+17:59:45.651 -> 
+17:59:45.651 -> 
+17:59:45.651 -> Response was: +ok=010306139C002C00003203
+17:59:45.651 -> 
+17:59:45.651 -> 
+17:59:45.651 -> Invalid payload size or string length!
+17:59:45.651 -> Response was: +ok=010306139C002C00003203
+
+
+
+
+/* From https://github.com/s10l/deye-logger-at-cmd/blob/main/src/main.go
+if fModBus != nil && *fModBus != "" {
+		checkForArgConflicts()
+
+		if len(*fModBus) != 8 {
+			fmt.Println("xmb needs first register address and length")
+			fmt.Println("First register 0x0012")
+			fmt.Println("Length 0x0001")
+			fmt.Println("-> 00120001")
+			fmt.Println()
+			flag.Usage()
+			os.Exit(1)
+		}
+		handler = modBusReadHandler
+	}
+
+	if fModBusW != nil && *fModBusW != "" {
+		checkForArgConflicts()
+
+		if len(*fModBusW) < 14 {
+			fmt.Println("xmbw needs first register address, length, value length, and value")
+			fmt.Println("First register 0x0028")
+			fmt.Println("Length 0x0001")
+			fmt.Println("Value length 0x02")
+			fmt.Println("Value 0x0064")
+			fmt.Println("-> 00280001020064")
+			fmt.Println()
+			flag.Usage()
+			os.Exit(1)
+
+
+func modBusReadHandler(conn *net.UDPConn) {
+	prefix := "0103" // Slave ID + Function
+	cmd := fmt.Sprintf("%s%s", prefix, (*fModBus))
+	modBusHandler(conn, prefix, cmd)
+}
+
+Example: $ 
+
+./main.exe -t 10.1.1.10:48899 -xmb 00220001 -xv
+2023/10/08 13:27:39 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 13:27:39 > WIFIKIT-214028-READ
+2023/10/08 13:27:40 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 13:27:40 > +ok
+2023/10/08 13:27:41 > AT+INVDATA=8,0103002200012400
+2023/10/08 13:27:42 < +ok=010302139CB51D
+2023/10/08 13:27:42 +ok=010302139CB51D
+2023/10/08 13:27:42 > AT+Q
+2023/10/08 13:27:43
+
+0103002200012400 --> CRC 2400
+
+
+currently got 13:28:50.656 -> Modbus CRC: AA4B
+13:28:50.656 -> Modbus Send Full Command : 010300220001AA4B
+
+
+		}*/
+
+
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10 -xvmb 00220001
+flag provided but not defined: -xvmb
+Usage of C:\Users\micro\OneDrive\Hacking\Solar\Serial_AT\main.exe:
+  -t string
+        The IP and port of the loggers assistant endpoint [10.10.100.254:48899]
+  -xat string
+        Send AT command instead of credentials
+  -xc string
+        WiFi configuration code [WIFIKIT-214028-READ or HF-A11ASSISTHREAD] (default "WIFIKIT-214028-READ")
+  -xmb string
+        Send Modbus read register instead of credentials [00120001] -> Read register 0x0012, length = 1
+  -xs string
+        Local source address
+  -xv
+        Outputs all communication with the logger
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10 -xmb 00220001 -xv
+2023/10/08 13:27:33 address 10.1.1.10: missing port in address
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00220001 -xv
+2023/10/08 13:27:39 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 13:27:39 > WIFIKIT-214028-READ
+2023/10/08 13:27:40 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 13:27:40 > +ok
+2023/10/08 13:27:41 > AT+INVDATA=8,0103002200012400
+2023/10/08 13:27:42 < +ok=010302139CB51D
+2023/10/08 13:27:42 +ok=010302139CB51D
+2023/10/08 13:27:42 > AT+Q
+2023/10/08 13:27:43
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00220001 -xv
+2023/10/08 14:12:40 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:12:40 > WIFIKIT-214028-READ
+2023/10/08 14:12:41 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:12:41 > +ok
+2023/10/08 14:12:48 read udp 10.1.1.30:58243->10.1.1.10:48899: i/o timeout
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00230001 -xv
+2023/10/08 14:12:53 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:12:53 > WIFIKIT-214028-READ
+2023/10/08 14:12:54 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:12:54 > +ok
+2023/10/08 14:12:55 > AT+INVDATA=8,01030023000175c0
+2023/10/08 14:12:56 < +ok=010302002CB999
+2023/10/08 14:12:56 +ok=010302002CB999
+2023/10/08 14:12:56 > AT+Q
+2023/10/08 14:12:57
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00240001 -xv
+2023/10/08 14:13:01 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:13:01 > WIFIKIT-214028-READ
+2023/10/08 14:13:02 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:13:02 > +ok
+2023/10/08 14:13:03 > AT+INVDATA=8,010300240001c401
+2023/10/08 14:13:04 < +ok=0103020000B844
+2023/10/08 14:13:04 +ok=0103020000B844
+2023/10/08 14:13:04 > AT+Q
+2023/10/08 14:13:05
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00200001 -xv
+2023/10/08 14:13:26 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:13:26 > WIFIKIT-214028-READ
+2023/10/08 14:13:27 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:13:27 > +ok
+2023/10/08 14:13:28 > AT+INVDATA=8,01030020000185c0
+2023/10/08 14:13:29 < +ok=0103020000B844
+2023/10/08 14:13:29 +ok=0103020000B844
+2023/10/08 14:13:29 > AT+Q
+2023/10/08 14:13:30
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00160001 -xv
+2023/10/08 14:13:35 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:13:35 > WIFIKIT-214028-READ
+2023/10/08 14:13:36 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:13:36 > +ok
+2023/10/08 14:13:37 > AT+INVDATA=8,01030016000165ce
+2023/10/08 14:13:38 < +ok=0103023000AC44
+2023/10/08 14:13:38 +ok=0103023000AC44
+2023/10/08 14:13:38 > AT+Q
+2023/10/08 14:13:39
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00100001 -xv
+2023/10/08 14:14:04 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:14:04 > WIFIKIT-214028-READ
+2023/10/08 14:14:05 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:14:05 > +ok
+2023/10/08 14:14:06 > AT+INVDATA=8,01030010000185cf
+2023/10/08 14:14:07 < +ok=0103021770B650
+2023/10/08 14:14:07 +ok=0103021770B650
+2023/10/08 14:14:07 > AT+Q
+2023/10/08 14:14:08
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb FFF90002 -xv
+2023/10/08 14:15:09 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:15:09 > WIFIKIT-214028-READ
+2023/10/08 14:15:10 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:15:10 > +ok
+2023/10/08 14:15:11 > AT+INVDATA=8,0103FFF90002242e
+2023/10/08 14:15:12 < +ok=no data
+2023/10/08 14:15:12 +ok=no data
+2023/10/08 14:15:12 > AT+Q
+2023/10/08 14:15:13
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb FFF90001 -xv
+2023/10/08 14:15:36 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:15:36 > WIFIKIT-214028-READ
+2023/10/08 14:15:37 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:15:37 > +ok
+2023/10/08 14:15:38 > AT+INVDATA=8,0103FFF90001642f
+2023/10/08 14:15:39 < +ok=no data
+2023/10/08 14:15:39 +ok=no data
+2023/10/08 14:15:39 > AT+Q
+2023/10/08 14:15:40
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00000001 -xv
+2023/10/08 14:16:32 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:16:32 > WIFIKIT-214028-READ
+2023/10/08 14:16:33 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:16:33 > +ok
+2023/10/08 14:16:34 > AT+INVDATA=8,010300000001840a
+2023/10/08 14:16:35 < +ok=0103020004B987
+2023/10/08 14:16:35 +ok=0103020004B987
+2023/10/08 14:16:35 > AT+Q
+2023/10/08 14:16:36
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00100001 -xv
+2023/10/08 14:17:07 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:17:07 > WIFIKIT-214028-READ
+2023/10/08 14:17:08 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:17:08 > +ok
+2023/10/08 14:17:09 > AT+INVDATA=8,01030010000185cf
+2023/10/08 14:17:10 < +ok=0103021770B650
+2023/10/08 14:17:10 +ok=0103021770B650
+2023/10/08 14:17:10 > AT+Q
+2023/10/08 14:17:11
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00220001 -xv
+2023/10/08 14:17:54 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:17:54 > WIFIKIT-214028-READ
+2023/10/08 14:17:55 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:17:55 > +ok
+2023/10/08 14:17:56 > AT+INVDATA=8,0103002200012400
+2023/10/08 14:17:57 < +ok=010302139CB51D
+2023/10/08 14:17:57 +ok=010302139CB51D
+2023/10/08 14:17:57 > AT+Q
+2023/10/08 14:17:58
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00230001 -xv
+2023/10/08 14:18:10 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:18:10 > WIFIKIT-214028-READ
+2023/10/08 14:18:11 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:18:11 > +ok
+2023/10/08 14:18:12 > AT+INVDATA=8,01030023000175c0
+2023/10/08 14:18:13 < +ok=010302002CB999
+2023/10/08 14:18:13 +ok=010302002CB999
+2023/10/08 14:18:13 > AT+Q
+2023/10/08 14:18:14
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00240001 -xv
+2023/10/08 14:18:18 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:18:18 > WIFIKIT-214028-READ
+2023/10/08 14:18:19 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:18:19 > +ok
+2023/10/08 14:18:20 > AT+INVDATA=8,010300240001c401
+2023/10/08 14:18:21 < +ok=0103020000B844
+2023/10/08 14:18:21 +ok=0103020000B844
+2023/10/08 14:18:21 > AT+Q
+2023/10/08 14:18:22
+
+micro@WorkStation11 MINGW64 ~/OneDrive/Hacking/Solar/Serial_AT
+$ ./main.exe -t 10.1.1.10:48899 -xmb 00220003 -xv
+2023/10/08 14:18:30 * Connecting :0 -> 10.1.1.10:48899...
+2023/10/08 14:18:30 > WIFIKIT-214028-READ
+2023/10/08 14:18:31 < 10.1.1.10,E8FDF876F8A8,4162130212
+2023/10/08 14:18:31 > +ok
+2023/10/08 14:18:32 > AT+INVDATA=8,010300220003a5c1
+2023/10/08 14:18:33 < +ok=010306139C002C00003203
+2023/10/08 14:18:33 +ok=010306139C002C00003203
+2023/10/08 14:18:33 > AT+Q
+2023/10/08 14:18:34
