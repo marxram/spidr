@@ -67,7 +67,7 @@ void Inverter::updateData(const String& html) {
     lastUpdateTimestamp = millis();
 }
 
-String Inverter::getWebdataSn() const {
+String Inverter::getInverterSerial() const {
     return webdata_sn;
 }
 
@@ -87,15 +87,15 @@ String Inverter::getWebdataRateP() const {
     return webdata_rate_p;
 }
 
-float Inverter::getWebdataNowP() const {
+float Inverter::getInverterPowerNow_W() const {
     return webdata_now_p;
 }
 
-float Inverter::getWebdataTodayE() const {
+float Inverter::getInverterEnergyToday_kWh() const {
     return webdata_today_e;
 }
 
-float Inverter::getWebdataTotalE() const {
+float Inverter::getInverterEnergyTotal_kWh() const {
     return webdata_total_e;
 }
 
@@ -107,55 +107,55 @@ String Inverter::getWebdataUtime() const {
     return webdata_utime;
 }
 
-String Inverter::getCoverMid() const {
+String Inverter::getLoggerModuleID() const {
     return cover_mid;
 }
 
-String Inverter::getCoverVer() const {
+String Inverter::getLoggerSoftwareVersion() const {
     return cover_ver;
 }
 
-String Inverter::getCoverWmode() const {
+String Inverter::getLoggerWifiMode() const {
     return cover_wmode;
 }
 
-String Inverter::getCoverApSsid() const {
+String Inverter::getLoggerApSsid() const {
     return cover_ap_ssid;
 }
 
-String Inverter::getCoverApIp() const {
+String Inverter::getLoggerApIp() const {
     return cover_ap_ip;
 }
 
-String Inverter::getCoverApMac() const {
+String Inverter::getLoggerApMac() const {
     return cover_ap_mac;
 }
 
-String Inverter::getCoverStaSsid() const {
+String Inverter::getLoggerStaSsid() const {
     return cover_sta_ssid;
 }
 
-String Inverter::getCoverStaRssi() const {
+String Inverter::getLoggerStaRssi() const {
     return cover_sta_rssi;
 }
 
-String Inverter::getCoverStaIp() const {
+String Inverter::getLoggerStaIp() const {
     return cover_sta_ip;
 }
 
-String Inverter::getCoverStaMac() const {
+String Inverter::getLoggerStaMac() const {
     return cover_sta_mac;
 }
 
-String Inverter::getStatusA() const {
+String Inverter::getRemoteServerStatusA() const {
     return status_a;
 }
 
-String Inverter::getStatusB() const {
+String Inverter::getRemoteServerStatusB() const {
     return status_b;
 }
 
-String Inverter::getStatusC() const {
+String Inverter::getRemoteServerStatusC() const {
     return status_c;
 }
 
