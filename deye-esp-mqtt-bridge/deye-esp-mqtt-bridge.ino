@@ -1,22 +1,62 @@
+
+//#define BOARD_WEMOS_OLED_128x64_ESP32
+
+
+///////////////////////////////////////////////////////////////////////
+// HARDWARE SPECIFIC ADAPTIONS 
+// DISPLAY ------------------------------------------------------------
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+
+//#define HEADER_FONT  u8x8_font_chroma48medium8_r
+//#define NORMAL_FONT  u8x8_font_chroma48medium8_r
+
+
+// Only define Screen Address if display is not working by default, 
+//#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+
+// Address Examples: 0x3C, 0x3D, 0x78
+// 
+
+///////////////////////////////////////////////////////////////////////
+// Timing behavior
+#define DURATION_SLEEP_IN_HOME_NETWORK 200  // Seconds
+
+
+
+
 #include <Arduino.h>
-
-// ESP8266WiFi Built-In by Ivan Grokhotkov Version 1.0.0
-#include <ESP8266WiFi.h> 
-
 // Extra library: PubSubClient by Nick O'Leary <nick.oleary@gmail.com>  V2.8.0
 #include <PubSubClient.h>
 
-// DISPLAY
-//
-// Adafruit SSD1306 by Adafruit V2.5.7
-// Adafruit "GFX Library" by Adafruit Version 1.11.8 INSTALLED
+
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <U8x8lib.h>
+
 
 // Web and WiFi
 #include <WiFiClient.h>
 #include <base64.h>
+
+
+#ifdef ESP32
+#include <WiFi.h> // ESP32 specific WiFi library
+// ESP32 specific setup and functions
+#endif
+
+#ifdef ESP8266
+#include <ESP8266WiFi.h> // ESP8266 specific WiFi library
+// ESP8266 specific setup and functions
+#endif
+
+#ifdef BOARD_WEMOS_OLED_128x64_ESP32
+U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ 4, /* data=*/ 5, /* reset=*/ U8X8_PIN_NONE);  
+#else 
+U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
+#endif 
+
 
 // Inverter Data handling 
 #include "Inverter.h"
@@ -31,19 +71,6 @@
 // TimeSynchronization and handling
 #include <NTPClient.h>
 #include <TimeLib.h>
-
-
-///////////////////////////////////////////////////////////////////////
-// HARDWARE SPECIFIC ADAPTIONS 
-
-// DISPLAY ------------------------------------------------------------
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 32 // OLED display height, in pixels
-
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-
-#define DURATION_SLEEP_IN_HOME_NETWORK 200  // Seconds
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -81,9 +108,6 @@ bool connected = false;
 ////////////////////////////////////////////////////////////////////
 // Intializations 
 
-// Initialize the display
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
 // Initialize the MQTT client
 WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
@@ -105,18 +129,14 @@ unsigned long epochTime = 0;
 bool ntpTimeAvailable = false;
 
 
-
 ////////////////////////////////////////////////////////////////////
 // Function declarations
 void mqtt_submit_data();
 void mqtt_reconnect();
-
 void wifi_connect(String ssid, String passkey, String comment);
-
 void web_getDataFromWeb(String url, String web_user, String web_password);
-
 void displayInverterStatus(const Inverter& inverter);
-
+void setDisplayHeader(String HeaderText);
 
 ////////////////////////////////////////////////////////////////////
 // SETUP Function
@@ -125,10 +145,27 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
-  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
-  }
+  #ifdef SCREEN_ADDRESS
+    u8x8.setI2CAddress(SCREEN_ADDRESS); 
+  #endif 
+  
+  u8x8.begin();
+  u8x8.setPowerSave(0);
+
+  // Power-On Self-Test for the Display
+  u8x8.setFont(u8x8_font_chroma48medium8_r); // Set a readable font
+  u8x8.clearDisplay(); // Clear the display for the test
+  u8x8.drawString(0, 0, "Display POST"); // Display a test message
+
+  // Draw a few patterns to test display
+  // Since U8x8 is limited to text in its simplest form, we simulate patterns with characters
+  u8x8.draw2x2String(0, 2, "AB");
+  u8x8.draw2x2String(4, 2, "CD");
+  
+  delay(2000); // Wait two seconds to view the test pattern
+
+  u8x8.clearDisplay(); // Clear the display after the test
+
 
   Serial.println("Initialize inverter");
   //inverter.printVariables();
@@ -157,7 +194,7 @@ void setup() {
 ////////////////////////////////////////////////////////////////////
 // MAIN LOOP
 
-void loop() {
+void loop() {   
     // INVERTER NETWORK 
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
     // If connected with the Solar Inverter
@@ -206,6 +243,7 @@ void loop() {
           secondsInHomeNetwork+=5;
         }
     }
+
 }
 
 
@@ -239,50 +277,61 @@ void wifi_connect(String ssid, String passkey, String comment){
   connected = false;
   WiFi.disconnect();
   delay(1000);
+  
   // Connect to Wi-Fi
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.println(F("++ Switching WiFi ++"));
-  display.print("SSID: ");
-  display.println(ssid);
-  display.display();
+  setDisplayHeader("Switching WiFi");
+
+  u8x8.setCursor(0, 2); 
+  u8x8.print("SSID: ");
+  u8x8.setCursor(0, 3); 
+  u8x8.println(ssid);
   
   
   Serial.println("----------------------------------------------------");
   Serial.print("Connecting to ");
   Serial.print(ssid);
-  WiFi.begin(ssid, passkey);
+  WiFi.begin(ssid.c_str(), passkey.c_str());
 
- 
+  u8x8.setCursor(0, 4); 
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 20) { // 10 sec timeout
-    display.print(F("."));
-    display.display();
-    delay(500);
-    Serial.print(".");
+    // Assuming you have set the initial cursor position before entering the loop
+    // For example, u8x8.setCursor(0, 4); to start printing dots at Row 4, Column 0.
+    u8x8.print(F(".")); // Print dot on the display at the current cursor position.
+    
+    // No need to call u8x8.display() as U8x8 updates the display immediately.
+
+    delay(500); // Wait for 500ms
+    Serial.print("."); // Also print dot on the Serial Monitor.
     attempts++;
   }
 
-  //display.clearDisplay();
-  //display.setCursor(0,0);
-  if(WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED) {
     connected = true;
-    display.println(F(" OK"));
-    display.print(F("IP: "));
-    display.println(WiFi.localIP());
+    setDisplayHeader("Connected");
+    u8x8.setCursor(0, 2);
+    u8x8.print(F("IP: "));
+    u8x8.setCursor(0, 3);
+    u8x8.print(WiFi.localIP().toString().c_str()); // Assuming localIP() returns an IPAddress object
     Serial.println("--> connected");
-    display.display();
-    delay(3000);
-
+    delay(3000); // Display IP for 3 seconds
   } else {
     connected = false;
-    display.println(F("Failed to connect"));
-    display.println(F("Check credential"));
-    display.println(F("or availability"));
-    display.display();
-    display_invert_blink(5,2000);
+    setDisplayHeader("Not Connedted");
+    u8x8.setCursor(0, 0);
+    u8x8.print(F("Failed to connect"));
+    u8x8.setCursor(0, 1);
+    u8x8.print(F("Check credential"));
+    u8x8.setCursor(0, 2);
+    u8x8.print(F("or availability"));
+    
+    // Blinking effect: manually toggling display power
+    for (int i = 0; i < 5; i++) {
+      u8x8.setPowerSave(1); // Turn off display
+      delay(1000); // Wait for 1 second
+      u8x8.setPowerSave(0); // Turn on display
+      delay(1000); // Display message for 1 second
+    }
   }
 }
 
@@ -298,14 +347,27 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
   Serial.println(website);
 
 
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.println(F("++ Collecting Data ++"));
-  display.println(serverIp);
-  display.println( "/" + url);
-  display.display();
+  // Clear the display
+  u8x8.clearDisplay();
+
+  // Set the desired font (if not already set elsewhere in your code)
+  u8x8.setFont(u8x8_font_chroma48medium8_r); // Example font, choose one that fits your needs
+
+  // Set cursor position and print the collecting data message
+  u8x8.setCursor(0, 0); // Column 0, Row 0
+  u8x8.print(F("++ Collecting Data ++"));
+
+  // Since U8x8 doesn't automatically advance to the next line after printing like println does,
+  // you need to manually move the cursor for each new line.
+  u8x8.setCursor(0, 1); // Move to the next line
+  u8x8.print(serverIp);
+
+  // Concatenating the "/" with url requires a bit more work since U8x8's print method
+  // does not support String objects directly in the same way as the Adafruit library.
+  // You'd typically handle concatenation before printing, or print in parts if dynamic.
+  u8x8.setCursor(0, 2); // Move to the next line
+  u8x8.print("/"); // Print the slash first,
+  u8x8.print(url.c_str()); // then print the URL. Assuming `url` is a String object; use c_str() to convert.
 
 
   // Create an instance of WiFiClient
@@ -353,14 +415,17 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
     Serial.printf("Energy today: %f\n", inverter.getInverterEnergyToday_kWh());
     Serial.printf("Energy total: %f\n", inverter.getInverterEnergyTotal_kWh());
 
-    display.println(F("> Parsing > OK"));
-    display.display();
+    u8x8.setCursor(0, 3);
+    u8x8.print(F("> Parsing > OK"));
     delay(2000);
 
   } else {
+    u8x8.setCursor(0, 4);
+    u8x8.print(F("> Failed to connect to server."));
     Serial.println("Failed to connect to server.");
-    display.println(F("> Parsing > FAILED!"));
-    display.display();
+    u8x8.setCursor(0, 5);
+    u8x8.print(F("> Parsing > FAILED!"));
+
     display_invert_blink(5,2000);
   }
 
@@ -369,100 +434,114 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
 
 ////////////////////////////////////////////////////////////////////
 // DISPLAY Section
+
 void displayInverterStatus(const Inverter& inverter) {
-  int col1 = 70;
-  int col2 = 100;
-
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
+  int char_col_1 = 7; // Position for values
+  int char_col_2 = 13; // Position for units, adjust as needed
   
-  // Connect to Wi-Fi
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.println("++ Inverter Status ++");
+  setDisplayHeader("Inverter Status");
 
   // Display Power
-
-  display.print("Power ");
-  display.setCursor(col1,8);
-  display.print(inverter.getInverterPowerNow_W(), 0);
-  display.setCursor(col2,8);
-  display.println(" W");
+  u8x8.setCursor(0, 2); // Start label at the beginning of line 2
+  u8x8.print("Power");
+  u8x8.setCursor(char_col_1, 2); // Set cursor for value
+  u8x8.print(inverter.getInverterPowerNow_W());
+  u8x8.setCursor(char_col_2, 2); // Set cursor for unit
+  u8x8.print("W");
 
   // Display Energy Today
-  display.print("E (today)");
-  display.setCursor(col1,16);
-  display.print(inverter.getInverterEnergyToday_kWh(), 1);
-  display.setCursor(col2,16);
-  display.println(" kWh");
+  u8x8.setCursor(0, 3); // Start label at the beginning of line 3
+  u8x8.print("E today");
+  u8x8.setCursor(char_col_1, 3); // Set cursor for value
+  char bufferToday[10]; // Buffer for formatting float with one decimal
+  sprintf(bufferToday, "%.1f", inverter.getInverterEnergyToday_kWh());
+  u8x8.print(bufferToday);
+  u8x8.setCursor(char_col_2, 3); // Set cursor for unit
+  u8x8.print("kWh");
 
   // Display Total Energy
-  display.print("E (total)");
-  display.setCursor(col1,24);
-  display.print(inverter.getInverterEnergyTotal_kWh(), 0);
-  display.setCursor(col2,24);
-  display.println(" kWh");
-
-  display.display();
+  u8x8.setCursor(0, 4); // Start label at the beginning of line 4
+  u8x8.print("E total");
+  u8x8.setCursor(char_col_1, 4); // Set cursor for value
+  char bufferTotal[10]; // Buffer for formatting integer value
+  sprintf(bufferTotal, "%d", (int)inverter.getInverterEnergyTotal_kWh());
+  u8x8.print(bufferTotal);
+  u8x8.setCursor(char_col_2, 4); // Set cursor for unit
+  u8x8.print("kWh");
 }
 
+
 void displayTime() {
-  int col1 = 70;
-  int col2 = 100;
+  int char_col_1 = 7; // Adjust as needed, based on character width and desired layout
+  int char_col_2 = 12; // Additional column if needed for future use
 
   tmElements_t tm;
   breakTime(epochTime, tm);
 
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  
-  // Connect to Wi-Fi
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.println("   ++ Time Sync ++");
+  setDisplayHeader("Time Sync");
 
-  // Display Power
+  // Display Date
+  u8x8.setCursor(0, 2); // Label at the beginning of line 2
+  u8x8.print("Date");
+  u8x8.setCursor(char_col_1, 2); // Set cursor for value
+  char dateStr[11]; // Enough to hold DD.MM.YYYY\0
+  sprintf(dateStr, "%02d.%02d.20%02d", tm.Day, tm.Month, (tm.Year + 1970) % 100);
+  u8x8.print(dateStr);
 
-  display.print("Date ");
-  display.setCursor(col1,8);
-  display.print(String((tm.Year + 1970) % 100) +"."+ String(tm.Month) +"."+ String(tm.Day) );
-  display.setCursor(col2,8);
-  display.println("");
+  // Display Time
+  u8x8.setCursor(0, 3); // Label at the beginning of line 3
+  u8x8.print("Time");
+  u8x8.setCursor(char_col_1, 3); // Set cursor for value
+  char timeStr[9]; // Enough to hold HH:MM:SS\0
+  sprintf(timeStr, "%02d:%02d:%02d", tm.Hour, tm.Minute, tm.Second);
+  u8x8.print(timeStr);
 
-  // Display Energy Today
-  display.print("Time");
-  display.setCursor(col1,16);
-  display.print(String(tm.Hour) +":"+ String(tm.Minute) +":"+ String(tm.Second) );
-  display.setCursor(col2,16);
-  display.println(" ");
-
-  // Display Total Energy
-  display.print("Sync");
-  display.setCursor(col1,24);
-  display.print(String( lastUpdate - millis() ) );
-  display.setCursor(col2,24);
-  display.println(" ");
-
-  display.display();
+  // Display Sync Interval
+  u8x8.setCursor(0, 4); // Label at the beginning of line 4
+  u8x8.print("Sync");
+  u8x8.setCursor(char_col_1, 4); // Set cursor for value
+  char syncStr[11]; // Assuming it fits, adjust size as needed
+  long syncInterval = lastUpdate - millis();
+  sprintf(syncStr, "%ld", syncInterval);
+  u8x8.print(syncStr);
 }
 
-void display_invert_blink(int times, int delay_ms){
-    for (int i =0; i < times ; i++){
-        display.invertDisplay(true);
-        display.display();
-        delay(delay_ms/2);
-        display.invertDisplay(false);
-        display.display();
-        delay(delay_ms/2);
-    }
+void setDisplayHeader(String HeaderText) {
+  u8x8.clearDisplay();
+  u8x8.setFont(u8x8_font_chroma48medium8_r); // Set the font. Adjust if you have a preferred font.
+  
+  // Assuming each character is 8 pixels wide, adjust if your font is different
+  int charWidth = 8;
+  int screenWidthChars = SCREEN_WIDTH / charWidth; // Calculate the max number of characters per line
+  int textLength = HeaderText.length();
+  
+  // Calculate starting column to center the text
+  int startColumn = (screenWidthChars - textLength) / 2;
+  if (startColumn < 0) startColumn = 0; // Ensure startColumn is not negative
+  
+  u8x8.setInverseFont(1); // Set inverse font for the header
+  // Ensure the text fits within the display bounds
+  if (textLength > screenWidthChars) {
+    HeaderText = HeaderText.substring(0, screenWidthChars);
+  }
+  u8x8.drawString(startColumn, 0, HeaderText.c_str()); // Row 0, dynamically calculated start column
+  
+  u8x8.setInverseFont(0); // Reset inverse font after the header
+  u8x8.setCursor(0, 2); // Move cursor to Row 2, Column 0 for the next text.
+  u8x8.setFont(u8x8_font_chroma48medium8_r);
+}
 
+
+void display_invert_blink(int times, int delay_ms){
+    for (int i = 0; i < times; i++){
+        // Turn off the display
+        u8x8.setPowerSave(1);
+        delay(delay_ms / 2);
+        
+        // Turn on the display
+        u8x8.setPowerSave(0);
+        delay(delay_ms / 2);
+    }
 }
 
 
@@ -473,16 +552,26 @@ void display_invert_blink(int times, int delay_ms){
 void mqtt_submit_data(){
     
     // Connect to Wi-Fi
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0,0);
-    display.println(F("++ Publish to MQTT ++"));
-    display.println("Server: ");
-    display.print(MQTT_BROKER_HOST.c_str());
-    display.print(":");
-    display.println(MQTT_BROKER_PORT);
-    display.display();
+    // Clear the display for fresh output
+    u8x8.clearDisplay();
+
+    // Set the initial cursor position to the top left corner of the display
+    u8x8.setCursor(0, 0);
+    // Print the header message
+    u8x8.print(F("++ Publish to MQTT ++"));
+
+    // Move to the next line to print the server details
+    u8x8.setCursor(0, 1);
+    u8x8.print("Server: ");
+
+    // Since U8x8 does not support `println`, we manually move to the next line after printing the server info
+    u8x8.setCursor(0, 2); // Adjust this line number based on your actual display content and layout
+    u8x8.print(MQTT_BROKER_HOST.c_str());
+    u8x8.print(":");
+    // Assuming MQTT_BROKER_PORT is an integer, you might need to convert it to a string
+    char portStr[6]; // Large enough for typical port numbers (up to 65535) plus a null terminator
+    sprintf(portStr, "%d", MQTT_BROKER_PORT);
+    u8x8.print(portStr);
     
     if (!mqtt_client.connected()) {
         mqtt_reconnect();
@@ -604,13 +693,12 @@ void mqtt_submit_data(){
       Serial.println("> MQTT CLOSED");
 
       mqtt_client.disconnect();
-
-      display.print(" > published");
-      display.display();
-
+      u8x8.setCursor(0, 3);
+      u8x8.print(" > published");
+     
     }else{
-      display.println(" > FAIL !");
-      display.display();
+      u8x8.setCursor(0, 3);
+      u8x8.print(" > FAIL !");
       display_invert_blink(5,2000);
     }
      
@@ -621,16 +709,15 @@ void mqtt_reconnect() {
   while (!mqtt_client.connected() && attempts < 5) {
     Serial.print("Attempting MQTT connection...");
     
+    u8x8.setCursor(0, 4);
     if (mqtt_client.connect("deye-esp-solar-bridge", MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str())) {
-      Serial.println("connected");
-      
-      display.print("connected");
-      
+      Serial.println("connected");  
+      u8x8.print(" connected");
     } else {
       Serial.print("failed, rc=");
       Serial.print(mqtt_client.state());
       Serial.println(" try again in 2 seconds");
-      display.print(".");
+      u8x8.print(".");
       delay(2000);
     }
     attempts++;

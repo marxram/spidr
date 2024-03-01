@@ -1,8 +1,17 @@
 #include "Arduino.h"
 #include "InverterUdp.h"
 
-// ESP8266WiFi Built-In by Ivan Grokhotkov Version 1.0.0
-#include <ESP8266WiFi.h> 
+#ifdef ESP32
+#include <WiFi.h> // ESP32 specific WiFi library
+// ESP32 specific setup and functions
+#endif
+
+#ifdef ESP8266
+#include <ESP8266WiFi.h> // ESP8266 specific WiFi library
+// ESP8266 specific setup and functions
+#endif
+
+
 // AT Commands
 #include <WiFiUdp.h>
 
