@@ -21,7 +21,7 @@ Install "esp8266" by ESP8266 Community V3.1.2
 HttpClient by Adrian McEwen <adrianm@mcqn.com> Version 2.2.0
 
 
-//RTClib by Adfruit V 2.1.1
+//RTClib by Adfruit V 2.1.3
 #include <RTClib.h>
 
 
@@ -31,5 +31,9 @@ HttpClient by Adrian McEwen <adrianm@mcqn.com> Version 2.2.0
 #include <TimeLib.h>
 Timelib 1.6.1 by Paul Stoffregen
 
+??
 Time by Michael Margolis Version 1.6.1 INSTALLED
 Timekeeping functionality for Arduino Date and Time functions, with provisions to synchronize to external time sources like GPS and NTP (Internet).
+
+
+NTPClient
