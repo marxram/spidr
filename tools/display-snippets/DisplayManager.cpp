@@ -148,37 +148,47 @@ void DisplayManager::displayAction(const ActionData& action) {
   u8g2->setFont(u8g2_font_6x10_tf); // Smaller font for parameters
   for (int i = 0; i < 4 && i < sizeof(action.params) / sizeof(action.params[0]); ++i) {
     if (action.params[i].length() > 0) {
-      u8g2->drawStr(0, 34 + (i * 11), action.params[i].c_str());
+      u8g2->drawStr(0, 33 + (i * 10), action.params[i].c_str());
     }
   }
 
     // Display result and result details in the last two rows
     u8g2->setFont(u8g2_font_profont11_mr); // Adjust the font as needed
-
+  
+    int spaceBetween = 4;
+  
     // Calculate the position and size of the inverted background
     int yPosition = 63; // Y position for the text
     int textHeight = 11; // Estimate of the text height, adjust based on your font
     int resultWidth = u8g2->getStrWidth(action.result.c_str());
-    int backgroundHeight = textHeight + 2; // Add some padding to the height
-    int backgroundWidth = resultWidth + 8; // Add some padding to the width for the background
+    int backgroundHeight = textHeight; // Add some padding to the height
+    int backgroundWidth = resultWidth + spaceBetween; // Add some padding to the width for the background
 
-    // Draw an inverted rectangle behind the result text
-    u8g2->setDrawColor(1); // Ensure the draw color is set to black for the text
-    u8g2->drawBox(0, yPosition - textHeight + 2, backgroundWidth, backgroundHeight);
+    // Clearing
+    //u8g2->setDrawColor(0); // Ensure the draw color is set to black for the text
+    //u8g2->drawBox(0 , yPosition - backgroundHeight, 128, backgroundHeight);
 
+    // Draw an inverted rectangle behind the result text    
+    //u8g2->setDrawColor(1); // Ensure the draw color is set to black for the text
+    //u8g2->drawBox(0 , yPosition - backgroundHeight, backgroundWidth, backgroundHeight);
+
+    String resultWithPadding = " " + action.result + " ";
+  
     // Draw the result string in white on top of the black background
     u8g2->setDrawColor(0); // Set the draw color to white for the text
-    u8g2->drawStr(4, yPosition, action.result.c_str()); // Adjust text starting point if needed
+    u8g2->drawStr(0 , yPosition, resultWithPadding.c_str()); // Adjust text starting point if needed
 
     // Reset draw color to black for other elements
     u8g2->setDrawColor(1);
 
     // Continue with other drawing operations...
-    int spaceBetween = 4;
-    int secondStrXPosition = resultWidth + spaceBetween;
+    
+    int secondStrXPosition = resultWidth + 2* spaceBetween;
+
+    String detailstWithPadding = " " + action.resultDetails + " ";
 
     // If you want the details not inverted, just draw them as normal.
-    u8g2->drawStr(secondStrXPosition, yPosition, action.resultDetails.c_str());
+    u8g2->drawStr(secondStrXPosition, yPosition, detailstWithPadding.c_str());
 
   u8g2->sendBuffer();
 }
