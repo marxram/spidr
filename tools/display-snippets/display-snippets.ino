@@ -8,7 +8,9 @@
 #include <ctime> // For time()
 
 
+#define DISPLAY_DEVELOPER
 
+// Boards
 //#define BOARD_WEMOS_OLED_128x64_ESP32
 //#define BOARD_HELTEC_OLED_128x32_ESP8266
 
@@ -216,8 +218,6 @@ void loop() {
     delay(2000);
     digitalWrite(LED_BUILTIN, LOW);
     // Later, once more information is available or the action completes:
-    action.params[1] = "IP:    10.1.1.20";
-    action.params[2] = "PGWIP: 10.1.1.1";
     action.params[2] = "Login: done";
 
     action.result = "Success";

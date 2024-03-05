@@ -24,7 +24,8 @@ public:
     void showScreen3();
     void showScreen4();
     void displayAction(const ActionData& action);
-    void drawBigNumberWithUnit(float number, String unit, String annotation, String formattingStr, const uint8_t *numberFont, const uint8_t *unitFont);
+    void drawBigNumber(float number, String unit, String annotation, String formattingStr, const uint8_t *numberFont, const uint8_t *unitFont);
+    void drawBigNumberHeader(String header, float number, String unit, String annotation, String formattingStr, const uint8_t *numberFont, const uint8_t *unitFont);
     float myNumber;
     String myUnit;
     String myFormattingStr;
@@ -32,6 +33,7 @@ public:
 
 private:
     U8G2 *u8g2; // Use a pointer to the base class
+    const unsigned int SCREEN_WIDTH = 128;
     unsigned long lastUpdateTime = 0; // Last update time in millis
     const unsigned long screenInterval = 3000; // Time interval for screen update
     const unsigned int MAX_SCREENS = 4; // Maximum number of screens
