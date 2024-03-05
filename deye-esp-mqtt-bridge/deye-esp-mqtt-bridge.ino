@@ -37,6 +37,8 @@
 // Extra library: PubSubClient by Nick O'Leary <nick.oleary@gmail.com>  V2.8.0
 #include <PubSubClient.h>
 
+#include "DisplayManager.h"
+
 #include <Wire.h>
 #include <U8x8lib.h>
 #include <U8g2lib.h>
@@ -123,6 +125,10 @@ bool connected = false;
 ////////////////////////////////////////////////////////////////////
 // Intializations 
 
+DisplayManager displayManager;
+ActionData action; // Action Structure to Display
+
+
 // Initialize the MQTT client
 WiFiClient espClient;
 PubSubClient mqtt_client(espClient);
@@ -166,7 +172,8 @@ void mqtt_submit_data();
 void mqtt_reconnect();
 void wifi_connect(String ssid, String passkey, String comment);
 void web_getDataFromWeb(String url, String web_user, String web_password);
-void displayInverterStatus(const Inverter& inverter);
+void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms);
+
 void setDisplayHeader(String HeaderText);
 
 ////////////////////////////////////////////////////////////////////
@@ -176,29 +183,14 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
+  // TODO: Screenadress in DisplayManager
   #ifdef SCREEN_ADDRESS
     u8g2.setI2CAddress(SCREEN_ADDRESS); 
   #endif 
-  
-  u8g2.begin();
-  //u8g2.setPowerSave(0);
+    displayManager.init();
 
-  // Power-On Self-Test for the Display
-  u8g2.setFont(NORMAL_FONT); // Set a readable font
-  u8g2.clearBuffer(); // Clear the display for the test
-  u8g2.drawStr(0, 0*8+8, "Start"); // Display a test message
-
-  // Draw a few patterns to test display
-  // Since U8x8 is limited to text in its simplest form, we simulate patterns with characters
-  u8g2.drawStr(0, 5*8+8, __DATE__); // Display a test message
-  u8g2.drawStr(0, 6*8+8, __TIME__); // Display a test message
-
-  u8g2.sendBuffer();
-
-  delay(2000); // Wait two seconds to view the test pattern
-
-  u8g2.clearBuffer(); // Clear the display after the test
-  u8g2.sendBuffer();
+  //u8g2.drawStr(0, 5*8+8, __DATE__); // Display a test message
+  //u8g2.drawStr(0, 6*8+8, __TIME__); // Display a test message
 
 
   Serial.println("Initialize inverter");
@@ -210,7 +202,6 @@ void setup() {
   delay (1000);
 
   Serial.print("Init Time Client "); 
-
 
 #ifdef ESP8266
       timeClient.begin();
@@ -236,7 +227,6 @@ void setup() {
 
 ////////////////////////////////////////////////////////////////////
 // MAIN LOOP
-
 void loop() {   
     // INVERTER NETWORK 
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
@@ -277,9 +267,8 @@ void loop() {
         int secondsInHomeNetwork =0;
         while (secondsInHomeNetwork < DURATION_SLEEP_IN_HOME_NETWORK ){
           // Toggle between Time and Solar Production Screen
-          displayInverterStatus(inverter);
-          delay(5000);
-          secondsInHomeNetwork+=5;
+          displayInverterStatus(inverter, 10000);
+          secondsInHomeNetwork+=10;
           
           displayTime();
           delay(5000);
@@ -312,43 +301,37 @@ bool syncTime (){
       }
     timeSynced = synced; 
     return synced;
-
 }
 
 
 ////////////////////////////////////////////////////////////////////
 // WiFi Functions
 void wifi_connect(String ssid, String passkey, String comment){
+  
+  // Display Initialization
+  action.name = "Home WiFi";
+  action.details   = "Connect to WiFi";
+  String network = "SSID: " + ssid;
+  action.params[0] = network.c_str();
+  action.params[1] = "IP:    Waiting...";
+  //action.params[2] = "GW-IP: Waiting...";
+  action.result = "In Progress";
+  action.resultDetails = "";
+  displayManager.displayAction(action);
+  
   connected = false;
   WiFi.disconnect();
   delay(1000);
   
-  // Connect to Wi-Fi
-  Serial.print("DBG Before Header "); 
-  setDisplayHeader("Switching WiFi");
-  Serial.print("DBG Afzter  Header "); 
-
-  u8g2.setCursor(0, 2); 
-  u8g2.print("SSID: ");
-  u8g2.setCursor(0, 3); 
-  u8g2.println(ssid);
-  u8g2.sendBuffer();
-  
-  
   Serial.println("----------------------------------------------------");
   Serial.print("Connecting to ");
   Serial.print(ssid);
+  
+  // Connect
   WiFi.begin(ssid.c_str(), passkey.c_str());
 
-  u8g2.setCursor(0, 4); 
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 20) { // 10 sec timeout
-    // Assuming you have set the initial cursor position before entering the loop
-    // For example, u8g2.setCursor(0, 4); to start printing dots at Row 4, Column 0.
-    u8g2.print(F(".")); // Print dot on the display at the current cursor position.
-    
-    // No need to call u8g2.display() as U8x8 updates the display immediately.
-
     delay(500); // Wait for 500ms
     Serial.print("."); // Also print dot on the Serial Monitor.
     attempts++;
@@ -356,25 +339,27 @@ void wifi_connect(String ssid, String passkey, String comment){
 
   if (WiFi.status() == WL_CONNECTED) {
     connected = true;
-    setDisplayHeader("Connected");
-    u8g2.setCursor(0, 2);
-    u8g2.print(F("IP: "));
-    u8g2.setCursor(0, 3);
-    u8g2.print(WiFi.localIP().toString().c_str()); // Assuming localIP() returns an IPAddress object
     Serial.println("--> connected");
-    u8g2.sendBuffer();
     delay(3000); // Display IP for 3 seconds
+  
+    // Display Result
+    String ip = "IP:    " + WiFi.localIP().toString().c_str();
+    action.params[1] = ip.c_str();
+    //action.params[2] = "GW-IP: Waiting...";
+    action.result = "Connected";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
+  
   } else {
     connected = false;
-    setDisplayHeader("Not Connected");
-    u8g2.setCursor(0, 2);
-    u8g2.print(F("Inverter Offline"));
-    u8g2.setCursor(0, 3);
-    u8g2.print(F("Check credential"));
-    u8g2.setCursor(0, 4);
-    u8g2.print(F("or availability"));
-    u8g2.sendBuffer();
-    display_invert_blink(5,2000);
+    
+    // Display Result
+    action.params[1] = "Check Credentials";
+    //action.params[2] = "GW-IP: Waiting...";
+    action.result = "FAILED";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
+    delay(5000);
   }
 }
 
@@ -382,26 +367,21 @@ void wifi_connect(String ssid, String passkey, String comment){
 ////////////////////////////////////////////////////////////////////
 // Web Parsing Section
 void web_getDataFromWeb(String url, String web_user, String web_password){
-  
   String serverIp = WiFi.gatewayIP().toString();
   String website = "http://" + serverIp + "/" + url;
 
   Serial.print("url: ");
   Serial.println(website);
-
-  setDisplayHeader("Collect Data");
-
-  // Display Power
-  u8g2.setFont(NORMAL_FONT);
-  u8g2.setCursor(0, 2); // Start label at the beginning of line 2
-  u8g2.print("IP:");
-  u8g2.print(serverIp.c_str());
   
-  u8g2.setCursor(0, 3); // Start label at the beginning of line 2
-  u8g2.print("/");
-  u8g2.print(url.c_str());
-
-  u8g2.sendBuffer();
+  // Display Initialization
+  action.name = "Collect Data";
+  action.details = "Read Inverter";
+  action.params[0] = website.c_str();
+  action.params[1] = "Fetch: Waiting...";
+  action.params[2] = "Parse: Waiting...";
+  action.result = "In Progress";
+  action.resultDetails = "";
+  displayManager.displayAction(action);
   
   // Create an instance of WiFiClient
   WiFiClient client;
@@ -438,6 +418,9 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
       }
     }
 
+    action.params[1] = "Fetch: Done";
+    displayManager.displayAction(action);
+
     // Print the entire response
     //Serial.print(response);
     inverter.updateData(response);
@@ -448,21 +431,20 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
     Serial.printf("Energy today: %f\n", inverter.getInverterEnergyToday_kWh());
     Serial.printf("Energy total: %f\n", inverter.getInverterEnergyTotal_kWh());
 
-    u8g2.setCursor(0, 5); // Start label at the beginning of line 2
-    u8g2.print("> Parsing > OK");
-u8g2.sendBuffer();
+    action.params[2] = "Parse: Done";
+    action.result = "Done";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
 
     delay(2000);
 
   } else {   
-    u8g2.setCursor(0, 4);
-    u8g2.print(F("> Failed to connect to server."));
-    Serial.println("Failed to connect to server.");
-    u8g2.setCursor(0, 5);
-    u8g2.print(F("> Parsing > FAILED!"));
-
-    display_invert_blink(5,2000);
-    u8g2.sendBuffer();
+    action.params[1] = "Fetch: Failed";
+    action.params[2] = "Parse: Failed";
+    action.result = "FAIL";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
+    delay(5000);    
   }
 
 }
@@ -470,160 +452,63 @@ u8g2.sendBuffer();
 
 ////////////////////////////////////////////////////////////////////
 // DISPLAY Section
+void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms) {
+  
+  displayManager.drawBigNumber("Leistung", inverter.getInverterPowerNow_W(), "W", "aktuell",  "%f.0", numberFont, unitFont);
+  delay(duration_ms/3);
+  displayManager.drawBigNumber("Energie", inverter.getInverterEnergyToday_kWh(), "kWh", "heute",  "%f.1", numberFont, unitFont);
+  delay(duration_ms/3);
+  displayManager.drawBigNumber("Energie", inverter.getInverterEnergyTotal_kWh(), "kWh", "gesamt",  "%f.1", numberFont, unitFont);
+  delay(duration_ms/3);
 
-void displayInverterStatus(const Inverter& inverter) {
-  int char_col_1 = 7; // Position for values
-  int char_col_2 = 13; // Position for units, adjust as needed
-
-  setDisplayHeader("Inverter Status");
-
-  // Display Power
-  u8g2.setFont(NORMAL_FONT);
-  u8g2.setCursor(0, 2); // Start label at the beginning of line 2
-  u8g2.print("Power");
-  u8g2.setCursor(char_col_1, 2); // Set cursor for value
-  u8g2.print(inverter.getInverterPowerNow_W());
-  u8g2.setCursor(char_col_2, 2); // Set cursor for unit
-  u8g2.print("W");
-
-  // Display Energy Today - smaller annotation for "today"
-  u8g2.setFont(NORMAL_FONT);
-  u8g2.setCursor(0, 3);
-  u8g2.print("E");
-  u8g2.setFont(ANNOTATION_FONT); // Set smaller font for annotation
-  u8g2.setCursor(1, 3); // Place "today" annotation at the beginning
-  u8g2.print("today");
-  u8g2.setFont(NORMAL_FONT); // Reset to normal font for value
-  u8g2.setCursor(char_col_1, 3); // Adjust cursor position after "today"
-  char bufferToday[5]; // Buffer for formatting float with one decimal
-  sprintf(bufferToday, "%.1f", inverter.getInverterEnergyToday_kWh());
-  u8g2.print(bufferToday);
-  u8g2.setCursor(char_col_2, 3); // Set cursor for unit
-  u8g2.print("kWh");
-
-  // Display Total Energy - smaller annotation for "total"
-  u8g2.setFont(NORMAL_FONT);
-  u8g2.setCursor(0, 4);
-  u8g2.print("E");
-  u8g2.setFont(ANNOTATION_FONT); // Set smaller font for annotation
-  u8g2.setCursor(1, 4); // Place "today" annotation at the beginning
-  u8g2.print("total");
-  u8g2.setFont(NORMAL_FONT); // Reset to normal font for value
-  u8g2.setCursor(char_col_1, 4); // Adjust cursor position after "total"
-  char bufferTotal[5]; // Buffer for formatting integer value
-  sprintf(bufferTotal, "%d", (int)inverter.getInverterEnergyTotal_kWh());
-  u8g2.print(bufferTotal);
-  u8g2.setCursor(char_col_2, 4); // Set cursor for unit
-  u8g2.print("kWh");
-
-  u8g2.sendBuffer();
 }
 
-void displayTime() {
+void displayTime() {  
   int char_col_1 = 5; // Adjust as needed, based on character width and desired layout
   int char_col_2 = 12; // Additional column if needed for future use
 
   tmElements_t tm;
   breakTime(epochTime, tm);
 
-  setDisplayHeader("Time Sync");
+  char dateStr[24]; // Enough to hold DD.MM.YYYY\0
+  sprintf(dateStr,   "Date:   %02d.%02d.20%02d", tm.Day, tm.Month, (tm.Year + 1970) % 100);
+
+  char timeStr[24]; // Enough to hold HH:MM:SS\0
+  sprintf(timeStr,   "Time:   %02d:%02d:%02d", tm.Hour, tm.Minute, tm.Second);
 
   Serial.println("Displaying Time Sync Status...");
-
-  // Display Date
-  u8g2.setCursor(0, 2); // Label at the beginning of line 2
-  u8g2.print("Date");
-  u8g2.setCursor(char_col_1, 2); // Set cursor for value
-  char dateStr[11]; // Enough to hold DD.MM.YYYY\0
-  sprintf(dateStr, "%02d.%02d.20%02d", tm.Day, tm.Month, (tm.Year + 1970) % 100);
-  u8g2.print(dateStr);
-
   Serial.print("Date: ");
   Serial.println(dateStr);
-
-  // Display Time
-  u8g2.setCursor(0, 3); // Label at the beginning of line 3
-  u8g2.print("Time");
-  u8g2.setCursor(char_col_1, 3); // Set cursor for value
-  char timeStr[9]; // Enough to hold HH:MM:SS\0
-  sprintf(timeStr, "%02d:%02d:%02d", tm.Hour, tm.Minute, tm.Second);
-  u8g2.print(timeStr);
 
   Serial.print("Time: ");
   Serial.println(timeStr);
 
+  
   // Display Sync Interval
-  u8g2.setCursor(0, 4); // Label at the beginning of line 4
-  u8g2.print("Sync");
-  u8g2.setCursor(char_col_1, 4); // Set cursor for value
-  char syncStr[11]; // Assuming it fits, adjust size as needed
+  char syncStr[24]; // Assuming it fits, adjust size as needed
   long syncInterval = (millis() - lastUpdate) / 1000;
-  sprintf(syncStr, "%ld s", syncInterval);
-  u8g2.print(syncStr);
+  sprintf(syncStr, "Last:   %ld s", syncInterval);
 
   Serial.print("Sync Interval (s): ");
   Serial.println(syncStr);
 
-  // Print the status message
-  u8g2.setCursor(0, 5);
-  u8g2.print("NTP Sync: ");
   u8g2.print(timeSynced ? "Yes" : "No");
 
-  // Report the status of time synchronization with NTP
-  Serial.print("Time Synced with NTP: ");
-  Serial.println(timeSynced ? "Yes" : "No");
 
-  u8g2.sendBuffer();
-}
+  // Later, once more information is available or the action completes:
+  action.params[1] = dateStr;
+  action.params[2] = timeStr;
+  action.params[3] = syncStr;
 
-
-void setDisplayHeader(String HeaderText) {
-  u8g2.clearBuffer();
-  u8g2.setFont(HEADER_FONT); // Assuming this font has a fixed width of 8 pixels per character
-
-  int charWidth = 8; // Character width in pixels
-  int screenWidthChars = SCREEN_WIDTH / charWidth; // Calculate max number of characters per line
-  int textLength = HeaderText.length();
-
-  // Calculate padding to center the text
-  int padding = (screenWidthChars - textLength) / 2;
-  if (padding < 0) padding = 0; // Ensure padding is not negative
-
-  // Construct the padded header text
-  String paddedHeaderText = "";
-  for (int i = 0; i < padding; i++) {
-    paddedHeaderText += " "; // Add leading spaces
-  }
-  paddedHeaderText += HeaderText;
-  for (int i = 0; i <= padding; i++) { // potentially one additional last character for odd numbers. Extensions will be trimmed.
-    paddedHeaderText += " "; // Add trailing spaces
+  if (timeSynced){
+    action.result = "In Sync";
+  }else{
+    action.result = "Out of Sync";
   }
 
-  // Trim the paddedHeaderText if it exceeds the display width
-  if (paddedHeaderText.length() > screenWidthChars) {
-    paddedHeaderText = paddedHeaderText.substring(0, screenWidthChars);
-  }
-
-//  u8g2.setInverseFont(1); // Set inverse font for the header
-  u8g2.printf(0, 0, paddedHeaderText.c_str()); // Always start from the first column
-  
-//  u8g2.setInverseFont(0); // Reset inverse font after the header
-  u8g2.setFont(NORMAL_FONT); // Set back to normal font for subsequent text
-  u8g2.sendBuffer();
+  displayManager.displayAction(action);
 }
 
-
-void display_invert_blink(int times, int delay_ms){
-    for (int i = 0; i < times; i++){
-        // Turn off the display
-        u8g2.setPowerSave(1);
-        delay(100);
-        
-        // Turn on the display
-        u8g2.setPowerSave(0);
-        delay(delay_ms - 100);
-    }
-}
 
 
 // ToDo: TLS Based MQTT connection
@@ -632,29 +517,34 @@ void display_invert_blink(int times, int delay_ms){
 // MQTT SECTION
 void mqtt_submit_data(){
     
-    // Connect to Wi-Fi
-    
-    setDisplayHeader("Publish to MQTT");
-    u8g2.setCursor(0, 2);
-    u8g2.print("Server: ");
-    // Since U8x8 does not support `println`, we manually move to the next line after printing the server info
-    u8g2.setCursor(0, 3); // Adjust this line number based on your actual display content and layout
-    u8g2.print(MQTT_BROKER_HOST.c_str());
-    u8g2.setCursor(0, 4);
-    u8g2.print("Port: ");
-    // Assuming MQTT_BROKER_PORT is an integer, you might need to convert it to a string
-    char portStr[6]; // Large enough for typical port numbers (up to 65535) plus a null terminator
-    sprintf(portStr, "%d", MQTT_BROKER_PORT);
-    u8g2.print(portStr);
-    u8g2.sendBuffer();
+    action.name = "MQTT Sync";
+    action.details = "Publish data";
+    String brokerStr  = "Broker " + MQTT_BROKER_HOST.c_str();
+    action.params[0] = brokerStr.c_str();
 
-    u8g2.setCursor(0, 5);
+    // Assuming MQTT_BROKER_PORT is an integer, you might need to convert it to a string
+    char portStr[24]; // Large enough for typical port numbers (up to 65535) plus a null terminator
+    sprintf(portStr, "Port:  %d", MQTT_BROKER_PORT);
+    action.params[1] = portStr;
+
+    action.params[2] = "Login: Waiting...";
+    action.result = "In Progress";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
+
+
     if (!mqtt_client.connected()) {
         mqtt_reconnect();
     }
 
      if (mqtt_client.connected()) {
         Serial.println("Connected to MQTT server");
+        
+        action.params[2] = "Login: Success";
+        action.result = "In Progress";
+        action.resultDetails = "";
+        displayManager.displayAction(action);
+        
         mqtt_client.loop();
 
         // Publish data to a topic
@@ -764,20 +654,20 @@ void mqtt_submit_data(){
       String lastUpdateTopic = MQTT_BROKER_MAINTOPIC + "/lastUpdateTimestamp";
       mqtt_client.publish(lastUpdateTopic.c_str(), String(lastUpdateTimestamp).c_str());
 
-
       Serial.println("> MQTT data published"); 
       Serial.println("> MQTT CLOSED");
 
       mqtt_client.disconnect();
-      u8g2.setCursor(0, 6);
-      u8g2.print(" > published");
-      u8g2.sendBuffer();
+
+      action.result = "Done";
+      action.resultDetails = "Published";
+      displayManager.displayAction(action);
       delay(2000);
     }else{
-      u8g2.setCursor(0, 6);
-      u8g2.print(" > FAIL !");
-      u8g2.sendBuffer();
-      display_invert_blink(5,2000);
+      action.params[2] = "Login: Failed";
+      action.result = "Fail";
+      action.resultDetails = "";
+      displayManager.displayAction(action);
     }
      
 }
@@ -788,14 +678,21 @@ void mqtt_reconnect() {
     Serial.print("Attempting MQTT connection...");
     if (mqtt_client.connect("deye-esp-solar-bridge", MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str())) {
       Serial.println("connected");  
-      u8g2.print("connected");
-      u8g2.sendBuffer();
+      
+      action.params[2] = "Login: Success";
+      action.result = "In Progress";
+      action.resultDetails = "";
+      displayManager.displayAction(action);
+      
     } else {
+      action.result = "In Progress";
+      action.resultDetails = "retry 2s";
+      displayManager.displayAction(action);
+
       Serial.print("failed, rc=");
       Serial.print(mqtt_client.state());
       Serial.println("try again in 2 seconds");
-      u8g2.print(".");
-      u8g2.sendBuffer();
+      
       delay(2000);
     }
     attempts++;
