@@ -6,20 +6,9 @@
 
 #include <time.h>
 
-
 // Web and WiFi
 #include <WiFiClient.h>
 #include <base64.h>
-
-#ifdef ESP32
-#include <WiFi.h> // ESP32 specific WiFi library
-// ESP32 specific setup and functions
-#endif
-
-#ifdef ESP8266
-#include <ESP8266WiFi.h> // ESP8266 specific WiFi library
-// ESP8266 specific setup and functions
-#endif
 
 #include "config.h"
 #include "DisplayManager.h"
@@ -33,8 +22,15 @@
 // Configuration and user settings
 #include "arduino_secrets.h"
 
-#define USE_NTP_SYNC 
-// TimeSynchronization and handling
+#ifdef ESP32
+#include <WiFi.h> // ESP32 specific WiFi library
+// ESP32 specific setup and functions
+#endif
+
+#ifdef ESP8266
+#include <ESP8266WiFi.h> // ESP8266 specific WiFi library
+// ESP8266 specific setup and functions
+#endif
 
 
 
@@ -337,7 +333,7 @@ void wifi_connect(String ssid, String passkey, String comment){
     action.result = "Connected";
     action.resultDetails = "";
     displayManager.displayAction(action);
-  
+    delay(2000);
   } else {
     connected = false;
     

@@ -22,7 +22,8 @@
 
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
-
+// TimeSynchronization and handling
+//#define USE_NTP_SYNC
 #define GMT_OFFSET_SECONDS 3600 // Offset of your timezone to GMT in seconds (3600 = 1h)
 #define DST_OFFSET_SECONDS 3600 // Offset of your Daylight Saving Time in seconds (3600 = 1h)
 #define NTP_SERVER "pool.ntp.org" // Server to use for time sync
@@ -36,5 +37,6 @@
 ///////////////////////////////////////////////////////////////////////
 // Timing behavior
 #define DURATION_STAY_IN_HOME_NETWORK 200  // Seconds
+
 
 
