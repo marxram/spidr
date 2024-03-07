@@ -1,26 +1,20 @@
 #include <Arduino.h>
-
-// ESP8266WiFi Built-In by Ivan Grokhotkov Version 1.0.0
-#include <ESP8266WiFi.h> 
-
-// Extra library: PubSubClient by Nick O'Leary <nick.oleary@gmail.com>  V2.8.0
 #include <PubSubClient.h>
-
-// DISPLAY
-//
-// Adafruit SSD1306 by Adafruit V2.5.7
-// Adafruit "GFX Library" by Adafruit Version 1.11.8 INSTALLED
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <U8x8lib.h>
+#include <U8g2lib.h>
+
+#include <time.h>
 
 // Web and WiFi
 #include <WiFiClient.h>
 #include <base64.h>
 
+#include "config.h"
+#include "DisplayManager.h"
+#include "MQTTManager.h"
 // Inverter Data handling 
 #include "Inverter.h"
-
 // Include Udp Channel inverter communication
 #include "InverterUdp.h"
 
@@ -28,22 +22,16 @@
 // Configuration and user settings
 #include "arduino_secrets.h"
 
-// TimeSynchronization and handling
-#include <NTPClient.h>
-#include <TimeLib.h>
+#ifdef ESP32
+#include <WiFi.h> // ESP32 specific WiFi library
+// ESP32 specific setup and functions
+#endif
 
+#ifdef ESP8266
+#include <ESP8266WiFi.h> // ESP8266 specific WiFi library
+// ESP8266 specific setup and functions
+#endif
 
-///////////////////////////////////////////////////////////////////////
-// HARDWARE SPECIFIC ADAPTIONS 
-
-// DISPLAY ------------------------------------------------------------
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 32 // OLED display height, in pixels
-
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-
-#define DURATION_SLEEP_IN_HOME_NETWORK 200  // Seconds
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -70,24 +58,20 @@ String INVERTER_WEBACCESS_PWD = SECRET_INVERTER_WEBACCESS_PWD;
 // Other rather static parameters
 String status_page_url = "status.html" ;
 
-unsigned long startTime =  0;
 
+unsigned long lastSyncTime; // Last NTP sync time in millis
+unsigned long startTime =  0;
+bool timeSynced = false;
 
 ///////////////////////////////////////////////////////////////////////
 // Global variables
 bool connected = false;
 
-
 ////////////////////////////////////////////////////////////////////
 // Intializations 
-
-// Initialize the display
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
-// Initialize the MQTT client
-WiFiClient espClient;
-PubSubClient mqtt_client(espClient);
-
+DisplayManager displayManager;
+ActionData action; // Action Structure to Display
+MQTTManager* mqttManager = nullptr; // Pointer declaration
 Inverter inverter;
 InverterUdp inverterUdp;
 
@@ -95,219 +79,296 @@ const int udpServerPort = 50000; // manual port
 const int udpLocalPort = 48899; // Fixed port of deye inverter
 const int udpTimeoput_s = 10; // 10 Seconds Timeout 
     
-// Time Synchronization
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
-unsigned long updateInterval = 20000; // 1 minute
-long lastUpdate;
-const int maxNtpRetries = 5;
-unsigned long epochTime = 0;
-bool ntpTimeAvailable = false;
-
-
 
 ////////////////////////////////////////////////////////////////////
 // Function declarations
-void mqtt_submit_data();
-void mqtt_reconnect();
-
 void wifi_connect(String ssid, String passkey, String comment);
+void readInverterDataFromWebInterface(String url, String web_user, String web_password);
+void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms);
+void updateAndPublishData();
+void setupTime();
+unsigned long getCurrentEpochTime();
+time_t buildTimeToEpoch(const char* date, const char* time);
 
-void web_getDataFromWeb(String url, String web_user, String web_password);
-
-void displayInverterStatus(const Inverter& inverter);
-
+void setDisplayHeader(String HeaderText);
 
 ////////////////////////////////////////////////////////////////////
 // SETUP Function
 
 void setup() {
   Serial.begin(115200);
-  delay(10);
+  delay(10); 
 
-  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
+  #ifdef SCREEN_ADDRESS
+    displayManager.setI2CAddress(SCREEN_ADDRESS); 
+  #endif 
+
+  displayManager.init();
+   // Show also more output and Parameters like Url, IP etc. 
+  displayManager.verboseDisplay = true;
+
+  // Try to connect to the Home Network
+  wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
+
+
+  if (mqttManager == nullptr) {
+    mqttManager = new MQTTManager(MQTT_BROKER_HOST.c_str(), MQTT_BROKER_PORT, MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str(), displayManager, inverter);
   }
 
-  Serial.println("Initialize inverter");
-  //inverter.printVariables();
-
-  // Prepare MQTT client
-  mqtt_client.setServer(MQTT_BROKER_HOST.c_str(),MQTT_BROKER_PORT);
-
-  delay (1000);
-
-  Serial.print("Init Time Client "); 
-  timeClient.begin();
-  timeClient.setTimeOffset(7200);
-
-  wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
-    Serial.print("Connecting to Home Network first to get the time from NTP "); 
-    if (connected) {
-        delay(2000);
-        ntpTimeAvailable = syncTime();
-        displayTime();
-        delay(5000);
-    }
-
+  // Initiliase the NTP client, or fallback to build time if USE_NTP_SYNC is not defined
+  setupTime();
+  
 }
 
 
 ////////////////////////////////////////////////////////////////////
 // MAIN LOOP
-
-void loop() {
+void loop() {   
     // INVERTER NETWORK 
-    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
+    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter WiFi");
     // If connected with the Solar Inverter
-    if (connected) {
-      // ToDo-Option: Replace Web scraping by Modbus Read commands
-      web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
-      
+    if (connected) {  
       // Starting UDP Connection inside the AP Network of inverter
       bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
       
       // Getting time from inverter, stored in inverterUDP object
       String response = inverterUdp.inverter_readtime();
+
+      unsigned long epochTime = getCurrentEpochTime();
+      inverterUdp.inverter_settime(epochTime);
       
-      if (ntpTimeAvailable){
-        Serial.println("Triggering time update");
-        inverterUdp.inverter_settime(epochTime);
-      } else {
-        Serial.println("No NTP time available. Skipping sync");
-      }
+      // ToDo: Read other parameters from the UDP interface
 
       // Close connection before leaving to Home Network
       inverterUdp.inverter_close();
+
+      // Retrieving the data from the inverter via the web interface
+      readInverterDataFromWebInterface(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
     }
 
     // Output Information 
-    Serial.println("Print WebInverter");
+    Serial.println("Print Inverter Data");
     inverter.printVariables();
-    displayInverterStatus(inverter);
+  
+    // Show most impotrtant values on the display
+    displayInverterStatus(inverter, 6000);
 
     // Switching to Home Network
-    wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+    wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
     if (connected) {
-        mqtt_submit_data();
+        unsigned long currentMillis = millis();
+        if (timeSynced && (currentMillis - lastSyncTime > 600000)) { // 600,000 milliseconds = 10 minutes
+            Serial.println("Attempting time resynchronization...");
+            setupTime();
+        }
+        
+        
+        mqttManager->publishAllData();
         delay(3000); // Show data for 3 Seconds
-        ntpTimeAvailable = syncTime();
-        displayTime();
+        
+        #ifdef USE_NTP_SYNC
+          displayTime(10);
+        #endif
+
         int secondsInHomeNetwork =0;
-        while (secondsInHomeNetwork < DURATION_SLEEP_IN_HOME_NETWORK ){
+        while (secondsInHomeNetwork < DURATION_STAY_IN_HOME_NETWORK ){
           // Toggle between Time and Solar Production Screen
-          displayInverterStatus(inverter);
-          delay(5000);
-          secondsInHomeNetwork+=5;
+          displayInverterStatus(inverter, 10000);
+          secondsInHomeNetwork+=10;
           
-          displayTime();
-          delay(5000);
-          secondsInHomeNetwork+=5;
+          #ifdef USE_NTP_SYNC
+            displayTime(10);
+            secondsInHomeNetwork+=10;
+          #endif          
         }
     }
+
 }
+
+
 
 
 ////////////////////////////////////////////////////////////////////
 // Sync Time
-bool syncTime (){
-    bool synced = false;
-    Serial.println("Syncing time...");
-        int retries = 0;
-        while (retries < maxNtpRetries) {
-            timeClient.update();
-            epochTime = timeClient.getEpochTime();
-            if (epochTime > 0) {  // If time is valid
-                synced = true;
-                lastUpdate = millis();
-                break; // Exit the while loop if time was retrieved and processed successfully
-            } else {
-                retries++;
-                Serial.println("Failed to get time, retrying...");
-                delay(1000); // Delay for a second before retrying
-            }
-      }
-    return synced;
 
+void setupTime() {
+    time_t now = time(nullptr);
+    time_t buildEpoch = buildTimeToEpoch(__DATE__, __TIME__);
+ 
+    // Only sync time if USE_NTP_SYNC is defined and it's the first run or last sync was unsuccessful
+    #ifdef USE_NTP_SYNC
+    if (!timeSynced || now <= buildEpoch) {
+        
+        action.name     =  "Time Sync";
+        action.details  = "NTP_SERVER";
+        action.params[0] = "GMT: " + String(GMT_OFFSET_SECONDS/3600);
+        action.params[1] = "DST: " + String(DST_OFFSET_SECONDS/3600);
+        action.result = "In Progress";
+        action.resultDetails = "";
+        displayManager.displayAction(action);
+        
+        configTime(GMT_OFFSET_SECONDS, DST_OFFSET_SECONDS, NTP_SERVER, NTP_FALLBACK_SERVER);
+        delay(1000); // Give time for NTP request to complete
+
+        now = time(nullptr); // Update current time after NTP request
+        if (now > buildEpoch) {
+            Serial.println("NTP sync successful.");
+            lastSyncTime = millis(); // Record successful sync time
+            timeSynced = true;
+            action.result = "Done";
+            action.resultDetails = "synced";
+            displayManager.displayAction(action);
+            delay(2000);
+        } else {
+            Serial.println("Failed to obtain time from NTP server. Using build time as fallback.");
+            timeSynced = false; // NTP sync attempted and failed
+            action.result = "Failed";
+            action.resultDetails = "No Server";
+            displayManager.displayAction(action);
+            delay(2000);
+        }
+    } else {
+        Serial.println("Time previously synchronized or NTP sync not required.");
+    }
+    #else
+    if (now <= buildEpoch || !timeSynced) {
+        
+        // Use build time if NTP sync is disabled or if time hasn't been successfully set yet
+        struct timeval tv = { .tv_sec = buildEpoch };
+        settimeofday(&tv, NULL);
+        Serial.println("NTP sync is disabled. Using build time as fallback.");
+        lastSyncTime = millis();
+        timeSynced = false; // Consider time as synchronized since we fallback to build time
+
+
+        time_t now = time(NULL); // Get current time as time_t
+        struct tm timeinfo; // Create a tm struct to hold local time
+        localtime_r(&now, &timeinfo); // Convert time_t to tm as local time
+
+        char dateStr[24]; // Buffer to hold formatted date string
+        char timeStr[24]; // Buffer to hold formatted time string
+
+        // Format date and time into strings
+        strftime(dateStr, sizeof(dateStr), "Date: %Y-%m-%d", &timeinfo);
+        strftime(timeStr, sizeof(timeStr), "Time: %H:%M:%S", &timeinfo);
+
+        // Assuming 'action' and 'displayManager' are accessible here
+        action.name     =  "Set Time";
+        action.details  = "Using Build Time";
+        action.params[0] = dateStr;
+        action.params[1] = timeStr;
+        action.params[2] = "";
+        action.params[3] = "";
+        action.result = "Done";
+        action.resultDetails = "";
+        displayManager.displayAction(action);
+        delay(2000);
+    }
+    #endif
+}
+
+// Implement the helper function to convert build date and time to epoch time
+time_t buildTimeToEpoch(const char* date, const char* time) {
+    struct tm t;
+    // Parse date and time from build strings and convert to time_t
+    // Implementation depends on your environment and may require adjustments
+    strptime(date, "%b %d %Y", &t);
+    strptime(time, "%H:%M:%S", &t);
+    return mktime(&t); // Convert to epoch time
+}
+
+unsigned long getCurrentEpochTime() {
+    return time(nullptr); // Returns the current time as a time_t value which is epoch time
 }
 
 
 ////////////////////////////////////////////////////////////////////
 // WiFi Functions
 void wifi_connect(String ssid, String passkey, String comment){
+  Serial.println("----------------------------------------------------");
+  Serial.print("Connecting to ");
+  Serial.print(ssid);
+
+
+  // Display Initialization
+  action.name = comment;
+  action.details    = "Connect to WiFi";
+  String network    = "SSID: " + ssid;
+  action.params[0]  = network.c_str();
+  action.params[1]  = "IP:   Waiting...";
+  //action.params[2] = "GW-IP: Waiting...";
+  action.result = "In Progress";
+  action.resultDetails = "";
+  displayManager.displayAction(action);
+  
   connected = false;
   WiFi.disconnect();
   delay(1000);
-  // Connect to Wi-Fi
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.println(F("++ Switching WiFi ++"));
-  display.print("SSID: ");
-  display.println(ssid);
-  display.display();
-  
   
   Serial.println("----------------------------------------------------");
   Serial.print("Connecting to ");
   Serial.print(ssid);
-  WiFi.begin(ssid, passkey);
+  
+  // Connect
+  WiFi.begin(ssid.c_str(), passkey.c_str());
 
- 
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 20) { // 10 sec timeout
-    display.print(F("."));
-    display.display();
-    delay(500);
-    Serial.print(".");
+    delay(500); // Wait for 500ms
+    Serial.print("."); // Also print dot on the Serial Monitor.
     attempts++;
   }
 
-  //display.clearDisplay();
-  //display.setCursor(0,0);
-  if(WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED) {
     connected = true;
-    display.println(F(" OK"));
-    display.print(F("IP: "));
-    display.println(WiFi.localIP());
     Serial.println("--> connected");
-    display.display();
-    delay(3000);
+    delay(3000); // Display IP for 3 seconds
+  
+    // Display Result
+    String ip_string = WiFi.localIP().toString().c_str();
 
+    String ip = "IP:   " + ip_string;
+    action.params[1] = ip.c_str();
+    //action.params[2] = "GW-IP: Waiting...";
+    action.result = "Connected";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
+    delay(2000);
   } else {
     connected = false;
-    display.println(F("Failed to connect"));
-    display.println(F("Check credential"));
-    display.println(F("or availability"));
-    display.display();
-    display_invert_blink(5,2000);
+    
+    // Display Result
+    action.params[1] = "Check Credentials";
+    //action.params[2] = "GW-IP: Waiting...";
+    action.result = "FAILED";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
+    delay(5000);
   }
 }
 
 
 ////////////////////////////////////////////////////////////////////
 // Web Parsing Section
-void web_getDataFromWeb(String url, String web_user, String web_password){
-  
+void readInverterDataFromWebInterface(String url, String web_user, String web_password){
   String serverIp = WiFi.gatewayIP().toString();
   String website = "http://" + serverIp + "/" + url;
 
   Serial.print("url: ");
   Serial.println(website);
+  
+  // Display Initialization
+  action.name = "Collect Data";
+  action.details = "Read Inverter";
+  action.params[0] = "http://" + serverIp;
+  action.params[1] = url;
+  action.params[2] = "Waiting...";
+  action.result = "In Progress";
+  action.resultDetails = "";
+  displayManager.displayAction(action);
+  delay(2000);
 
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.println(F("++ Collecting Data ++"));
-  display.println(serverIp);
-  display.println( "/" + url);
-  display.display();
-
-
+  
   // Create an instance of WiFiClient
   WiFiClient client;
 
@@ -343,6 +404,9 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
       }
     }
 
+    action.params[2] = "Fetched content";
+    displayManager.displayAction(action);
+
     // Print the entire response
     //Serial.print(response);
     inverter.updateData(response);
@@ -353,15 +417,20 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
     Serial.printf("Energy today: %f\n", inverter.getInverterEnergyToday_kWh());
     Serial.printf("Energy total: %f\n", inverter.getInverterEnergyTotal_kWh());
 
-    display.println(F("> Parsing > OK"));
-    display.display();
+    action.params[2] = "Parse: Done";
+    action.result = "Done";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
+
     delay(2000);
 
-  } else {
-    Serial.println("Failed to connect to server.");
-    display.println(F("> Parsing > FAILED!"));
-    display.display();
-    display_invert_blink(5,2000);
+  } else {   
+    action.params[1] = "Fetch: Failed";
+    action.params[2] = "Parse: Failed";
+    action.result = "FAIL";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
+    delay(5000);    
   }
 
 }
@@ -369,270 +438,62 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
 
 ////////////////////////////////////////////////////////////////////
 // DISPLAY Section
-void displayInverterStatus(const Inverter& inverter) {
-  int col1 = 70;
-  int col2 = 100;
-
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
+void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms) {
   
-  // Connect to Wi-Fi
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.println("++ Inverter Status ++");
-
-  // Display Power
-
-  display.print("Power ");
-  display.setCursor(col1,8);
-  display.print(inverter.getInverterPowerNow_W(), 0);
-  display.setCursor(col2,8);
-  display.println(" W");
-
-  // Display Energy Today
-  display.print("E (today)");
-  display.setCursor(col1,16);
-  display.print(inverter.getInverterEnergyToday_kWh(), 1);
-  display.setCursor(col2,16);
-  display.println(" kWh");
-
-  // Display Total Energy
-  display.print("E (total)");
-  display.setCursor(col1,24);
-  display.print(inverter.getInverterEnergyTotal_kWh(), 0);
-  display.setCursor(col2,24);
-  display.println(" kWh");
-
-  display.display();
-}
-
-void displayTime() {
-  int col1 = 70;
-  int col2 = 100;
-
-  tmElements_t tm;
-  breakTime(epochTime, tm);
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  
-  // Connect to Wi-Fi
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.println("   ++ Time Sync ++");
-
-  // Display Power
-
-  display.print("Date ");
-  display.setCursor(col1,8);
-  display.print(String((tm.Year + 1970) % 100) +"."+ String(tm.Month) +"."+ String(tm.Day) );
-  display.setCursor(col2,8);
-  display.println("");
-
-  // Display Energy Today
-  display.print("Time");
-  display.setCursor(col1,16);
-  display.print(String(tm.Hour) +":"+ String(tm.Minute) +":"+ String(tm.Second) );
-  display.setCursor(col2,16);
-  display.println(" ");
-
-  // Display Total Energy
-  display.print("Sync");
-  display.setCursor(col1,24);
-  display.print(String( lastUpdate - millis() ) );
-  display.setCursor(col2,24);
-  display.println(" ");
-
-  display.display();
-}
-
-void display_invert_blink(int times, int delay_ms){
-    for (int i =0; i < times ; i++){
-        display.invertDisplay(true);
-        display.display();
-        delay(delay_ms/2);
-        display.invertDisplay(false);
-        display.display();
-        delay(delay_ms/2);
-    }
-
+  displayManager.drawBigNumberWithHeader("Leistung aktuell", inverter.getInverterPowerNow_W(), "W", "",  "%.0f");
+  delay(duration_ms/3);
+  displayManager.drawBigNumberWithHeader("Energie heute", inverter.getInverterEnergyToday_kWh(), "kWh", "",  "%.1f");
+  delay(duration_ms/3);
+  displayManager.drawBigNumberWithHeader("Energie gesamt", inverter.getInverterEnergyTotal_kWh(), "kWh", "",  "%.1f");
+  delay(duration_ms/3);
 }
 
 
-// ToDo: TLS Based MQTT connection
+void displayTime(int displayDurationSeconds) {
+    const int delayPerIteration = 300; // Delay per iteration in ms
+    int iterations = (displayDurationSeconds * 1000) / delayPerIteration;
 
-////////////////////////////////////////////////////////////////////
-// MQTT SECTION
-void mqtt_submit_data(){
-    
-    // Connect to Wi-Fi
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0,0);
-    display.println(F("++ Publish to MQTT ++"));
-    display.println("Server: ");
-    display.print(MQTT_BROKER_HOST.c_str());
-    display.print(":");
-    display.println(MQTT_BROKER_PORT);
-    display.display();
-    
-    if (!mqtt_client.connected()) {
-        mqtt_reconnect();
+    for (int i = 0; i < iterations; i++) {
+        time_t now = time(nullptr); // Get the current time
+        struct tm *timeinfo = localtime(&now); // Convert to local time structure
+
+        char dateStr[24], timeStr[24], syncStr[24];
+        strftime(dateStr, sizeof(dateStr), "Date:   %d.%m.%Y", timeinfo);
+        strftime(timeStr, sizeof(timeStr), "Time:   %H:%M:%S", timeinfo);
+        
+        long syncInterval = (millis() - lastSyncTime) / 1000; // Convert milliseconds to seconds
+        int hours = syncInterval / 3600; // Calculate total hours
+        int minutes = (syncInterval % 3600) / 60; // Calculate remaining minutes
+        int seconds = syncInterval % 60; // Calculate remaining seconds
+
+        if (hours > 0) {
+            // If there are hours, include them in the string
+            sprintf(syncStr, "Last:   %dh %dm %2ds", hours, minutes, seconds);
+        } else if (minutes > 0) {
+            // If there are no hours but there are minutes, only include minutes and seconds
+            sprintf(syncStr, "Last:   %dm %ds", minutes, seconds);
+        } else {
+            // If there are only seconds, just include seconds
+            sprintf(syncStr, "Last:   %2ds", seconds);
+        }
+
+        // Assume action is a global or properly passed to this function
+        action.params[0] = dateStr;
+        action.params[1] = timeStr;
+        action.params[2] = syncStr;
+        action.result = timeSynced ? "In Sync" : "Out of Sync";
+
+        // Call your display manager's method to update the display
+        displayManager.displayAction(action);
+
+        delay(delayPerIteration);
     }
-
-     if (mqtt_client.connected()) {
-        Serial.println("Connected to MQTT server");
-        mqtt_client.loop();
-
-        // Publish data to a topic
-        String data = "";
-        String topic = "";
-
-
-      // Publish getWebdataSn
-      String snTopic = MQTT_BROKER_MAINTOPIC + "/inverter/serial";
-      mqtt_client.publish(snTopic.c_str(), inverter.getInverterSerial().c_str());
-
-    /* Removing unpopulated 
-      // Publish getWebdataMsvn
-      String msvnTopic = MQTT_BROKER_MAINTOPIC + "/inverter/msvn";
-      mqtt_client.publish(msvnTopic.c_str(), inverter.getWebdataMsvn().c_str());
-
-      // Publish getWebdataSsvn
-      String ssvnTopic = MQTT_BROKER_MAINTOPIC + "/inverter/ssvn";
-      mqtt_client.publish(ssvnTopic.c_str(), inverter.getWebdataSsvn().c_str());
-
-      // Publish getWebdataPvType
-      String pvTypeTopic = MQTT_BROKER_MAINTOPIC + "/inverter/pvType";
-      mqtt_client.publish(pvTypeTopic.c_str(), inverter.getWebdataPvType().c_str());
-
-      // Publish getWebdataRateP
-      String ratePTopic = MQTT_BROKER_MAINTOPIC + "/inverter/rateP";
-      mqtt_client.publish(ratePTopic.c_str(), inverter.getWebdataRateP().c_str());
-    */
-
-      // Publish getInverterPowerNow_W (float)
-      float nowPTopic = inverter.getInverterPowerNow_W();
-      String nowPTopicName = MQTT_BROKER_MAINTOPIC + "/inverter/power_W";
-      mqtt_client.publish(nowPTopicName.c_str(), String(nowPTopic).c_str());
-
-      // Publish getInverterEnergyToday_kWh (float)
-      float todayETopic = inverter.getInverterEnergyToday_kWh();
-      String todayETopicName = MQTT_BROKER_MAINTOPIC + "/inverter/energy_today_kWh";
-      mqtt_client.publish(todayETopicName.c_str(), String(todayETopic).c_str());
-
-      // Publish getInverterEnergyTotal_kWh (float)
-      float totalETopic = inverter.getInverterEnergyTotal_kWh();
-      String totalETopicName = MQTT_BROKER_MAINTOPIC + "/inverter/energy_total_kWh";
-      mqtt_client.publish(totalETopicName.c_str(), String(totalETopic).c_str());
-
-      // Publish getWebdataAlarm
-      String alarmTopic = MQTT_BROKER_MAINTOPIC + "/status/alarm";
-      mqtt_client.publish(alarmTopic.c_str(), inverter.getWebdataAlarm().c_str());
-
-      // Publish getWebdataUtime
-      String utimeTopic = MQTT_BROKER_MAINTOPIC + "/status/utime";
-      mqtt_client.publish(utimeTopic.c_str(), inverter.getWebdataUtime().c_str());
-
-      // Publish getLoggerModuleID
-      String coverMidTopic = MQTT_BROKER_MAINTOPIC + "/logger/serial";
-      mqtt_client.publish(coverMidTopic.c_str(), inverter.getLoggerModuleID().c_str());
-
-      // Publish getLoggerSoftwareVersion
-      String coverVerTopic = MQTT_BROKER_MAINTOPIC + "/logger/version";
-      mqtt_client.publish(coverVerTopic.c_str(), inverter.getLoggerSoftwareVersion().c_str());
-
-      // Publish getLoggerWifiMode
-      String coverWmodeTopic = MQTT_BROKER_MAINTOPIC + "/logger/wifi_mode";
-      mqtt_client.publish(coverWmodeTopic.c_str(), inverter.getLoggerWifiMode().c_str());
-
-      // Publish getLoggerApSsid
-      String coverApSsidTopic = MQTT_BROKER_MAINTOPIC + "/logger/ApSsid";
-      mqtt_client.publish(coverApSsidTopic.c_str(), inverter.getLoggerApSsid().c_str());
-
-      // Publish getLoggerApIp
-      String coverApIpTopic = MQTT_BROKER_MAINTOPIC + "/logger/ApIp";
-      mqtt_client.publish(coverApIpTopic.c_str(), inverter.getLoggerApIp().c_str());
-
-      // Publish getLoggerApMac
-      String coverApMacTopic = MQTT_BROKER_MAINTOPIC + "/logger/ApMac";
-      mqtt_client.publish(coverApMacTopic.c_str(), inverter.getLoggerApMac().c_str());
-
-      // Publish getLoggerStaSsid
-      String coverStaSsidTopic = MQTT_BROKER_MAINTOPIC + "/logger/StaSsid";
-      mqtt_client.publish(coverStaSsidTopic.c_str(), inverter.getLoggerStaSsid().c_str());
-
-      // Publish getLoggerStaRssi
-      String coverStaRssiTopic = MQTT_BROKER_MAINTOPIC + "/logger/StaRssi";
-      mqtt_client.publish(coverStaRssiTopic.c_str(), inverter.getLoggerStaRssi().c_str());
-
-      // Publish getLoggerStaIp
-      String coverStaIpTopic = MQTT_BROKER_MAINTOPIC + "/logger/StaIp";
-      mqtt_client.publish(coverStaIpTopic.c_str(), inverter.getLoggerStaIp().c_str());
-
-      // Publish getLoggerStaMac
-      String coverStaMacTopic = MQTT_BROKER_MAINTOPIC + "/logger/StaMac";
-      mqtt_client.publish(coverStaMacTopic.c_str(), inverter.getLoggerStaMac().c_str());
-
-      // Publish getRemoteServerStatusA
-      String statusATopic = MQTT_BROKER_MAINTOPIC + "/remote-server/statusA";
-      mqtt_client.publish(statusATopic.c_str(), inverter.getRemoteServerStatusA().c_str());
-
-      // Publish getRemoteServerStatusB
-      String statusBTopic = MQTT_BROKER_MAINTOPIC + "/remote-server/statusB";
-      mqtt_client.publish(statusBTopic.c_str(), inverter.getRemoteServerStatusB().c_str());
-
-      // Publish getRemoteServerStatusC
-      String statusCTopic = MQTT_BROKER_MAINTOPIC + "/remote-server/statusC";
-      mqtt_client.publish(statusCTopic.c_str(), inverter.getRemoteServerStatusC().c_str());
-
-      // Publish getLastUpdateTimestamp (unsigned long)
-      unsigned long lastUpdateTimestamp = inverter.getLastUpdateTimestamp();
-      String lastUpdateTopic = MQTT_BROKER_MAINTOPIC + "/lastUpdateTimestamp";
-      mqtt_client.publish(lastUpdateTopic.c_str(), String(lastUpdateTimestamp).c_str());
-
-
-      Serial.println("> MQTT data published"); 
-      Serial.println("> MQTT CLOSED");
-
-      mqtt_client.disconnect();
-
-      display.print(" > published");
-      display.display();
-
-    }else{
-      display.println(" > FAIL !");
-      display.display();
-      display_invert_blink(5,2000);
-    }
-     
 }
 
-void mqtt_reconnect() {
-  int attempts = 0;
-  while (!mqtt_client.connected() && attempts < 5) {
-    Serial.print("Attempting MQTT connection...");
-    
-    if (mqtt_client.connect("deye-esp-solar-bridge", MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str())) {
-      Serial.println("connected");
-      
-      display.print("connected");
-      
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(mqtt_client.state());
-      Serial.println(" try again in 2 seconds");
-      display.print(".");
-      delay(2000);
+
+void updateAndPublishData() {
+    if (mqttManager != nullptr) {
+    // Now you can call methods on mqttManager
+    mqttManager->publishAllData();
     }
-    attempts++;
-  } 
 }

@@ -2,6 +2,7 @@
 #define InverterUdp_h
 
 #include "Arduino.h"
+#include "RTClib.h" // RTC Library
 // AT Commands
 #include <WiFiUdp.h>
 
@@ -16,6 +17,9 @@ public:
   bool hexStringToDec(String hexString, int& output) ;
   String decToHex(int dec);
   String inverter_settime(unsigned long epochTime);
+  bool isDefaultTimeIsSet();
+  DateTime getInverterTime();
+  bool isTimeSynchronized();
 
 
 private:
@@ -28,6 +32,8 @@ private:
   void removeByte(char* buffer, char byteToRemove, size_t bufferSize);
   long calculateUnixTimestamp(int year, int month, int day, int hour, int minute, int second);
   String writeModbus(String address, String  length, String payload, String payloadlength);
+  bool defaultTimeIsSet = true;
+  DateTime inverterTime;
 
   String noResponse;
   String RESP_TIME_UNSET;
