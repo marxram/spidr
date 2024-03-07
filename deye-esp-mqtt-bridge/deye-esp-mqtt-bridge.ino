@@ -235,7 +235,7 @@ void setup() {
 // MAIN LOOP
 void loop() {   
     // INVERTER NETWORK 
-    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
+    wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter WiFi");
     // If connected with the Solar Inverter
     if (connected) {  
       // Starting UDP Connection inside the AP Network of inverter
@@ -247,6 +247,9 @@ void loop() {
       // ToDo: Only if time differs, do a sync
 
       // Setting Time inside the inverter via UDP
+      // If this is the correct time does not really matter. The most important thing is 
+      // that the inverter resets the daily energy production counter, if the time was changed
+      // from the default value 
       #ifdef USE_NTP_SYNC
         if (ntpTimeAvailable){
           Serial.println("Triggering time update");
@@ -277,7 +280,7 @@ void loop() {
     displayInverterStatus(inverter, 6000);
 
     // Switching to Home Network
-    wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
+    wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
     if (connected) {
         submitDataViaMQTT();
         delay(3000); // Show data for 3 Seconds
@@ -341,11 +344,11 @@ void wifi_connect(String ssid, String passkey, String comment){
 
 
   // Display Initialization
-  action.name = "Home WiFi";
+  action.name = comment;
   action.details   = "Connect to WiFi";
   String network = "SSID: " + ssid;
   action.params[0] = network.c_str();
-  action.params[1] = "IP:    Waiting...";
+  action.params[1] = "IP:  Waiting...";
   //action.params[2] = "GW-IP: Waiting...";
   action.result = "In Progress";
   action.resultDetails = "";
@@ -377,7 +380,7 @@ void wifi_connect(String ssid, String passkey, String comment){
     // Display Result
     String ip_string = WiFi.localIP().toString().c_str();
 
-    String ip = "IP:    " + ip_string;
+    String ip = "IP:  " + ip_string;
     action.params[1] = ip.c_str();
     //action.params[2] = "GW-IP: Waiting...";
     action.result = "Connected";
@@ -490,11 +493,11 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
 // DISPLAY Section
 void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms) {
   
-  displayManager.drawBigNumberWithHeader("Leistung", inverter.getInverterPowerNow_W(), "W", "aktuell",  "%f.0");
+  displayManager.drawBigNumberWithHeader("Leistung aktuell", inverter.getInverterPowerNow_W(), "W", "",  "%.0f");
   delay(duration_ms/3);
-  displayManager.drawBigNumberWithHeader("Energie", inverter.getInverterEnergyToday_kWh(), "kWh", "heute",  "%f.1");
+  displayManager.drawBigNumberWithHeader("Energie heute", inverter.getInverterEnergyToday_kWh(), "kWh", "",  "%.1f");
   delay(duration_ms/3);
-  displayManager.drawBigNumberWithHeader("Energie", inverter.getInverterEnergyTotal_kWh(), "kWh", "gesamt",  "%f.1");
+  displayManager.drawBigNumberWithHeader("Energie gesamt", inverter.getInverterEnergyTotal_kWh(), "kWh", "",  "%.1f");
   delay(duration_ms/3);
 }
 

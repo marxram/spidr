@@ -28,9 +28,6 @@ public:
     void drawBigNumberWithHeader(String header, float number, String unit, String annotation, String formattingStr);
     void setI2CAddress(uint8_t adr);
     bool verboseDisplay = false;
-    float myNumber;
-    String myUnit;
-    String myFormattingStr;
 
 
 private:
