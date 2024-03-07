@@ -30,7 +30,6 @@ Current (07.03.2024) working list of used libraries
  ArduinoOTA(esp32) Built-In by Ivan Grokhotkov and Hristo Gochkov Version 2.0.0 INSTALLED
  EEPROM Built-In by Ivan Grokhotkov Version 2.0.0 INSTALLED
 
-
 # Changes
 ## Graphics Library
 Adfruit Graphics are not used anymore as the Lib was not capable of talking to some of my tested oled Displays! --> Swiched to u8g2 lib!
@@ -39,5 +38,4 @@ Adafruit "GFX Library" by Adafruit Version 1.11.8 INSTALLED
 
 Removed NTP CLient to use internal functions of ESP
 * [not needed] NTPClient in Version 3.2.1 / Fabrice Weinberg Version 3.2.1 INSTALLED
-
 
