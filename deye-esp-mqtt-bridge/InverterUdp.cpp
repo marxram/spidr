@@ -44,6 +44,17 @@ bool InverterUdp::isconnected(){
     return connected;
 }
 
+bool InverterUdp::isDefaultTimeIsSet(){
+    return defaultTimeIsSet;
+}
+
+bool InverterUdp::isTimeSynchronized(){
+    return !defaultTimeIsSet;
+}
+
+DateTime InverterUdp::getInverterTime(){
+    return inverterTime;
+}
 
 String InverterUdp::inverter_readtime(){    
     //send_message("AT+WAP\n");
@@ -61,6 +72,7 @@ String InverterUdp::inverter_readtime(){
 
         if (response.startsWith(RESP_TIME_UNSET)){
             Serial.println("Inverter Time is unset ");
+            defaultTimeIsSet = true;
         }else{
             // Parse if makes sense
             Serial.println("Checking Inverter Time >" + response + "<");
@@ -70,6 +82,7 @@ String InverterUdp::inverter_readtime(){
     } else {
         Serial.print("[ERROR] No Response in time or Parsing Error ");
         Serial.println(response);
+        defaultTimeIsSet = true;
         connected = false;  
     }
     return response;
@@ -329,14 +342,6 @@ void InverterUdp::send_message(String message){
 }
 
 
-// Function to convert a hex string to binary data
-void InverterUdp::hexStringToBytes(const char* hexString, uint8_t* byteData, uint8_t byteDataLength) {
-    for (uint8_t i = 0; i < byteDataLength; i++) {
-        char byteChars[3] = {hexString[i*2], hexString[i*2 + 1], '\0'};
-        byteData[i] = (uint8_t) strtol(byteChars, NULL, 16);
-    }
-}
-
 // Modified Modbus CRC function to accept a length instead of using strlen()
 void InverterUdp::Modbus(const uint8_t* data, uint8_t dataLength, uint8_t* output) {
     uint16_t crc = 0xFFFF;
@@ -354,12 +359,22 @@ void InverterUdp::Modbus(const uint8_t* data, uint8_t dataLength, uint8_t* outpu
     output[1] = (uint8_t)(crc >> 8);
 }
 
+// Function to convert a hex string to binary data
+void InverterUdp::hexStringToBytes(const char* hexString, uint8_t* byteData, uint8_t byteDataLength) {
+    for (uint8_t i = 0; i < byteDataLength; i++) {
+        char byteChars[3] = {hexString[i*2], hexString[i*2 + 1], '\0'};
+        byteData[i] = (uint8_t) strtol(byteChars, NULL, 16);
+    }
+}
+
+
 // Example usage:
 // const char* hexDataStr = "01030022000";
 // uint8_t binaryData[5];  // Ensure the size is half the length of hexDataStr
 // hexStringToBytes(hexDataStr, binaryData, sizeof(binaryData));
 // uint8_t output[2];
 // Modbus(binaryData, sizeof(binaryData), output);
+
 
 String InverterUdp::byteToHexString(const uint8_t* byteArray, size_t length) {
   String hexString = "";
@@ -431,8 +446,9 @@ void InverterUdp::parseDateTime(String timestring) {
     isValidSecond = isValidSecond && (second >= 0 && second <= 59);
 
     if(isValidYear && isValidMonth && isValidDay && isValidHour && isValidMinute && isValidSecond) {
-      DateTime dt((year + 2000), month, day, hour, minute, second);
-      Serial.println("Parsed DateTime: " + String(dt.year()) + "/" + String(dt.month()) + "/" + String(dt.day()) + " " + String(dt.hour()) + ":" + String(dt.minute()) + ":" + String(dt.second()));
+      inverterTime = DateTime((year + 2000), month, day, hour, minute, second);
+      Serial.println("Parsed DateTime: " + String(inverterTime.year()) + "/" + String(inverterTime.month()) + "/" + String(inverterTime.day()) + " " + String(inverterTime.hour()) + ":" + String(inverterTime.minute()) + ":" + String(inverterTime.second()));
+      defaultTimeIsSet = false;
     } 
     else {
       Serial.println("Invalid hexadecimal or invalid date/time components in string: " + timestring);

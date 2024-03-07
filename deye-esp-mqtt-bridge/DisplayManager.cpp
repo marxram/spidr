@@ -1,9 +1,7 @@
 // DisplayManager.cpp
 
 #include "DisplayManager.h"
-
-
-
+#include "config.h"
 
 // Big Number Font Settings
 const uint8_t *bigNumberHeadlineFont = u8g2_font_luRS10_tr;
@@ -15,7 +13,6 @@ const uint8_t *smallUnitFont = u8g2_font_luRS12_tr;
 
 // Show Actions Font Settings
 const uint8_t *displayActionHeadlineFont = u8g2_font_luRS14_tr;
-
 
 
 DisplayManager::DisplayManager() {
