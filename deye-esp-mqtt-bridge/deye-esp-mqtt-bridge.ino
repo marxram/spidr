@@ -18,6 +18,9 @@
 // Include Udp Channel inverter communication
 #include "InverterUdp.h"
 
+#include "PreferencesManager.h"
+#include "WebServerManager.h"
+
 ///////////////////////////////////////////////////////////////////////
 // Configuration and user settings
 #include "arduino_secrets.h"
@@ -74,6 +77,8 @@ ActionData action; // Action Structure to Display
 MQTTManager* mqttManager = nullptr; // Pointer declaration
 Inverter inverter;
 InverterUdp inverterUdp;
+PreferencesManager prefsManager;
+WebServerManager webServerManager; // Create an instance of WebServerManager
 
 const int udpServerPort = 50000; // manual port
 const int udpLocalPort = 48899; // Fixed port of deye inverter
@@ -89,6 +94,7 @@ void updateAndPublishData();
 void setupTime();
 unsigned long getCurrentEpochTime();
 time_t buildTimeToEpoch(const char* date, const char* time);
+void loadPreferencesIntoVariables();
 
 void setDisplayHeader(String HeaderText);
 
@@ -99,23 +105,57 @@ void setup() {
   Serial.begin(115200);
   delay(10); 
 
+  // Initialize Preferences Manager
+  Serial.println("Initialize Preferences Manager...");
+  prefsManager.begin();
+
+  Serial.println("Load Preferences into Variables...");
+  loadPreferencesIntoVariables();
+
   #ifdef SCREEN_ADDRESS
     displayManager.setI2CAddress(SCREEN_ADDRESS); 
   #endif 
 
+  Serial.println("Initialize Display Manager...");
   displayManager.init();
    // Show also more output and Parameters like Url, IP etc. 
   displayManager.verboseDisplay = true;
-
-  // Try to connect to the Home Network
+  
   wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
 
+  if (WiFi.status() == WL_CONNECTED) {  
+      String ip_string = WiFi.localIP().toString().c_str();
 
-  if (mqttManager == nullptr) {
-    mqttManager = new MQTTManager(MQTT_BROKER_HOST.c_str(), MQTT_BROKER_PORT, MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str(), displayManager, inverter);
+      action.name     =  "Web Config";
+      action.details  = "IP Address";
+      action.params[0] = ip_string;
+      action.params[1] = "" ;
+      action.params[2] = "" ;
+      action.params[3] = "" ;
+      action.result = "Waiting";
+      action.resultDetails = "";
+      displayManager.displayAction(action);
+      
+      
+      webServerManager.begin();
+
+      // do a loop for 60 seconds and run the Webserver handling
+      for (int i = 0; i < 60; i++) {
+        webServerManager.handleClient();
+        delay(1000);
+        
+        String s = String(60-i);
+        action.resultDetails = s;
+        displayManager.displayAction(action);
+      }
+
+      Serial.println("Initialize MQTT Manager...");
+      if (mqttManager == nullptr) {
+        mqttManager = new MQTTManager(MQTT_BROKER_HOST.c_str(), MQTT_BROKER_PORT, MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str(), displayManager, inverter);
+      }
   }
-
   // Initiliase the NTP client, or fallback to build time if USE_NTP_SYNC is not defined
+  Serial.println("Initialize Time...");
   setupTime();
   
 }
@@ -125,6 +165,8 @@ void setup() {
 // MAIN LOOP
 void loop() {   
     // INVERTER NETWORK 
+    
+    webServerManager.stop();
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter WiFi");
     // If connected with the Solar Inverter
     if (connected) {  
@@ -282,6 +324,27 @@ unsigned long getCurrentEpochTime() {
 }
 
 
+void loadPreferencesIntoVariables() {
+    WIFI_HOME_SSID = prefsManager.getHomeSSID();
+    WIFI_HOME_KEY = prefsManager.getHomeKey();
+
+    WIFI_INVERTER_SSID = prefsManager.getInverterSSID();
+    WIFI_INVERTER_KEY = prefsManager.getInverterKey();
+
+    WIFI_RELAIS_SSID = prefsManager.getRelaisSSID();
+    WIFI_RELAIS_KEY = prefsManager.getRelaisKey();
+
+    MQTT_BROKER_HOST = prefsManager.getMqttBrokerHost();
+    MQTT_BROKER_PORT = prefsManager.getMqttBrokerPort();
+    MQTT_BROKER_USER = prefsManager.getMqttBrokerUser();
+    MQTT_BROKER_PWD = prefsManager.getMqttBrokerPwd();
+    MQTT_BROKER_MAINTOPIC = prefsManager.getMqttBrokerMainTopic();
+
+    INVERTER_WEBACCESS_USER = prefsManager.getInverterWebUser();
+    INVERTER_WEBACCESS_PWD = prefsManager.getInverterWebPwd();
+}
+
+
 ////////////////////////////////////////////////////////////////////
 // WiFi Functions
 void wifi_connect(String ssid, String passkey, String comment){
@@ -296,6 +359,8 @@ void wifi_connect(String ssid, String passkey, String comment){
   String network    = "SSID: " + ssid;
   action.params[0]  = network.c_str();
   action.params[1]  = "IP:   Waiting...";
+  action.params[2] = "";
+  action.params[3] = "";
   //action.params[2] = "GW-IP: Waiting...";
   action.result = "In Progress";
   action.resultDetails = "";
@@ -363,6 +428,7 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
   action.params[0] = "http://" + serverIp;
   action.params[1] = url;
   action.params[2] = "Waiting...";
+  action.params[3] = "";
   action.result = "In Progress";
   action.resultDetails = "";
   displayManager.displayAction(action);
@@ -452,6 +518,10 @@ void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms) {
 void displayTime(int displayDurationSeconds) {
     const int delayPerIteration = 300; // Delay per iteration in ms
     int iterations = (displayDurationSeconds * 1000) / delayPerIteration;
+
+    action.name     =  "Current Time";
+    action.details  = "";
+
 
     for (int i = 0; i < iterations; i++) {
         time_t now = time(nullptr); // Get the current time
