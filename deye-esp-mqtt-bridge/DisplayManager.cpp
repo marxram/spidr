@@ -26,6 +26,10 @@ DisplayManager::DisplayManager() {
 #endif
 }
 
+void DisplayManager::setI2CAddress(uint8_t adr) {
+    u8g2->setI2CAddress(adr); 
+}
+
 void DisplayManager::init() {
     u8g2->begin();
 }
@@ -68,7 +72,7 @@ void DisplayManager::showScreen1(){
 
   
   // Inside your loop or setup, call the function with the additional font arguments
-  drawBigNumberNoHeader(myNumber, myUnit, "Energie heute", myFormattingStr, numberFont, unitFont);
+  drawBigNumberNoHeader(myNumber, myUnit, "Energie heute", myFormattingStr);
   
   // Send the buffer to the display
   u8g2->sendBuffer();
@@ -90,7 +94,7 @@ void DisplayManager::showScreen2(){
   */
   // Inside your loop or setup, call the function with the additional font arguments
   
-  drawBigNumber("Energie", myNumber, myUnit,"Energie total",  myFormattingStr, numberFont, unitFont);
+  drawBigNumberWithHeader("Energie", myNumber, myUnit,"Energie total",  myFormattingStr);
 
   u8g2->sendBuffer();
 }
@@ -110,7 +114,7 @@ void DisplayManager::showScreen3(){
 */
 
   // Inside your loop or setup, call the function with the additional font arguments
-  drawBigNumber("Gestern", myNumber, myUnit,"Verbrauch",  myFormattingStr, numberFont, unitFont);
+  drawBigNumberWithHeader("Gestern", myNumber, myUnit,"Verbrauch",  myFormattingStr);
 
   
   u8g2->sendBuffer();
@@ -130,13 +134,15 @@ void DisplayManager::showScreen4(){
   u8g2->drawGlyph(112,15,0xE141); // Small Ghost
 
   // Inside your loop or setup, call the function with the additional font arguments
-  drawBigNumberNoHeader(myNumber, myUnit,"24h", myFormattingStr, numberFont, unitFont);
+  drawBigNumberNoHeader(myNumber, myUnit,"24h", myFormattingStr);
 
   u8g2->sendBuffer();
 }
 
 
 void DisplayManager::displayAction(const ActionData& action) {
+  int yPositionBottomLine = 63;
+  
   u8g2->clearBuffer();
 
   // Center and display the action name in the first row
@@ -145,95 +151,76 @@ void DisplayManager::displayAction(const ActionData& action) {
   int startX = (SCREEN_WIDTH - actionNameWidth) / 2; // Calculate the starting X to center the text
   u8g2->drawStr(startX, 14, action.name.c_str()); // Draw the action name centered
 
-  #ifdef DISPLAY_DEVELOPER
+ if (verboseDisplay){
   // Display the details below the name
-  u8g2->setFont(u8g2_font_6x10_tf);
-  u8g2->drawStr(0, 24, action.details.c_str());
+    u8g2->setFont(u8g2_font_6x10_tf);
+    u8g2->drawStr(0, 24, action.details.c_str());
 
 
-  // Display parameters
-  u8g2->setFont(u8g2_font_6x10_tf); // Smaller font for parameters
-  for (int i = 0; i < 4 && i < sizeof(action.params) / sizeof(action.params[0]); ++i) {
-    if (action.params[i].length() > 0) {
-      u8g2->drawStr(0, 33 + (i * 10), action.params[i].c_str());
+    // Display parameters
+    u8g2->setFont(u8g2_font_6x10_tf); // Smaller font for parameters
+    for (int i = 0; i < 3 && i < sizeof(action.params) / sizeof(action.params[0]); ++i) {
+      if (action.params[i].length() > 0) {
+        u8g2->drawStr(0, 33 + (i * 10), action.params[i].c_str());
     }
   }
+    }else{
+    // Normal View
+
+    // Display the details below the name
+      u8g2->setFont(u8g2_font_5x8_tf);
+      u8g2->drawStr(0, 30, action.details.c_str());
+     yPositionBottomLine = 50;
+    }
+
     // Display result and result details in the last two rows
-    u8g2->setFont(u8g2_font_6x10_tf); // Adjust the font as needed
-  
-    int spaceBetween = 4;
-  
-    // Calculate the position and size of the inverted background
-    int yPosition = 63; // Y position for the text
-    int resultWidth = u8g2->getStrWidth(action.result.c_str());
-   
+    u8g2->setFont(u8g2_font_5x8_tf); // Adjust the font as needed
     String resultWithPadding = " " + action.result + " ";
-  
+
     // Draw the result string in white on top of the black background
     u8g2->setDrawColor(0); // Set the draw color to white for the text
-    u8g2->drawStr(0 , yPosition, resultWithPadding.c_str()); // Adjust text starting point if needed
+    u8g2->drawStr(0 , yPositionBottomLine, resultWithPadding.c_str()); // Adjust text starting point if needed
 
     // Reset draw color to black for other elements
     u8g2->setDrawColor(1);
 
-    // Continue with other drawing operations...
-    
-    int secondStrXPosition = resultWidth + 2* spaceBetween;
-
     String detailstWithPadding = " " + action.resultDetails + " ";
 
     // If you want the details not inverted, just draw them as normal.
-    u8g2->drawStr(secondStrXPosition, yPosition, detailstWithPadding.c_str());
-    #else 
-    // Normal View
-
-    // Display the details below the name
-      u8g2->setFont(u8g2_font_6x10_tf);
-      u8g2->drawStr(0, 30, action.details.c_str());
-
-      u8g2->setFont(u8g2_font_6x13B_mr); // Adjust the font as needed
-
-      int yPosition = 50; // Y position for the text
-      String resultWithPadding = " " + action.result + " "; // Add padding to the result text
-      String detailstWithPadding = " " + action.resultDetails + " "; // Add padding to the details text
-
-      int halfScreenWidth = SCREEN_WIDTH / 2; // Half of the screen width for each text
-
-      // Draw the result string in white on top of the black background
-      u8g2->setDrawColor(0); // Set the draw color to white for the text
-      u8g2->drawStr(0, yPosition, resultWithPadding.c_str()); // Draw result text starting from the left
-
-      // Calculate the width of the details text with padding
-      int detailsWidth = u8g2->getStrWidth(detailstWithPadding.c_str());
-
-      // Calculate the starting X position for the details text so it's right-aligned in its half of the screen
-      int secondStrXPosition = halfScreenWidth + (halfScreenWidth - detailsWidth) / 2;
-
-      // Draw the details text
-      u8g2->setDrawColor(1); // Reset draw color to black (or as needed) for the details text
-      u8g2->drawStr(secondStrXPosition, yPosition, detailstWithPadding.c_str()); // Draw details text aligned to the right in its half
-
-    #endif 
+    u8g2->drawStr(SCREEN_WIDTH/2, yPositionBottomLine, detailstWithPadding.c_str());
 
   u8g2->sendBuffer();
 }
 
-void DisplayManager::drawBigNumber(float number, String unit, String annotation, String formattingStr, const uint8_t *numberFont, const uint8_t *unitFont) {
-   char numberBuffer[20]; // Buffer to hold the formatted number as a string
+void DisplayManager::drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr) {
+  
+  Serial.println("Entering drawBigNumberNoHeader");
+
+  char numberBuffer[20]; // Buffer to hold the formatted number as a string
+  Serial.print("Formatting number: ");
+  Serial.println(number);
 
   // Format the floating-point number according to the provided formatting string
   snprintf(numberBuffer, sizeof(numberBuffer), formattingStr.c_str(), number);
+  Serial.print("Formatted number: ");
+  Serial.println(numberBuffer);
 
   // Initially set the font for the number and calculate its width
   u8g2->setFont(numberFont);
   int numberWidth = u8g2->getStrWidth(numberBuffer);
+  Serial.print("Initial number width: ");
+  Serial.println(numberWidth);
 
   // Set the font for the unit and calculate its width
   u8g2->setFont(unitFont);
   int unitWidth = u8g2->getStrWidth(unit.c_str());
+  Serial.print("Unit width: ");
+  Serial.println(unitWidth);
 
   // Check if the total width exceeds the display width
   if ((numberWidth + unitWidth + 4) > 128) {
+    Serial.println("Switching to smaller fonts");
+    
     // Switch to smaller fonts
     numberFont = smallNumberFont;
     unitFont = smallUnitFont;
@@ -241,9 +228,13 @@ void DisplayManager::drawBigNumber(float number, String unit, String annotation,
     // Recalculate widths with smaller fonts
     u8g2->setFont(numberFont);
     numberWidth = u8g2->getStrWidth(numberBuffer);
+    Serial.print("Small number width: ");
+    Serial.println(numberWidth);
 
     u8g2->setFont(unitFont);
     unitWidth = u8g2->getStrWidth(unit.c_str());
+    Serial.print("Small unit width: ");
+    Serial.println(unitWidth);
   }
 
   // Calculate positions with potentially updated widths
@@ -251,21 +242,34 @@ void DisplayManager::drawBigNumber(float number, String unit, String annotation,
   int unitY = 63; // Vertical position for the unit, adjust as needed
   int numberX = unitX - numberWidth - 4; // Position number to the left of the unit, 4 pixels apart
   int numberY = unitY; // Align the baseline of the number with the unit
+  Serial.println("Calculated positions");
 
   u8g2->setFont(u8g2_font_profont11_mr);
+  Serial.print("Drawing annotation: ");
+  Serial.println(annotation);
   u8g2->drawStr(0, 24, annotation.c_str());
-  
   
   // Draw the unit with its (possibly updated) font
   u8g2->setFont(unitFont);
+  Serial.print("Drawing unit at X: ");
+  Serial.print(unitX);
+  Serial.print(", Y: ");
+  Serial.println(unitY);
   u8g2->drawStr(unitX, unitY, unit.c_str());
 
   // Draw the number with its (possibly updated) font
   u8g2->setFont(numberFont);
+  Serial.print("Drawing number at X: ");
+  Serial.print(numberX);
+  Serial.print(", Y: ");
+  Serial.println(numberY);
   u8g2->drawStr(numberX, numberY, numberBuffer);
+
+  Serial.println("Exiting drawBigNumberNoHeader");
 }
 
-void DisplayManager::drawBigNumberHeader(String header, float number, String unit, String annotation, String formattingStr, const uint8_t *numberFont, const uint8_t *unitFont) {
+
+void DisplayManager::drawBigNumberWithHeader(String header, float number, String unit, String annotation, String formattingStr) {
   u8g2->clearBuffer();
 
   // Center and display the action name in the first row
@@ -274,5 +278,5 @@ void DisplayManager::drawBigNumberHeader(String header, float number, String uni
   int startX = (SCREEN_WIDTH - actionNameWidth) / 2; // Calculate the starting X to center the text
   u8g2->drawStr(startX, 14, header.c_str()); // Draw the action name centered
 
-  drawBigNumber(number, unit, annotation, formattingStr, numberFont, unitFont);
+  drawBigNumberNoHeader(number, unit, annotation, formattingStr);
 }

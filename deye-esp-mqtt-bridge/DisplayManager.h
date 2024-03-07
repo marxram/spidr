@@ -24,8 +24,10 @@ public:
     void showScreen3();
     void showScreen4();
     void displayAction(const ActionData& action);
-    void drawBigNumber(float number, String unit, String annotation, String formattingStr, const uint8_t *numberFont, const uint8_t *unitFont);
-    void drawBigNumberHeader(String header, float number, String unit, String annotation, String formattingStr, const uint8_t *numberFont, const uint8_t *unitFont);
+    void drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr);
+    void drawBigNumberWithHeader(String header, float number, String unit, String annotation, String formattingStr);
+    void setI2CAddress(uint8_t adr);
+    bool verboseDisplay = false;
     float myNumber;
     String myUnit;
     String myFormattingStr;

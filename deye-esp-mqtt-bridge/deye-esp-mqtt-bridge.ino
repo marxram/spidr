@@ -6,7 +6,8 @@
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
 // DISPLAY ------------------------------------------------------------
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
+//#define SCREEN_WIDTH 128 // OLED display width, in pixels
+
 
 #ifdef BOARD_HELTEC_OLED_128x32_ESP8266
   #define SCREEN_HEIGHT 32 // OLED display height, in pixels
@@ -30,7 +31,7 @@
 
 ///////////////////////////////////////////////////////////////////////
 // Timing behavior
-#define DURATION_SLEEP_IN_HOME_NETWORK 200  // Seconds
+#define DURATION_STAY_IN_HOME_NETWORK 200  // Seconds
 
 
 #include <Arduino.h>
@@ -90,6 +91,10 @@
 #include <TimeLib.h>
 
 
+//#define USE_NTP_SYNC 
+
+
+
 ///////////////////////////////////////////////////////////////////////
 // User Secrets imported
 String WIFI_HOME_SSID = SECRET_WIFI_HOME_SSID;
@@ -141,13 +146,15 @@ const int udpLocalPort = 48899; // Fixed port of deye inverter
 const int udpTimeoput_s = 10; // 10 Seconds Timeout 
     
 // Time Synchronization
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
-unsigned long updateInterval = 20000; // 1 minute
-long lastUpdate;
-const int maxNtpRetries = 5;
-unsigned long epochTime = 0;
-bool ntpTimeAvailable = false;
+#ifdef USE_NTP_SYNC
+  WiFiUDP ntpUDP;
+  NTPClient timeClient(ntpUDP, "pool.ntp.org");
+  unsigned long updateInterval = 20000; // 1 minute
+  long lastUpdate;
+  const int maxNtpRetries = 5;
+  unsigned long epochTime = 0;
+  bool ntpTimeAvailable = false;
+#endif
 
 ////////////////////////////////////////////////////////////////////
 // Status Variables
@@ -168,10 +175,10 @@ Status MQTT = STAT_NOTCONFIGURED;
 
 ////////////////////////////////////////////////////////////////////
 // Function declarations
-void mqtt_submit_data();
+void submitDataViaMQTT();
 void mqtt_reconnect();
 void wifi_connect(String ssid, String passkey, String comment);
-void web_getDataFromWeb(String url, String web_user, String web_password);
+void readInverterDataFromWebInterface(String url, String web_user, String web_password);
 void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms);
 
 void setDisplayHeader(String HeaderText);
@@ -183,45 +190,44 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
-  // TODO: Screenadress in DisplayManager
   #ifdef SCREEN_ADDRESS
-    u8g2.setI2CAddress(SCREEN_ADDRESS); 
+    displayManager.setI2CAddress(SCREEN_ADDRESS); 
   #endif 
-    displayManager.init();
 
-  //u8g2.drawStr(0, 5*8+8, __DATE__); // Display a test message
-  //u8g2.drawStr(0, 6*8+8, __TIME__); // Display a test message
+  displayManager.init();
 
-
-  Serial.println("Initialize inverter");
-  //inverter.printVariables();
+  // Show also more output and Parameters like Url, IP etc. 
+  displayManager.verboseDisplay = true;
 
   // Prepare MQTT client
   mqtt_client.setServer(MQTT_BROKER_HOST.c_str(),MQTT_BROKER_PORT);
 
   delay (1000);
 
+  #ifdef USE_NTP_SYNC
   Serial.print("Init Time Client "); 
 
-#ifdef ESP8266
-      timeClient.begin();
-        timeClient.setTimeOffset(7200);
-#endif
+  // ESP32 and 8266 seem to behave different. ESP8266 can be initialized without a working WiFi connection, 
+  // ESP would fail to initialize here. --> Moved to the if(connect) section
+  // #ifdef ESP8266
+  //       timeClient.begin();
+  //       timeClient.setTimeOffset(7200);
+  // #endif
 
   wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
     Serial.print("Connecting to Home Network first to get the time from NTP "); 
     if (connected) {
-       #ifdef ESP32
-        timeClient.begin();
+       //#ifdef ESP32
+        //timeClient.begin();
         timeClient.setTimeOffset(7200);
-      #endif
+     // #endif
 
         delay(2000);
         ntpTimeAvailable = syncTime();
         displayTime();
         delay(5000);
     }
-
+    #endif
 }
 
 
@@ -231,48 +237,69 @@ void loop() {
     // INVERTER NETWORK 
     wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter Network");
     // If connected with the Solar Inverter
-    if (connected) {
-      // ToDo-Option: Replace Web scraping by Modbus Read commands
-      //web_getDataFromWeb(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
-      
+    if (connected) {  
       // Starting UDP Connection inside the AP Network of inverter
       bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
       
       // Getting time from inverter, stored in inverterUDP object
       String response = inverterUdp.inverter_readtime();
-      // Setting Time insode the inverter
-      if (ntpTimeAvailable){
-        Serial.println("Triggering time update");
-        inverterUdp.inverter_settime(epochTime);
-      } else {
-        Serial.println("No NTP time available. Skipping sync");
-      }
+
+      // ToDo: Only if time differs, do a sync
+
+      // Setting Time inside the inverter via UDP
+      #ifdef USE_NTP_SYNC
+        if (ntpTimeAvailable){
+          Serial.println("Triggering time update");
+          inverterUdp.inverter_settime(epochTime);
+        } else {
+          Serial.println("No NTP time available. Skipping sync");
+        }
+      #else
+        // create a mocking time and use it to initialize the inverter
+        inverterUdp.inverter_settime(1630000000);
+      #endif
+
+
+      // ToDo: Read other parameters from the UDP interface
 
       // Close connection before leaving to Home Network
       inverterUdp.inverter_close();
+
+      // Retrieving the data from the inverter via the web interface
+      readInverterDataFromWebInterface(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
     }
 
     // Output Information 
-    Serial.println("Print WebInverter");
+    Serial.println("Print Inverter Data");
     inverter.printVariables();
-    displayInverterStatus(inverter);
+  
+    // Show most impotrtant values on the display
+    displayInverterStatus(inverter, 6000);
 
     // Switching to Home Network
     wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home Network");
     if (connected) {
-        mqtt_submit_data();
+        submitDataViaMQTT();
         delay(3000); // Show data for 3 Seconds
-        ntpTimeAvailable = syncTime();
-        displayTime();
+        
+        #ifdef USE_NTP_SYNC
+          ntpTimeAvailable = syncTime();
+          displayTime();
+        #endif
+
         int secondsInHomeNetwork =0;
-        while (secondsInHomeNetwork < DURATION_SLEEP_IN_HOME_NETWORK ){
+        while (secondsInHomeNetwork < DURATION_STAY_IN_HOME_NETWORK ){
           // Toggle between Time and Solar Production Screen
           displayInverterStatus(inverter, 10000);
           secondsInHomeNetwork+=10;
           
-          displayTime();
-          delay(5000);
-          secondsInHomeNetwork+=5;
+          #ifdef USE_NTP_SYNC
+            displayTime();
+            delay(5000);
+            secondsInHomeNetwork+=5;
+          #endif
+
+          
         }
     }
 
@@ -281,6 +308,7 @@ void loop() {
 
 ////////////////////////////////////////////////////////////////////
 // Sync Time
+#ifdef USE_NTP_SYNC
 bool syncTime (){
     bool synced = false;
     Serial.println("Syncing time...");
@@ -302,12 +330,16 @@ bool syncTime (){
     timeSynced = synced; 
     return synced;
 }
-
+#endif
 
 ////////////////////////////////////////////////////////////////////
 // WiFi Functions
 void wifi_connect(String ssid, String passkey, String comment){
-  
+  Serial.println("----------------------------------------------------");
+  Serial.print("Connecting to ");
+  Serial.print(ssid);
+
+
   // Display Initialization
   action.name = "Home WiFi";
   action.details   = "Connect to WiFi";
@@ -343,7 +375,9 @@ void wifi_connect(String ssid, String passkey, String comment){
     delay(3000); // Display IP for 3 seconds
   
     // Display Result
-    String ip = "IP:    " + WiFi.localIP().toString().c_str();
+    String ip_string = WiFi.localIP().toString().c_str();
+
+    String ip = "IP:    " + ip_string;
     action.params[1] = ip.c_str();
     //action.params[2] = "GW-IP: Waiting...";
     action.result = "Connected";
@@ -366,7 +400,7 @@ void wifi_connect(String ssid, String passkey, String comment){
 
 ////////////////////////////////////////////////////////////////////
 // Web Parsing Section
-void web_getDataFromWeb(String url, String web_user, String web_password){
+void readInverterDataFromWebInterface(String url, String web_user, String web_password){
   String serverIp = WiFi.gatewayIP().toString();
   String website = "http://" + serverIp + "/" + url;
 
@@ -376,12 +410,14 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
   // Display Initialization
   action.name = "Collect Data";
   action.details = "Read Inverter";
-  action.params[0] = website.c_str();
-  action.params[1] = "Fetch: Waiting...";
-  action.params[2] = "Parse: Waiting...";
+  action.params[0] = "http://" + serverIp;
+  action.params[1] = "url";
+  action.params[2] = "Waiting...";
   action.result = "In Progress";
   action.resultDetails = "";
   displayManager.displayAction(action);
+  delay(2000);
+
   
   // Create an instance of WiFiClient
   WiFiClient client;
@@ -418,7 +454,7 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
       }
     }
 
-    action.params[1] = "Fetch: Done";
+    action.params[2] = "Fetched content";
     displayManager.displayAction(action);
 
     // Print the entire response
@@ -454,15 +490,15 @@ void web_getDataFromWeb(String url, String web_user, String web_password){
 // DISPLAY Section
 void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms) {
   
-  displayManager.drawBigNumber("Leistung", inverter.getInverterPowerNow_W(), "W", "aktuell",  "%f.0", numberFont, unitFont);
+  displayManager.drawBigNumberWithHeader("Leistung", inverter.getInverterPowerNow_W(), "W", "aktuell",  "%f.0");
   delay(duration_ms/3);
-  displayManager.drawBigNumber("Energie", inverter.getInverterEnergyToday_kWh(), "kWh", "heute",  "%f.1", numberFont, unitFont);
+  displayManager.drawBigNumberWithHeader("Energie", inverter.getInverterEnergyToday_kWh(), "kWh", "heute",  "%f.1");
   delay(duration_ms/3);
-  displayManager.drawBigNumber("Energie", inverter.getInverterEnergyTotal_kWh(), "kWh", "gesamt",  "%f.1", numberFont, unitFont);
+  displayManager.drawBigNumberWithHeader("Energie", inverter.getInverterEnergyTotal_kWh(), "kWh", "gesamt",  "%f.1");
   delay(duration_ms/3);
-
 }
 
+#ifdef USE_NTP_SYNC
 void displayTime() {  
   int char_col_1 = 5; // Adjust as needed, based on character width and desired layout
   int char_col_2 = 12; // Additional column if needed for future use
@@ -508,18 +544,18 @@ void displayTime() {
 
   displayManager.displayAction(action);
 }
-
-
+#endif
 
 // ToDo: TLS Based MQTT connection
 
-////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
 // MQTT SECTION
-void mqtt_submit_data(){
+void submitDataViaMQTT(){
     
     action.name = "MQTT Sync";
     action.details = "Publish data";
-    String brokerStr  = "Broker " + MQTT_BROKER_HOST.c_str();
+    String brokerStr  = MQTT_BROKER_HOST.c_str();
+    brokerStr  = "Broker " + brokerStr;
     action.params[0] = brokerStr.c_str();
 
     // Assuming MQTT_BROKER_PORT is an integer, you might need to convert it to a string
