@@ -237,7 +237,7 @@ void setupTime() {
         struct timeval tv = { .tv_sec = buildEpoch };
         settimeofday(&tv, NULL);
         Serial.println("NTP sync is disabled. Using build time as fallback.");
-        lastSuccessfulSyncTime = millis();
+        lastSyncTime = millis();
         timeSynced = false; // Consider time as synchronized since we fallback to build time
 
 
