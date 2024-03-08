@@ -3,6 +3,11 @@
 
 #define USE_SECRETS_FILE_AS_DEFAULT
 
+#define WIFI_AP_NAME "deye-esp-mqtt-bridge"
+#define WIFI_AP_PASSWORD "deye-esp-mqtt-bridge"
+#define WIFI_AP_DURATION_SECONDS 300 // Example: AP runs for 5 minutes
+#define WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S 30 
+
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
 // DISPLAY ------------------------------------------------------------
@@ -39,5 +44,6 @@
 // Timing behavior
 #define DURATION_STAY_IN_HOME_NETWORK 200  // Seconds
 
-
+#define DURATION_TO_DISPLAY_TIME_SECONDS 15
+#define DURATION_TO_DISPLAY_INVERTER_DATA 10
 
