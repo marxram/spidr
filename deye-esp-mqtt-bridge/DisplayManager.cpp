@@ -140,14 +140,13 @@ void DisplayManager::showScreen4(){
   u8g2->sendBuffer();
 }
 
-
 void DisplayManager::displayAction(const ActionData& action) {
   int yPositionBottomLine = 63;
-
-  Serial.println("Clearing buffer");
+  String actionStr(action.name.c_str());
+  Serial.println("DisplayAction: " + actionStr);
   u8g2->clearBuffer();
 
-  Serial.println("Displaying action name");
+  //Serial.println("Displaying action name");
   // Center and display the action name in the first row
   u8g2->setFont(displayActionHeadlineFont); // Assuming the font is okay
   int actionNameWidth = u8g2->getStrWidth(action.name.c_str());
@@ -155,7 +154,7 @@ void DisplayManager::displayAction(const ActionData& action) {
   u8g2->drawStr(startX, 14, action.name.c_str());
 
   if (verboseDisplay) {
-    Serial.println("Displaying verbose details");
+    //Serial.println("Displaying verbose details");
     // Display the details below the name
     u8g2->setFont(u8g2_font_6x10_tf);
     u8g2->drawStr(0, 24, action.details.c_str());
@@ -167,14 +166,14 @@ void DisplayManager::displayAction(const ActionData& action) {
       }
     }
   } else {
-    Serial.println("Displaying normal view");
+    //Serial.println("Displaying normal view");
     // Normal View
     u8g2->setFont(u8g2_font_6x10_tf);
     u8g2->drawStr(0, 30, action.details.c_str());
     yPositionBottomLine = 50;
   }
 
-  Serial.println("Displaying result with background padding");
+  //Serial.println("Displaying result with background padding");
   // Display result with background padding
   u8g2->setFont(u8g2_font_5x8_tf); // Using a small font
 
@@ -193,7 +192,7 @@ void DisplayManager::displayAction(const ActionData& action) {
   // Reset draw color for next elements
   u8g2->setDrawColor(1);
 
-  Serial.println("Displaying result details aligned to the right");
+  //Serial.println("Displaying result details aligned to the right");
   // Calculate text width for the details to align to the right
   int detailsWidth = u8g2->getStrWidth(action.resultDetails.c_str());
   int detailsStartX = SCREEN_WIDTH - detailsWidth; // Calculate X position for details to align right
@@ -201,7 +200,7 @@ void DisplayManager::displayAction(const ActionData& action) {
   // Display result details without inverted color, aligned to the right
   u8g2->drawStr(detailsStartX, yPositionBottomLine, action.resultDetails.c_str());
 
-  Serial.println("Sending buffer to display");
+  //Serial.println("Sending buffer to display");
   u8g2->sendBuffer();
 }
 
