@@ -1,15 +1,9 @@
 #include <Arduino.h>
 #include <PubSubClient.h>
 #include <Wire.h>
-#include <U8x8lib.h>
 #include <U8g2lib.h>
 
 #include <time.h>
-
-#include <freertos/FreeRTOS.h>   // Include the base FreeRTOS definitions.
-#include <freertos/task.h>       // Include the task definitions.
-#include <freertos/semphr.h>     // Include the semaphore definitions.
-#include <freertos/ringbuf.h>    // Include the ringbuffer definitions.
 
 
 // Web and WiFi
@@ -27,6 +21,7 @@
 #include "PreferencesManager.h"
 #include "WebServerManager.h"
 
+
 ///////////////////////////////////////////////////////////////////////
 // Configuration and user settings
 #include "arduino_secrets.h"
@@ -40,7 +35,6 @@
 #include <ESP8266WiFi.h> // ESP8266 specific WiFi library
 // ESP8266 specific setup and functions
 #endif
-
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -70,22 +64,22 @@ String status_page_url = "status.html" ;
 
 ///////////////////////////////////////////////////////////////////////
 // Global variables
-bool connected = false;
+
+// State Machine
+unsigned long lastStateChangeMillis = 0; // Last time the state was changed
+unsigned long lastInverterUpdateMillis = 0; // Timer for inverter update interval
+
 
 unsigned long lastSyncTime; // Last NTP sync time in millis
 unsigned long startTime =  0;
 bool timeSynced = false;
 
-bool apModeActive = false;
-unsigned long apModeStartTime = 0;
-int homeNetworkConnectionAttempts = 0;
+// Flags for network status
+bool connectedToHomeNetwork = false;
+bool connectedToInverterNetwork = false ;
+bool activatedAP = false;
 
-bool initialAPModeActive = true; // To track the initial AP mode activation
-unsigned long initialAPModeStartTime = millis();
-
-
-bool connectedToHome = false;
-bool connectedToInverter = false;
+bool connected = false;
 
 
 ////////////////////////////////////////////////////////////////////
@@ -98,11 +92,11 @@ InverterUdp inverterUdp;
 PreferencesManager prefsManager;
 WebServerManager webServerManager; // Create an instance of WebServerManager
 
+
 const int udpServerPort = 50000; // manual port
 const int udpLocalPort = 48899; // Fixed port of deye inverter
 const int udpTimeoput_s = 10; // 10 Seconds Timeout 
     
-
 ////////////////////////////////////////////////////////////////////
 // Function declarations
 void wifi_connect(String ssid, String passkey, String comment);
@@ -117,22 +111,33 @@ void loadPreferencesIntoVariables();
 void activateAPMode();
 void displayConnected(String networkType, String ipAddress);
 
-// Operation Mode Management
-SemaphoreHandle_t inverterTaskSemaphore;
 
-SemaphoreHandle_t webServerSemaphore;
-SemaphoreHandle_t switchSemaphore;
+// State Management Functions
+void updateStateMachine();
 
-SemaphoreHandle_t homeNetworkSemaphore;
-SemaphoreHandle_t inverterNetworkSemaphore;
-SemaphoreHandle_t apModeActiveSemaphore;
+void handleInverterNetworkMode();
+void handleHomeNetworkMode();
+void handleAPMode();
 
-// Task Declarations
-void MainLoopTask(void *pvParameters);
-void WebServerTask(void *pvParameters);
-void InverterNetworkTask(void *pvParameters);
-void HomeNetworkTask(void *pvParameters);
+// Condition checking functions
+bool cndHomeNetworkToAPNetwork();
+bool cndHomeNetworkToInverterNetwork();
+bool cndAPToHomeNetwork();
+bool hasClientConnected();
 
+// Enum to define different states
+enum State {
+    INVERTER_NETWORK_MODE,
+    HOME_NETWORK_MODE,
+    AP_MODE
+};
+State currentState; 
+State previousState; 
+
+unsigned long inverterNotReachableCount = 0;
+unsigned long homeNetworkNotReachableCount = 0;
+bool newInverterDataAvailable = false;
+int remainingTimeInAP = 0;
 
 
 ////////////////////////////////////////////////////////////////////
@@ -141,9 +146,6 @@ void HomeNetworkTask(void *pvParameters);
 void setup() {
   Serial.begin(115200);
   delay(10); 
-
-  
-
 
   // Initialize Preferences Manager
   Serial.println("Initialize Preferences Manager...");
@@ -162,7 +164,7 @@ void setup() {
   displayManager.verboseDisplay = true;
 
   // Display Initialization
-  action.name = "Action Item";
+  action.name = "Test Item";
   action.details = "Action details";
   action.params[0] = "params[0]";
   action.params[1] = "params[1]";
@@ -173,204 +175,26 @@ void setup() {
   displayManager.displayAction(action);
 
   delay(5000);
-
-   // Initialize semaphores
-  inverterTaskSemaphore = xSemaphoreCreateBinary();
-  webServerSemaphore = xSemaphoreCreateBinary();
-  homeNetworkSemaphore = xSemaphoreCreateBinary();
-  inverterNetworkSemaphore= xSemaphoreCreateBinary();
-  apModeActiveSemaphore= xSemaphoreCreateBinary();
-
-  // Initially, block inverter and home tasks, let web server run
-  xSemaphoreGive(webServerSemaphore); // Start with the web server allowed to run
-
-  // Create tasks
-  xTaskCreatePinnedToCore(MainLoopTask, "MainLoop", 4096, NULL, 1, NULL, tskNO_AFFINITY);
-  xTaskCreatePinnedToCore(WebServerTask, "WebServer", 4096, NULL, 1, NULL, tskNO_AFFINITY);
-  xTaskCreatePinnedToCore(InverterNetworkTask, "InverterNetwork", 4096, NULL, 1, NULL, tskNO_AFFINITY);
-  xTaskCreatePinnedToCore(HomeNetworkTask, "HomeNetwork", 4096, NULL, 1, NULL, tskNO_AFFINITY);
-  xTaskCreatePinnedToCore(ConnectivityManagementTask,"ConnectivityManagement", 4096, NULL, 1,NULL, tskNO_AFFINITY );
-
-
   
   // Initiliase the NTP client, or fallback to build time if USE_NTP_SYNC is not defined
   Serial.println("Initialize Time...");
-  
   setupTime();
-  
+
+
+  currentState = HOME_NETWORK_MODE;
+  lastStateChangeMillis = millis();
+  wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
+
 }
 
 
 ////////////////////////////////////////////////////////////////////
 // MAIN LOOP
 void loop() {   
-    Serial.println("Main Loop: Begin cycle");
+    // Update the state machine
+    updateStateMachine();
 
-    delay(10000); // Pause to observe the displayed information
-    Serial.println("Main Loop: End cycle");
-}
-
-void MainLoopTask(void *pvParameters) {
-    Serial.println("MainLoopTask: Started");
-    for (;;) {
-        Serial.println("MainLoopTask: Checking conditions");
-
-        if (!apModeActive) {
-            Serial.println("MainLoopTask: Print Inverter Data");
-            inverter.printVariables();
-        
-            // Show most important values on the display
-            displayInverterStatus(inverter, 6000);
-            Serial.println("MainLoopTask: Displayed Inverter Status");
-        }
-        vTaskDelay(pdMS_TO_TICKS(10000)); // Delay to prevent a tight loop
-    }
-}
-
-void WebServerTask(void *pvParameters) {
-    Serial.println("WebServerTask: Started");
-    for (;;) {
-        //Serial.println("WebServerTask: Handling client");
-        webServerManager.handleClient();
-        vTaskDelay(10); // Short delay to yield
-    }
-}
-
-void InverterNetworkTask(void *pvParameters) {
-    Serial.println("InverterNetworkTask: Started");
-    for (;;) {
-        Serial.println("InverterNetworkTask: Waiting for semaphore");
-        if (xSemaphoreTake(inverterNetworkSemaphore, portMAX_DELAY) == pdTRUE) {
-            Serial.println("InverterNetworkTask: Semaphore acquired");
-            webServerManager.stop();
-            if (connected) {  
-              Serial.println("InverterNetworkTask: Connected, performing actions");
-              // Starting UDP Connection inside the AP Network of inverter
-              bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
-              
-              // Getting time from inverter, stored in inverterUDP object
-              String response = inverterUdp.inverter_readtime();
-
-              unsigned long epochTime = getCurrentEpochTime();
-              inverterUdp.inverter_settime(epochTime);
-              
-              // ToDo: Read other parameters from the UDP interface
-
-              // Close connection before leaving to Home Network
-              inverterUdp.inverter_close();
-
-              // Retrieving the data from the inverter via the web interface
-              readInverterDataFromWebInterface(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
-            }
-            vTaskDelay(pdMS_TO_TICKS(10000)); // Simulate some work
-            Serial.println("InverterNetworkTask: Actions completed, giving semaphore");
-            xSemaphoreGive(inverterNetworkSemaphore);
-        }
-    }
-}
-
-void HomeNetworkTask(void *pvParameters) {
-    Serial.println("HomeNetworkTask: Started");
-    TickType_t lastWakeTime = xTaskGetTickCount();
-    const TickType_t totalDurationTicks = pdMS_TO_TICKS(DURATION_STAY_IN_HOME_NETWORK * 1000);
-    const TickType_t displayTimeDurationTicks = pdMS_TO_TICKS(DURATION_TO_DISPLAY_TIME_SECONDS * 1000);
-    const TickType_t displayInverterDataDurationTicks = pdMS_TO_TICKS(DURATION_TO_DISPLAY_INVERTER_DATA * 1000);
-
-    TickType_t nextSwitchTime = lastWakeTime + displayTimeDurationTicks;
-    bool showTime = true;
-
-    for (;;) {
-        Serial.println("HomeNetworkTask: Waiting for semaphore");
-        if (xSemaphoreTake(homeNetworkSemaphore, portMAX_DELAY) == pdTRUE) {
-            Serial.println("HomeNetworkTask: Connected to Home Network, performing actions");
-            // Perform Home Network actions
-            if (connected) {
-                mqttManager->publishAllData();
-                // Delay to show the data on the Display
-                vTaskDelay(pdMS_TO_TICKS(3000));
-            }
-
-                while (xTaskGetTickCount() - lastWakeTime < totalDurationTicks) {
-                      if (xTaskGetTickCount() >= nextSwitchTime) {          
-                          if (showTime) {
-                              displayTime(DURATION_TO_DISPLAY_TIME_SECONDS);
-                              nextSwitchTime += displayInverterDataDurationTicks;
-                          } else {
-                              displayInverterStatus(inverter, DURATION_TO_DISPLAY_INVERTER_DATA * 1000);
-                              nextSwitchTime += displayTimeDurationTicks;
-                          }
-                          showTime = !showTime; // Toggle the display flag
-                      }
-                    vTaskDelay(pdMS_TO_TICKS(100)); // Short delay for responsiveness
-                }
-            Serial.println("HomeNetworkTask: Completed Home Network operations, giving semaphore");
-            xSemaphoreGive(homeNetworkSemaphore);
-            vTaskSuspend(NULL); // Suspend itself
-        }
-    }
-}
-
-void ConnectivityManagementTask(void *pvParameters) {
-    for (;;) {
-        // Check Home Network
-        if (!connectedToHome) {
-            Serial.println("Attempting to connect to Home WiFi...");
-            wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
-            if (connected) {
-                Serial.println("Connected to Home WiFi.");
-                connectedToHome = true;
-                xSemaphoreGive(homeNetworkSemaphore); // Allow Home Network tasks to proceed
-            } else {
-                Serial.println("Failed to connect to Home WiFi. Entering AP mode...");
-                activateAPMode(); // Ensures AP mode is activated
-                xSemaphoreGive(apModeActiveSemaphore); // Signal that AP mode is active
-                // Wait in AP Mode for a defined time or until a client connects and configures the system
-                vTaskDelay(pdMS_TO_TICKS(WIFI_AP_DURATION_SECONDS * 1000));
-                xSemaphoreTake(apModeActiveSemaphore, portMAX_DELAY); // Wait until AP mode is concluded
-            }
-        }
-
-        // Assume connection to Home Network succeeded or AP mode concluded
-        if (connectedToHome) {
-            xSemaphoreTake(homeNetworkSemaphore, portMAX_DELAY); // Ensure we control the flow
-            // Perform operations while connected to Home Network...
-            mqttManager->publishAllData();
-            // After operations, attempt to connect to the Inverter Network
-            wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter WiFi");
-            if (connected) {
-                connectedToInverter = true; // Flag as connected to the Inverter Network
-                xSemaphoreGive(inverterNetworkSemaphore); // Allow Inverter Network tasks to proceed
-            }
-        }
-
-        // Handle Inverter Network operations
-        if (connectedToInverter) {
-            xSemaphoreTake(inverterNetworkSemaphore, portMAX_DELAY); // Wait for Inverter Network tasks to complete
-            // Once done with Inverter Network, the cycle can start over.
-            connectedToInverter = false; // Reset connection status
-            connectedToHome = false; // This will cause the loop to try connecting to Home Network again
-        }
-
-        // Short delay before the next attempt or action
-        vTaskDelay(pdMS_TO_TICKS(5000));
-    }
-}
-
-void manageAPMode(void *pvParameters) {
-    for (;;) {
-        if (apModeActive && (millis() - apModeStartTime > WIFI_AP_DURATION_SECONDS * 1000)) {
-            Serial.println("AP mode timeout. Attempting to reconnect to Home WiFi...");
-            wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Reconnecting to Home WiFi");
-            
-            // After attempt, reset the AP mode start time or deactivate AP mode based on success
-            if (connected) {
-                apModeActive = false; // Or another condition to deactivate AP mode
-            } else {
-                apModeStartTime = millis(); // Reset timer to retry after next interval
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(10000)); // Check every 10 seconds or adjust as needed
-    }
+    delay(200); // Dummy delay to simulate network activity
 }
 
 
@@ -529,15 +353,19 @@ void wifi_connect(String ssid, String passkey, String comment) {
     WiFi.begin(ssid.c_str(), passkey.c_str());
 
     int attempts = 0;
-    unsigned long attemptStartTime = millis();
+    unsigned long attemptStartTime = millis(); // Make sure this is defined at the start of your connection attempt
+
     while (WiFi.status() != WL_CONNECTED && (millis() - attemptStartTime) < WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000) { 
-        int delay_loop = 1000; 
+        int delay_loop = 1000; // Delay per loop iteration
         delay(delay_loop);
         Serial.print(".");
-        attempts++;
+
+        // Calculate the remaining time in seconds
+        unsigned long timeElapsed = millis() - attemptStartTime;
+        int secondsLeft = (WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000 - timeElapsed) / 1000;
+        String attemptMessage = "Time left: " + String(secondsLeft) + " s";
         
-        String attemptMessage = "Try " + String(attempts) + " / " + String(WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000 / delay_loop );
-        // Update attempt count in real-time
+        // Update the remaining time message
         action.params[2] = attemptMessage;
         displayManager.displayAction(action);
     }
@@ -545,6 +373,18 @@ void wifi_connect(String ssid, String passkey, String comment) {
     if (WiFi.status() == WL_CONNECTED) {
         connected = true;
         Serial.println("\nConnected to WiFi network.");
+        
+        // if connected do a switch case to set the isConnected to Home Network etc, bolleans tio true and the other to false
+        if (ssid == WIFI_HOME_SSID) {
+            connectedToHomeNetwork = true;
+            connectedToInverterNetwork = false;
+        } else if (ssid == WIFI_INVERTER_SSID) {
+            connectedToHomeNetwork = false;
+            connectedToInverterNetwork = true;
+        } else {
+            connectedToHomeNetwork = false;
+            connectedToInverterNetwork = false;
+        }
         
         // Update Display with Success
         String ip_string = WiFi.localIP().toString();
@@ -555,6 +395,16 @@ void wifi_connect(String ssid, String passkey, String comment) {
         delay(3000); // Show success message for a while
     } else {
         connected = false;
+        // set also Home Network and Inverter Network to false
+        connectedToHomeNetwork = false;
+        connectedToInverterNetwork = false;
+
+        if (ssid == WIFI_HOME_SSID) {
+            homeNetworkNotReachableCount++;
+        } else if (ssid == WIFI_INVERTER_SSID) {
+            inverterNotReachableCount++;
+        } 
+
         Serial.println("\nFailed to connect to WiFi network.");
         
         // Update Display with Failure
@@ -568,12 +418,29 @@ void wifi_connect(String ssid, String passkey, String comment) {
 }
 
 void activateAPMode() {
-    WiFi.mode(WIFI_AP_STA); // Enable AP+STA mode for simultaneous access point and Wi-Fi client mode
+    WiFi.mode(WIFI_AP); // Enable AP+STA mode for simultaneous access point and Wi-Fi client mode
     WiFi.softAP(WIFI_AP_NAME, WIFI_AP_PASSWORD);
     Serial.println("AP mode activated with SSID: " + String(WIFI_AP_NAME) + ", IP: " + WiFi.softAPIP().toString());
+
+    webServerManager.begin();
 }
 
+void deactivateAPMode() {
+    WiFi.mode(WIFI_STA);
+    Serial.println("AP mode deactivated. Switched to STA mode.");
 
+    // Add action and displaymanager update to inform about the status
+    action.name = "AP Mode";
+    action.details = "Deactivated";
+    action.params[0] = "";
+    action.params[1] = "";
+    action.params[2] = "";
+    action.params[3] = "";
+    action.result = "Closed";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
+    webServerManager.stop();
+}
 
 
 ////////////////////////////////////////////////////////////////////
@@ -664,11 +531,9 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
 
 }
 
-
 ////////////////////////////////////////////////////////////////////
 // DISPLAY Section
 void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms) {
-  
   displayManager.drawBigNumberWithHeader("Leistung aktuell", inverter.getInverterPowerNow_W(), "W", "",  "%.0f");
   delay(duration_ms/3);
   displayManager.drawBigNumberWithHeader("Energie heute", inverter.getInverterEnergyToday_kWh(), "kWh", "",  "%.1f");
@@ -735,10 +600,214 @@ void displayConnected(String networkType, String ipAddress) {
     displayManager.displayAction(action);
 }
 
-
 void updateAndPublishData() {
     if (mqttManager != nullptr) {
     // Now you can call methods on mqttManager
     mqttManager->publishAllData();
     }
 }
+
+// State Machine
+
+void updateStateMachine() {
+    switch (currentState) {
+        case INVERTER_NETWORK_MODE:
+            handleInverterNetworkMode();
+            break;
+        case HOME_NETWORK_MODE:
+            handleHomeNetworkMode();
+            break;
+        case AP_MODE:
+            handleAPMode();
+            break;
+    }
+}
+
+void handleInverterNetworkMode() {   
+    Serial.println("Entering Inverter Network Mode");
+    // If connected with the Solar Inverter
+    
+    // check if connection is available
+    if (connectedToInverterNetwork  && (WiFi.status() == WL_CONNECTED) ) {  
+        inverterNotReachableCount = 0; 
+        // Starting UDP Connection inside the AP Network of inverter
+        bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
+
+        // Getting time from inverter, stored in inverterUDP object
+        String response = inverterUdp.inverter_readtime();
+
+        // Set the time of the inverter to the current time
+        // This is also resetting the energy Production Today Counter, if time was not set before
+        unsigned long epochTime = getCurrentEpochTime();
+        inverterUdp.inverter_settime(epochTime);
+
+        // Close connection before leaving to Home Network
+        inverterUdp.inverter_close();
+
+        // Retrieving the data from the inverter via the web interface
+        readInverterDataFromWebInterface(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
+        newInverterDataAvailable = true; 
+        lastInverterUpdateMillis = millis();
+
+        // Output Information 
+        Serial.println("Print Inverter Data");
+        inverter.printVariables();
+    }else{
+        connectedToInverterNetwork = false;
+        connectedToHomeNetwork = false;
+        inverterNotReachableCount++;
+        Serial.println("[ERR] No WiFi Connection!!");
+    }
+
+    if (cndInverterNetworkToHomeNetwork()) {
+        Serial.println("Exiting Inverter Network Mode --> Home Network Mode");
+       
+        action.result = "Switch";
+        action.resultDetails = "-> HOME";
+        displayManager.displayAction(action); // Update the display with the current state
+        delay(2000); 
+        
+        previousState = currentState;
+        currentState = HOME_NETWORK_MODE;
+        lastStateChangeMillis = millis();
+        wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");       
+    }
+}
+
+void handleHomeNetworkMode() {
+    Serial.println("In Home Network Mode");
+    
+    // check if connection is available
+    if (connectedToHomeNetwork && (WiFi.status() == WL_CONNECTED)) {
+        homeNetworkNotReachableCount = 0; 
+
+        // Update and Publish Data if new data is available  
+        if (newInverterDataAvailable){
+            mqttManager->publishAllData();
+            newInverterDataAvailable = false;
+            delay(3000); // Show data for 3 Seconds
+        }
+
+        // Display Inverter Data for 10 Seconds
+        displayInverterStatus(inverter, DURATION_TO_DISPLAY_INVERTER_DATA_SECONDS * 1000);
+
+        // Display Time for 10 Seconds
+        displayTime(DURATION_TO_DISPLAY_TIME_SECONDS);
+    }else{
+        connectedToInverterNetwork = false;
+        connectedToHomeNetwork = false;
+        homeNetworkNotReachableCount++;
+        Serial.println("[ERR] No WiFi Connection!!");
+    }
+    
+    // Check if we need to switch to AP Mode or Inverter Network Mode
+    if (cndHomeNetworkToAPNetwork()) {
+        Serial.println("Switching to AP Mode due to timeout.");
+        
+        action.result = "Switch";
+        action.resultDetails = "-> AP";
+        displayManager.displayAction(action); // Update the display with the current state
+        delay(2000); 
+        
+        previousState = currentState;
+        currentState = AP_MODE;
+        lastStateChangeMillis = millis();
+        homeNetworkNotReachableCount = 0; 
+        activateAPMode();
+    } else if (cndHomeNetworkToInverterNetwork()) {
+        Serial.println("Switching to Inverter Network Mode for data update.");
+        
+        action.result = "Switch";
+        action.resultDetails = "-> INV";
+        displayManager.displayAction(action); // Update the display with the current state
+        delay(2000); 
+
+        previousState = currentState;
+        currentState = INVERTER_NETWORK_MODE;
+        lastStateChangeMillis = millis();
+        homeNetworkNotReachableCount = 0; 
+        wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter WiFi");
+    }
+
+    action.result = "Working";
+    displayManager.displayAction(action); // Update the display with the current state
+    delay(1000); // Dummy delay to simulate network activity
+}
+
+void handleAPMode() {
+    Serial.println("In AP Mode");
+    connectedToHomeNetwork = false;
+    connectedToInverterNetwork = false;
+    activatedAP = true;
+
+    remainingTimeInAP = ( DURATION_STAY_IN_AP_NETWORK_MS - (millis() - lastStateChangeMillis)  ) / 1000;
+    action.result = "Remaining";
+    action.resultDetails = String(remainingTimeInAP) + "s";
+    displayManager.displayAction(action);
+
+    webServerManager.handleClient();
+
+    // Display Initialization
+    action.name = "AP Mode";
+    action.details = "Connect Now";
+    // Convert SSID from WIFI_AP_NAME to String and add to action.params[0]
+    action.params[0] = "SSID: " + String(WIFI_AP_NAME);
+
+    // get AP IP and create a String Variable to display
+    String ip_string = WiFi.softAPIP().toString();
+    
+    action.params[1] = "IP: "+ ip_string;
+    action.params[2] = "";
+    action.params[3] = "";
+    // calculate how long the AP Mode will still be actiove baed on the millis count
+    int remainingTime = DURATION_STAY_IN_AP_NETWORK_MS - (millis() - lastStateChangeMillis) / 1000;
+    action.result = "Remaining";
+    action.resultDetails = String(remainingTimeInAP) + "s";
+    displayManager.displayAction(action);
+
+
+    if (cndAPToHomeNetwork()) {
+        Serial.println("No client connected. Switching back to Home Network Mode.");
+        
+        // deactivate AP Mode
+        deactivateAPMode();
+        activatedAP = false;
+
+        action.result = "Switch";
+        action.resultDetails = "-> HOME";
+        displayManager.displayAction(action); // Update the display with the current state
+        delay(2000); 
+        
+        currentState = HOME_NETWORK_MODE;
+        lastStateChangeMillis = millis();
+
+        wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
+    }
+}
+
+// Implementation of condition checking functions
+bool cndHomeNetworkToAPNetwork() {
+   // return ( ( millis() - lastStateChangeMillis > HOME_NETWORK_TIMEOUT) && homeNetworkNotReachableCount > 3  );
+    return ( homeNetworkNotReachableCount > 3 );
+}
+
+bool cndHomeNetworkToInverterNetwork() {
+    return (millis() - lastInverterUpdateMillis > DURATION_STAY_IN_HOME_NETWORK_MS);
+}
+
+bool cndInverterNetworkToHomeNetwork(){
+    // No restrictions to leave Inverter Network Mode
+    return true;
+};
+
+bool cndAPToHomeNetwork() {
+    return (!hasClientConnected() && millis() - lastStateChangeMillis > DURATION_STAY_IN_AP_NETWORK_MS);
+}
+
+bool hasClientConnected() {
+    // ToDo: Implement the logic to check if a client is connected to the AP
+    return false;
+}
+
+
+

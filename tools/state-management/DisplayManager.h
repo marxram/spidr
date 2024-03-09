@@ -4,7 +4,7 @@
 #define DISPLAYMANAGER_H
 
 #include <U8g2lib.h>
-#include <Arduino.h> 
+#include <Arduino.h> // For access to millis()
 
 struct ActionData {
   String name;
@@ -18,6 +18,11 @@ class DisplayManager {
 public:
     DisplayManager();
     void init();
+    void update(); // Called regularly to manage screen changes
+    void showScreen1();
+    void showScreen2();
+    void showScreen3();
+    void showScreen4();
     void displayAction(const ActionData& action);
     void drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr);
     void drawBigNumberWithHeader(String header, float number, String unit, String annotation, String formattingStr);

@@ -35,6 +35,111 @@ void DisplayManager::init() {
 }
 
 
+void DisplayManager::update() {
+    unsigned long currentTime = millis();
+    if (currentTime - lastUpdateTime >= screenInterval) {
+        lastUpdateTime = currentTime;
+        currentScreen = (currentScreen + 1) % MAX_SCREENS; // Update this based on the number of screens
+        
+        switch (currentScreen) {
+            case 0:
+                showScreen1();
+                break;
+            case 1:
+                showScreen2();
+                break;
+            case 2:
+                showScreen3();
+                break;
+            case 3:
+                showScreen4();
+                break;
+        }
+    }
+}
+
+void DisplayManager::showScreen1(){
+  u8g2->clearBuffer();
+  
+  u8g2->setFont(u8g2_font_unifont_t_emoticons);
+  u8g2->drawGlyph(0, 15, 0x20); // Smile Big
+  u8g2->drawGlyph(16, 15, 0x2E); // Sunglasses 
+  u8g2->drawGlyph(32, 15, 0x100); 
+  u8g2->drawGlyph(48, 15, 0x78); // Pommesgabel
+  u8g2->drawGlyph(64, 15, 0x70); // Dollar
+  u8g2->drawGlyph(80, 15, 0x100); // Sad
+  u8g2->drawGlyph(96, 15, 0xB8); // House
+  u8g2->drawGlyph(112, 15, 0xB4); // Server
+
+  
+  // Inside your loop or setup, call the function with the additional font arguments
+  //drawBigNumberNoHeader(myNumber, myUnit, "Energie heute", myFormattingStr);
+  
+  // Send the buffer to the display
+  u8g2->sendBuffer();
+}
+
+void DisplayManager::showScreen2(){
+  u8g2->clearBuffer();
+  
+  /*
+  u8g2->setFont(u8g2_font_open_iconic_all_2x_t);
+  u8g2->drawGlyph(0, 15, 0x7B); // Clock
+  u8g2->drawGlyph(16, 15, 0xFC); // Shield
+  u8g2->drawGlyph(32, 15, 0xF7); //WiFi
+  u8g2->drawGlyph(48, 15, 0xCD); // recycle
+  u8g2->drawGlyph(64, 15, 0x103); // Sun
+  u8g2->drawGlyph(80, 15, 0xDF); // Moon
+  u8g2->drawGlyph(96, 15, 0xB8); // House
+  u8g2->drawGlyph(112, 15, 0xB4); // Server
+  */
+  // Inside your loop or setup, call the function with the additional font arguments
+  
+  //drawBigNumberWithHeader("Energie", myNumber, myUnit,"Energie total",  myFormattingStr);
+
+  u8g2->sendBuffer();
+}
+
+void DisplayManager::showScreen3(){
+  u8g2->clearBuffer();
+  
+  /* u8g2->setFont(u8g2_font_unifont_t_weather);
+  u8g2->drawGlyph(0, 15, 0x21); // No Moon
+  u8g2->drawGlyph(16, 15, 0x22); // 0,25
+  u8g2->drawGlyph(32, 15, 0x23); // 0,5
+  u8g2->drawGlyph(48, 15, 0x24); // 0,75
+  u8g2->drawGlyph(64, 15, 0x25); // 1,0
+  u8g2->drawGlyph(80, 15, 0x26); // 1,25
+  u8g2->drawGlyph(96, 15, 0x27); // 1,5
+  u8g2->drawGlyph(112, 15, 0x28); // 1,75
+*/
+
+  // Inside your loop or setup, call the function with the additional font arguments
+  //drawBigNumberWithHeader("Gestern", myNumber, myUnit,"Verbrauch",  myFormattingStr);
+
+  
+  u8g2->sendBuffer();
+}
+
+void DisplayManager::showScreen4(){
+  u8g2->clearBuffer();
+
+  u8g2->setFont(u8g2_font_siji_t_6x10);
+  u8g2->drawGlyph(0, 15, 0xE217); // No WiFi
+  u8g2->drawGlyph(16, 15, 0xE218); // 1Bar
+  u8g2->drawGlyph(32, 15, 0xE219); // 2Bar
+  u8g2->drawGlyph(48, 15, 0xE21A); // 3Bar
+  u8g2->drawGlyph(64, 15, 0xE09F); // Computer
+  u8g2->drawGlyph(80, 15, 0xE0AF); // NetDrive
+  u8g2->drawGlyph(96, 15, 0xE140); // Ghost
+  u8g2->drawGlyph(112,15,0xE141); // Small Ghost
+
+  // Inside your loop or setup, call the function with the additional font arguments
+  //drawBigNumberNoHeader(myNumber, myUnit,"24h", myFormattingStr);
+
+  u8g2->sendBuffer();
+}
+
 void DisplayManager::displayAction(const ActionData& action) {
   int yPositionBottomLine = 63;
   String actionStr(action.name.c_str());
