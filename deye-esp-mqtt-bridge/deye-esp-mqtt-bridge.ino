@@ -110,6 +110,7 @@ void loadPreferencesIntoVariables();
 //void manageAPMode(void *pvParameters);
 void activateAPMode();
 void displayConnected(String networkType, String ipAddress);
+void clearActionDisplay();
 
 
 // State Management Functions
@@ -173,15 +174,16 @@ void setup() {
   action.result = "Result";
   action.resultDetails = "Details";
   displayManager.displayAction(action);
-
   delay(5000);
+  clearActionDisplay();
   
   // Initiliase the NTP client, or fallback to build time if USE_NTP_SYNC is not defined
   Serial.println("Initialize Time...");
   setupTime();
 
-
+  // Initialize the State Machine
   currentState = HOME_NETWORK_MODE;
+  homeNetworkNotReachableCount = 0;
   lastStateChangeMillis = millis();
   wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
 
@@ -356,7 +358,7 @@ void wifi_connect(String ssid, String passkey, String comment) {
     unsigned long attemptStartTime = millis(); // Make sure this is defined at the start of your connection attempt
 
     while (WiFi.status() != WL_CONNECTED && (millis() - attemptStartTime) < WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000) { 
-        int delay_loop = 1000; // Delay per loop iteration
+        int delay_loop = 300; // Delay per loop iteration
         delay(delay_loop);
         Serial.print(".");
 
@@ -389,6 +391,8 @@ void wifi_connect(String ssid, String passkey, String comment) {
         // Update Display with Success
         String ip_string = WiFi.localIP().toString();
         action.params[1] = "IP: " + ip_string;
+        action.params[2] = "";
+        
         action.result = "Connected";
         action.resultDetails = "Success!";
         displayManager.displayAction(action);
@@ -415,6 +419,20 @@ void wifi_connect(String ssid, String passkey, String comment) {
         displayManager.displayAction(action);
         delay(5000); // Show failure message for a while
     }
+    clearActionDisplay();
+}
+
+void clearActionDisplay(){
+    // Display Initialization
+    action.name = "";
+    action.details = "";
+    action.params[0] = "";
+    action.params[1] = "";
+    action.params[2] = "";
+    action.params[3] = "";
+    action.result = "";
+    action.resultDetails = "";
+    displayManager.displayAction(action);
 }
 
 void activateAPMode() {
@@ -677,9 +695,15 @@ void handleInverterNetworkMode() {
 void handleHomeNetworkMode() {
     Serial.println("In Home Network Mode");
     
+
     // check if connection is available
     if (connectedToHomeNetwork && (WiFi.status() == WL_CONNECTED)) {
         homeNetworkNotReachableCount = 0; 
+
+        if (previousState != HOME_NETWORK_MODE) {
+            webServerManager.begin();
+        }
+        webServerManager.handleClient();
 
         // Update and Publish Data if new data is available  
         if (newInverterDataAvailable){
@@ -687,12 +711,15 @@ void handleHomeNetworkMode() {
             newInverterDataAvailable = false;
             delay(3000); // Show data for 3 Seconds
         }
+        webServerManager.handleClient();
 
         // Display Inverter Data for 10 Seconds
         displayInverterStatus(inverter, DURATION_TO_DISPLAY_INVERTER_DATA_SECONDS * 1000);
+        webServerManager.handleClient();
 
         // Display Time for 10 Seconds
         displayTime(DURATION_TO_DISPLAY_TIME_SECONDS);
+        webServerManager.handleClient();
     }else{
         connectedToInverterNetwork = false;
         connectedToHomeNetwork = false;
@@ -704,6 +731,9 @@ void handleHomeNetworkMode() {
     if (cndHomeNetworkToAPNetwork()) {
         Serial.println("Switching to AP Mode due to timeout.");
         
+        // Close the WebServer
+        webServerManager.stop();
+
         action.result = "Switch";
         action.resultDetails = "-> AP";
         displayManager.displayAction(action); // Update the display with the current state
@@ -717,6 +747,9 @@ void handleHomeNetworkMode() {
     } else if (cndHomeNetworkToInverterNetwork()) {
         Serial.println("Switching to Inverter Network Mode for data update.");
         
+        // Close the WebServer
+        webServerManager.stop();
+
         action.result = "Switch";
         action.resultDetails = "-> INV";
         displayManager.displayAction(action); // Update the display with the current state

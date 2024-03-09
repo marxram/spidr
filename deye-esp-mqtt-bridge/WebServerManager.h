@@ -34,6 +34,9 @@ private:
 
     void setupRoutes();
     void handleRootPage();
+    void handleConfigPage();
+    void handleWikiPage();
+
     void handleUpdate();
     String templateProcessor(const String& var);
 };
