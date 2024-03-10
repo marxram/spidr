@@ -2,6 +2,8 @@
 #define MQTTMANAGER_H
 
 #include <Arduino.h>
+
+#define MQTT_MAX_PACKET_SIZE 1024 // Giving more space for MQTT packets
 #include <PubSubClient.h>
 #include "DisplayManager.h" // Ensure DisplayManager is accessible
 #include "Inverter.h" // Ensure Inverter is accessible

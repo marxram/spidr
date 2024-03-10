@@ -6,6 +6,9 @@
 // AT Commands
 #include <WiFiUdp.h>
 
+
+#define TIME_NOT_INITIALIZTED_TOKEN "NO-TIME"
+
 class InverterUdp {
 public:
   InverterUdp();

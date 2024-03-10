@@ -1,10 +1,10 @@
-#define BOARD_WEMOS_OLED_128x64_ESP32
+//#define BOARD_WEMOS_OLED_128x64_ESP32
 //#define BOARD_HELTEC_OLED_128x32_ESP8266
 
 #define USE_SECRETS_FILE_AS_DEFAULT
 
-#define WIFI_AP_NAME "deye-esp-mqtt-bridge"
-#define WIFI_AP_PASSWORD "deye-esp-mqtt-bridge"
+#define WIFI_AP_NAME "airgap-bridge"
+#define WIFI_AP_PASSWORD "airgap-bridge"
 
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
@@ -40,9 +40,8 @@
 
 ///////////////////////////////////////////////////////////////////////
 // Timing behavior
-#define DURATION_STAY_IN_HOME_NETWORK_MS 60000  
-#define DURATION_STAY_IN_AP_NETWORK_MS  180000  
-
+#define DURATION_STAY_IN_HOME_NETWORK_MS   60000  
+#define DURATION_STAY_IN_AP_NETWORK_MS    120000  
 
 #define DURATION_TO_DISPLAY_TIME_SECONDS 5
 #define DURATION_TO_DISPLAY_INVERTER_DATA_SECONDS 10

@@ -19,6 +19,7 @@ public:
     void begin();
     void stop();
     void handleClient();
+    bool isServerActive();
 
 
 private:
@@ -36,6 +37,8 @@ private:
     void handleRootPage();
     void handleConfigPage();
     void handleWikiPage();
+
+    bool serverActive = false;
 
     void handleUpdate();
     String templateProcessor(const String& var);

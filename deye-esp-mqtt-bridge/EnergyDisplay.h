@@ -26,7 +26,7 @@ private:
     unsigned long _lastUpdateTime;
     unsigned int _intervals[NUM_STATES];
     bool _isActive; // Flag to control the update cycle
-    bool _needsDisplayUpdate; // Flag to indicate if the display needs to be updated
+    DisplayState _previousState; // Keep track of the previous state
 };
 
 #endif // EnergyDisplay_h

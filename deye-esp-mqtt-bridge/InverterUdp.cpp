@@ -73,6 +73,7 @@ String InverterUdp::inverter_readtime(){
         if (response.startsWith(RESP_TIME_UNSET)){
             Serial.println("Inverter Time is unset ");
             defaultTimeIsSet = true;
+            response = TIME_NOT_INITIALIZTED_TOKEN;
         }else{
             // Parse if makes sense
             Serial.println("Checking Inverter Time >" + response + "<");

@@ -148,7 +148,7 @@ int remainingTimeInAP = 0;
 
 void setup() {
   Serial.begin(115200);
-  delay(10); 
+  delay(500); 
 
   // Initialize Preferences Manager
   Serial.println("Initialize Preferences Manager...");
@@ -183,6 +183,14 @@ void setup() {
   Serial.println("Initialize Time...");
   setupTime();
 
+
+    // Initialize the MQTT Manager
+    
+  if (mqttManager == nullptr) {
+    Serial.println("Initialize MQTT Manager...");
+    mqttManager = new MQTTManager(MQTT_BROKER_HOST.c_str(), MQTT_BROKER_PORT, MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str(), displayManager, inverter);
+  }
+
   // Initialize the State Machine
   currentState = HOME_NETWORK_MODE;
   homeNetworkNotReachableCount = 0;
@@ -190,6 +198,7 @@ void setup() {
   wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
   energyDisplay.initializeDisplayIntervals(5000, 5000, 5000);
   energyDisplay.start();
+
 }
 
 
@@ -444,6 +453,13 @@ void activateAPMode() {
     Serial.println("AP mode activated with SSID: " + String(WIFI_AP_NAME) + ", IP: " + WiFi.softAPIP().toString());
 
     webServerManager.begin();
+
+    action.name = "AP Starting";
+    action.details = "";
+    action.result = "";
+    action.resultDetails = "";
+    displayManager.displayAction(action); // Update the display with the current state
+    delay(2000); 
 }
 
 void deactivateAPMode() {
@@ -461,6 +477,7 @@ void deactivateAPMode() {
     action.resultDetails = "";
     displayManager.displayAction(action);
     webServerManager.stop();
+    delay(2000);
 }
 
 
@@ -552,18 +569,6 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
 
 }
 
-////////////////////////////////////////////////////////////////////
-// DISPLAY Section
-// void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms) {
-//   displayManager.drawBigNumberWithHeader("Leistung aktuell", inverter.getInverterPowerNow_W(), "W", "",  "%.0f");
-//   delay(duration_ms/3);
-//   displayManager.drawBigNumberWithHeader("Energie heute", inverter.getInverterEnergyToday_kWh(), "kWh", "",  "%.1f");
-//   delay(duration_ms/3);
-//   displayManager.drawBigNumberWithHeader("Energie gesamt", inverter.getInverterEnergyTotal_kWh(), "kWh", "",  "%.1f");
-//   delay(duration_ms/3);
-// }
-
-
 
 
 void displayConnected(String networkType, String ipAddress) {
@@ -582,6 +587,8 @@ void updateAndPublishData() {
     if (mqttManager != nullptr) {
     // Now you can call methods on mqttManager
     mqttManager->publishAllData();
+    }else{
+        Serial.println("MQTT Manager not initialized");
     }
 }
 
@@ -609,10 +616,67 @@ void handleInverterNetworkMode() {
     if (connectedToInverterNetwork  && (WiFi.status() == WL_CONNECTED) ) {  
         inverterNotReachableCount = 0; 
         // Starting UDP Connection inside the AP Network of inverter
-        bool startCon =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
+        
+        
+        // Display Initialization
+        action.name = "Inverter";
+        action.details = "Init UDP Connection";
+        action.params[0] = "Status: Login";
+        action.params[1] = "";
+        action.params[2] = "";
+        action.params[3] = "";
+        action.result = "Pending";
+        action.resultDetails = "";
+        displayManager.displayAction(action);
 
-        // Getting time from inverter, stored in inverterUDP object
-        String response = inverterUdp.inverter_readtime();
+        bool udpConnectionCreated =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
+
+        if (udpConnectionCreated){
+            action.params[0] = "Status: Connected";
+            action.result = "Connected";
+            action.resultDetails = "";
+            displayManager.displayAction(action);
+            delay(1000);
+
+            action.details = "Get Time";
+            action.params[0] = "";
+            action.result = "Waiting...";
+            action.resultDetails = "";
+            displayManager.displayAction(action);
+            delay(1000);
+
+            // Getting time from inverter, stored in inverterUDP object
+            String response = inverterUdp.inverter_readtime();
+            // Print the entire response
+            Serial.print(response);
+        
+            if (response == TIME_NOT_INITIALIZTED_TOKEN){
+                Serial.print("Time needs to be set");
+                
+                action.params[0] = "Status: Time not set";
+                action.params[1] = "Trigger Time Sync ";
+                action.result = "Waiting...";
+                action.resultDetails = "";
+                displayManager.displayAction(action);
+                response = inverterUdp.inverter_settime(getCurrentEpochTime());
+                Serial.print(response);
+                action.params[0] = "Status: Time set";
+                action.params[1] = "Time Sync ";
+                action.result = "Done";
+                action.resultDetails = "synced?";
+                displayManager.displayAction(action);
+                delay(2000);
+            }
+        }else{            
+            action.params[0] = "Status: Failed";
+            action.result = "Failed";
+            action.resultDetails = "";
+            displayManager.displayAction(action);
+            delay(2000);
+        }
+
+
+        
 
         // Set the time of the inverter to the current time
         // This is also resetting the energy Production Today Counter, if time was not set before
@@ -640,7 +704,7 @@ void handleInverterNetworkMode() {
     if (cndInverterNetworkToHomeNetwork()) {
         Serial.println("Exiting Inverter Network Mode --> Home Network Mode");
        
-        action.result = "Switch";
+        action.result = "Inverter";
         action.resultDetails = "-> HOME";
         displayManager.displayAction(action); // Update the display with the current state
         delay(2000); 
@@ -656,31 +720,39 @@ void handleInverterNetworkMode() {
 }
 
 void handleHomeNetworkMode() {
-    Serial.println("In Home Network Mode");
     
     // check if connection is available
     if (connectedToHomeNetwork && (WiFi.status() == WL_CONNECTED)) {
+        //Serial.println("[DBG] HomeNetwork Internal Loop");
         homeNetworkNotReachableCount = 0; 
 
         if (previousState != HOME_NETWORK_MODE) {
+            //Serial.println("Start Web Server Manager");
             webServerManager.begin();
         }
-        webServerManager.handleClient();
 
+        if (webServerManager.isServerActive()) {
+            //Serial.println("Handle Webserver Client");
+            webServerManager.handleClient();
+        }
+        
         // Update and Publish Data if new data is available  
         if (newInverterDataAvailable){
-            mqttManager->publishAllData();
+        // Debugging MQTT
+        //if (true){
+            Serial.println("New inverter Data available --> Send data via MQTT");
+            updateAndPublishData();
             newInverterDataAvailable = false;
             delay(3000); // Show data for 3 Seconds
         }
-        webServerManager.handleClient();
+        
         // Display Inverter Data for 10 Seconds
+        // Now in an async way
         energyDisplay.updateDisplay(inverter);
-        webServerManager.handleClient();
 
         // Display Time for 10 Seconds
         //displayTime(DURATION_TO_DISPLAY_TIME_SECONDS);
-        webServerManager.handleClient();
+
     }else{
         connectedToInverterNetwork = false;
         connectedToHomeNetwork = false;
@@ -695,7 +767,7 @@ void handleHomeNetworkMode() {
         // Close the WebServer
         webServerManager.stop();
 
-        action.result = "Switch";
+        action.result = "Home";
         action.resultDetails = "-> AP";
         displayManager.displayAction(action); // Update the display with the current state
         delay(2000); 
@@ -710,7 +782,7 @@ void handleHomeNetworkMode() {
         // Close the WebServer
         webServerManager.stop();
 
-        action.result = "Switch";
+        action.result = "Home";
         action.resultDetails = "-> INV";
         displayManager.displayAction(action); // Update the display with the current state
         delay(2000); 
@@ -726,7 +798,8 @@ void handleHomeNetworkMode() {
 }
 
 void handleAPMode() {
-    Serial.println("In AP Mode");
+    // Serial.println("In AP Mode");
+    
     connectedToHomeNetwork = false;
     connectedToInverterNetwork = false;
     activatedAP = true;
@@ -736,7 +809,9 @@ void handleAPMode() {
     action.resultDetails = String(remainingTimeInAP) + "s";
     displayManager.displayAction(action);
 
-    webServerManager.handleClient();
+    if (webServerManager.isServerActive()) {
+        webServerManager.handleClient();
+    }
 
     // Display Initialization
     action.name = "AP Mode";
@@ -747,8 +822,9 @@ void handleAPMode() {
     // get AP IP and create a String Variable to display
     String ip_string = WiFi.softAPIP().toString();
     
-    action.params[1] = "IP: "+ ip_string;
-    action.params[2] = "";
+    action.params[1] = action.params[0] = "PSWD: " + String(WIFI_AP_PASSWORD);
+    action.params[2] = "IP: "+ ip_string;
+    
     action.params[3] = "";
     // calculate how long the AP Mode will still be actiove baed on the millis count
     int remainingTime = DURATION_STAY_IN_AP_NETWORK_MS - (millis() - lastStateChangeMillis) / 1000;
@@ -764,11 +840,13 @@ void handleAPMode() {
         deactivateAPMode();
         activatedAP = false;
 
-        action.result = "Switch";
+
+        action.name = "AP Stop";
+        action.details = "Shutdown";
+        action.result = "AP";
         action.resultDetails = "-> HOME";
         displayManager.displayAction(action); // Update the display with the current state
         delay(2000); 
-        
 
         currentState = HOME_NETWORK_MODE;
         lastStateChangeMillis = millis();

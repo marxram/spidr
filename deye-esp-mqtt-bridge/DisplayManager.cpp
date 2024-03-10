@@ -38,7 +38,9 @@ void DisplayManager::init() {
 void DisplayManager::displayAction(const ActionData& action) {
   int yPositionBottomLine = 63;
   String actionStr(action.name.c_str());
-  Serial.println("DisplayAction: " + actionStr);
+  
+  //Serial.println("DisplayAction: " + actionStr);
+  
   u8g2->clearBuffer();
 
   //Serial.println("Displaying action name");

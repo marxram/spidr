@@ -10,11 +10,17 @@ void WebServerManager::begin() {
     setupRoutes();
     server.begin(); // Start the web server
     Serial.println("WebServerManager: Web server started.");
+    serverActive = true;
 }
 
 void WebServerManager::stop() {
     server.close(); // Close the web server
     Serial.println("WebServerManager: Web server stopped.");
+    serverActive = false;
+}
+
+bool WebServerManager::isServerActive() {
+    return serverActive;
 }
 
 void WebServerManager::handleClient() {

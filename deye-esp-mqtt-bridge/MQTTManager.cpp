@@ -3,6 +3,7 @@
 MQTTManager::MQTTManager(const char* broker, uint16_t port, const char* user, const char* pwd, DisplayManager& displayManager, Inverter& inverter)
 : _broker(broker), _port(port), _user(user), _pwd(pwd), _displayManager(displayManager), _inverter(inverter), mqttClient(espClient) {
     mqttClient.setServer(_broker, _port);
+    mqttClient.setBufferSize(1024); // Increase the buffer size to 512 bytes
 }
 
 void MQTTManager::reconnect(ActionData& action) {
@@ -31,30 +32,60 @@ void MQTTManager::publish(const char* topic, const char* payload) {
     mqttClient.publish(topic, payload);
 }
 
-
+// Configuration for the Power sensor
 const char* configPower = R"({
+    "unique_id": "solar_inverter_power",
     "device_class": "power",
-    "name": "Inverter Power",
-    "state_topic": "home/solar/inverter/power",
+    "suggested_display_precision": 0,
+    "icon": "mdi:solar-power",
+    "device": {
+    "identifiers": ["deye_600_12345678"],
+    "name": "Solar Inverter",
+    "model": "EU 600W",
+    "via_device": "esp-mqtt-bridge",
+    "manufacturer": "Deye"},
+    "name": "Solar Power",
+    "state_topic": "SolarInverterBridge/inverter/power_W",
     "unit_of_measurement": "W",
     "value_template": "{{ value }}"
 })";
 
+// Configuration for the Energy Today sensor
 const char* configEnergyToday = R"({
+    "unique_id": "solar_inverter_energy_today",
     "device_class": "energy",
-    "name": "Inverter Energy Today",
-    "state_topic": "home/solar/inverter/energy_today",
+    "suggested_display_precision": 1,
+    "icon": "mdi:sigma",
+    "device": {
+    "identifiers": ["deye_600_12345678"],
+    "name": "Solar Inverter",
+    "model": "EU 600W",
+    "via_device": "esp-mqtt-bridge",
+    "manufacturer": "Deye"},
+    "name": "Solar Energy Today",
+    "state_topic": "SolarInverterBridge/inverter/energy_today_kWh",
     "unit_of_measurement": "kWh",
     "value_template": "{{ value }}"
 })";
 
+// Configuration for the Energy Total sensor
 const char* configEnergyTotal = R"({
+    "unique_id": "solar_inverter_energy_total",
     "device_class": "energy",
-    "name": "Inverter Total Energy",
-    "state_topic": "home/solar/inverter/energy_total",
+    "suggested_display_precision": 1, 
+    "device": {
+    "identifiers": ["deye_600_12345678"],
+    "name": "Solar Inverter",
+    "model": "EU 600W",
+    "via_device": "esp-mqtt-bridge",
+    "manufacturer": "Deye"},
+    "name": "Solar Energy Total",
+    "state_topic": "SolarInverterBridge/inverter/energy_total_kWh",
     "unit_of_measurement": "kWh",
     "value_template": "{{ value }}"
 })";
+
+
 
 
 void MQTTManager::publishAllData() {
@@ -70,11 +101,6 @@ void MQTTManager::publishAllData() {
     if (!mqttClient.connected()) {
         reconnect(action); // Pass action by reference if you want to update it within reconnect
     }
-
-    // Needed for Home Assistant auto recognition of sensors
-    mqttClient.publish("homeassistant/sensor/solar_inverter_power/config", configPower, true);
-    mqttClient.publish("homeassistant/sensor/solar_inverter_energy_today/config", configEnergyToday, true);
-    mqttClient.publish("homeassistant/sensor/solar_inverter_energy_total/config", configEnergyTotal, true);
     
     if (mqttClient.connected()) {
         action.result = "Connected";
@@ -104,13 +130,56 @@ void MQTTManager::publishAllData() {
         publish("SolarInverterBridge/remote-server/statusC", _inverter.getRemoteServerStatusC().c_str());
         publish("SolarInverterBridge/lastUpdateTimestamp", String(_inverter.getLastUpdateTimestamp()).c_str());
    
+
+
+        bool publishSuccess;
+
+        publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/power/config",configPower , false);
+        if (!publishSuccess) {
+            Serial.println("[ERR] Failed to publish config for Power sensor.");
+        } else {
+            Serial.println("[DBG] Config for Power sensor published successfully.");
+        }
+
+        publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/energy_today/config", configEnergyToday, false);
+        if (!publishSuccess) {
+            Serial.println("[ERR] Failed to publish config for Energy Today sensor.");
+        } else {
+            Serial.println("[DBG] Config for Energy Today sensor published successfully.");
+        }
+
+        publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/energy_total/config", configEnergyTotal, false);
+        if (!publishSuccess) {
+            Serial.println("[ERR] Failed to publish config for Energy Total sensor.");
+        } else {
+            Serial.println("[DBG] Config for Energy Total sensor published successfully.");
+        }
+
+        // // Publishing MQTT Discovery config messages for Home Assistant
+        // Serial.println("[DBG] Publish config for Power sensor.");
+        // mqttClient.publish("homeassistant/sensor/solar_inverter/power/config", configSmall, false);
+
+        // Serial.println("[DBG] Publish config for Energy Today sensor.");
+        // mqttClient.publish("homeassistant/sensor/solar_inverter/energy_today/config", configSmall, false);
+
+        // Serial.println("[DBG] Publish config for Energy Total sensor.");
+        // mqttClient.publish("homeassistant/sensor/solar_inverter/energy_total/config", configSmall, false);
+
+
+        // <discovery_prefix>/<component>/<node_id>/<object_id>/config
+        //    <discovery_prefix> is usually homeassistant.
+        //    <component> is the type of the Home Assistant component (e.g., sensor for sensor entities).
+        //    <node_id> and <object_id> are unique identifiers for your device and the specific entity. These can be anything that uniquely identifies the entity, like solar_inverter for the node and energy_today for the object.
+
         disconnect();
         action.result = "Done";
         action.resultDetails = "Published";
     } else {
+        Serial.println("[DBG] MQTT Connection not available.");
         action.result = "Failed";
         action.resultDetails = "Check connection";
     }
     
     _displayManager.displayAction(action); // Final display update
+
 }
