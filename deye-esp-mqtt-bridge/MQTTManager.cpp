@@ -107,6 +107,31 @@ void MQTTManager::publishAllData() {
         action.resultDetails = "Publishing...";
         _displayManager.displayAction(action); // Update display after connection
         
+
+       bool publishSuccess;
+
+        publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/power/config",configPower , true);
+        if (!publishSuccess) {
+            Serial.println("[ERR] Failed to publish config for Power sensor.");
+        } else {
+            Serial.println("[DBG] Config for Power sensor published successfully.");
+        }
+
+        publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/energy_today/config", configEnergyToday, true);
+        if (!publishSuccess) {
+            Serial.println("[ERR] Failed to publish config for Energy Today sensor.");
+        } else {
+            Serial.println("[DBG] Config for Energy Today sensor published successfully.");
+        }
+
+        publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/energy_total/config", configEnergyTotal, true);
+        if (!publishSuccess) {
+            Serial.println("[ERR] Failed to publish config for Energy Total sensor.");
+        } else {
+            Serial.println("[DBG] Config for Energy Total sensor published successfully.");
+        }
+        delay(100); // Wait for the config messages to be processed by the broker
+
         // Publishing all fields using the updated InverterData struct
         // Publish data directly from the Inverter instance
         publish("SolarInverterBridge/inverter/serial", _inverter.getInverterSerial().c_str());
@@ -132,28 +157,7 @@ void MQTTManager::publishAllData() {
    
 
 
-        bool publishSuccess;
-
-        publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/power/config",configPower , false);
-        if (!publishSuccess) {
-            Serial.println("[ERR] Failed to publish config for Power sensor.");
-        } else {
-            Serial.println("[DBG] Config for Power sensor published successfully.");
-        }
-
-        publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/energy_today/config", configEnergyToday, false);
-        if (!publishSuccess) {
-            Serial.println("[ERR] Failed to publish config for Energy Today sensor.");
-        } else {
-            Serial.println("[DBG] Config for Energy Today sensor published successfully.");
-        }
-
-        publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/energy_total/config", configEnergyTotal, false);
-        if (!publishSuccess) {
-            Serial.println("[ERR] Failed to publish config for Energy Total sensor.");
-        } else {
-            Serial.println("[DBG] Config for Energy Total sensor published successfully.");
-        }
+ 
 
         // // Publishing MQTT Discovery config messages for Home Assistant
         // Serial.println("[DBG] Publish config for Power sensor.");

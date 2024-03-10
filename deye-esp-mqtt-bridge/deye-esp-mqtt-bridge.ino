@@ -609,6 +609,9 @@ void updateStateMachine() {
 }
 
 void handleInverterNetworkMode() {   
+    // Store the previous state
+    previousState = currentState;
+
     Serial.println("Entering Inverter Network Mode");
     // If connected with the Solar Inverter
     
@@ -676,8 +679,6 @@ void handleInverterNetworkMode() {
         }
 
 
-        
-
         // Set the time of the inverter to the current time
         // This is also resetting the energy Production Today Counter, if time was not set before
         unsigned long epochTime = getCurrentEpochTime();
@@ -709,18 +710,17 @@ void handleInverterNetworkMode() {
         displayManager.displayAction(action); // Update the display with the current state
         delay(2000); 
         
-        previousState = currentState;
         currentState = HOME_NETWORK_MODE;
         lastStateChangeMillis = millis();
         wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
         energyDisplay.start(); // Start display updates
-    }
-    // Store the previous state
-    previousState = currentState;
+    }   
 }
 
 void handleHomeNetworkMode() {
-    
+    // Store the previous state
+    previousState = currentState;
+
     // check if connection is available
     if (connectedToHomeNetwork && (WiFi.status() == WL_CONNECTED)) {
         //Serial.println("[DBG] HomeNetwork Internal Loop");
@@ -793,11 +793,13 @@ void handleHomeNetworkMode() {
         homeNetworkNotReachableCount = 0; 
         wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter WiFi");
     }
-    // Store the previous state
-    previousState = currentState;
+    
 }
 
 void handleAPMode() {
+    // Store the previous state
+    previousState = currentState;
+    
     // Serial.println("In AP Mode");
     
     connectedToHomeNetwork = false;
@@ -856,8 +858,6 @@ void handleAPMode() {
 
         energyDisplay.start(); // Start display updates
     }
-    // Store the previous state
-    previousState = currentState;
 }
 
 // Implementation of condition checking functions
@@ -871,12 +871,14 @@ bool cndHomeNetworkToInverterNetwork() {
     // if the inverter is not seen for a longer time inverterNotReachableCount > 3 this condition will be true should take the DURATION_STAY_IN_HOME_NETWORK_MS * 10
     // until it is switching back
 
+    
+
     if (inverterNotReachableCount > 3) {
         // lastInverterUpdateMillis Check again in 10 Minutes
         // print a message that next try has been shfted to 10 Minutes
         Serial.println("Inverter not reachable for a longer time (" + String(inverterNotReachableCount)+" times ). Switching back to Inverter Network Mode in 10 Minutes.");
 
-        lastInverterUpdateMillis = millis() + 10 * 60 * 1000;
+        lastInverterUpdateMillis = millis() - 10 * 60 * 1000;
     }
     
     return (millis() - lastInverterUpdateMillis > DURATION_STAY_IN_HOME_NETWORK_MS);
