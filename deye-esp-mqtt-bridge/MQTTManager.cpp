@@ -32,6 +32,31 @@ void MQTTManager::publish(const char* topic, const char* payload) {
 }
 
 
+const char* configPower = R"({
+    "device_class": "power",
+    "name": "Inverter Power",
+    "state_topic": "home/solar/inverter/power",
+    "unit_of_measurement": "W",
+    "value_template": "{{ value }}"
+})";
+
+const char* configEnergyToday = R"({
+    "device_class": "energy",
+    "name": "Inverter Energy Today",
+    "state_topic": "home/solar/inverter/energy_today",
+    "unit_of_measurement": "kWh",
+    "value_template": "{{ value }}"
+})";
+
+const char* configEnergyTotal = R"({
+    "device_class": "energy",
+    "name": "Inverter Total Energy",
+    "state_topic": "home/solar/inverter/energy_total",
+    "unit_of_measurement": "kWh",
+    "value_template": "{{ value }}"
+})";
+
+
 void MQTTManager::publishAllData() {
     ActionData action;
     action.name = "MQTT Sync";
@@ -46,6 +71,11 @@ void MQTTManager::publishAllData() {
         reconnect(action); // Pass action by reference if you want to update it within reconnect
     }
 
+    // Needed for Home Assistant auto recognition of sensors
+    mqttClient.publish("homeassistant/sensor/solar_inverter_power/config", configPower, true);
+    mqttClient.publish("homeassistant/sensor/solar_inverter_energy_today/config", configEnergyToday, true);
+    mqttClient.publish("homeassistant/sensor/solar_inverter_energy_total/config", configEnergyTotal, true);
+    
     if (mqttClient.connected()) {
         action.result = "Connected";
         action.resultDetails = "Publishing...";

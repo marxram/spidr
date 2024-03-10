@@ -21,6 +21,8 @@
 #include "PreferencesManager.h"
 #include "WebServerManager.h"
 
+#include "EnergyDisplay.h"
+
 
 ///////////////////////////////////////////////////////////////////////
 // Configuration and user settings
@@ -91,7 +93,7 @@ Inverter inverter;
 InverterUdp inverterUdp;
 PreferencesManager prefsManager;
 WebServerManager webServerManager; // Create an instance of WebServerManager
-
+EnergyDisplay energyDisplay(displayManager);
 
 const int udpServerPort = 50000; // manual port
 const int udpLocalPort = 48899; // Fixed port of deye inverter
@@ -186,7 +188,8 @@ void setup() {
   homeNetworkNotReachableCount = 0;
   lastStateChangeMillis = millis();
   wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
-
+  energyDisplay.initializeDisplayIntervals(5000, 5000, 5000);
+  energyDisplay.start();
 }
 
 
@@ -551,60 +554,17 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
 
 ////////////////////////////////////////////////////////////////////
 // DISPLAY Section
-void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms) {
-  displayManager.drawBigNumberWithHeader("Leistung aktuell", inverter.getInverterPowerNow_W(), "W", "",  "%.0f");
-  delay(duration_ms/3);
-  displayManager.drawBigNumberWithHeader("Energie heute", inverter.getInverterEnergyToday_kWh(), "kWh", "",  "%.1f");
-  delay(duration_ms/3);
-  displayManager.drawBigNumberWithHeader("Energie gesamt", inverter.getInverterEnergyTotal_kWh(), "kWh", "",  "%.1f");
-  delay(duration_ms/3);
-}
+// void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms) {
+//   displayManager.drawBigNumberWithHeader("Leistung aktuell", inverter.getInverterPowerNow_W(), "W", "",  "%.0f");
+//   delay(duration_ms/3);
+//   displayManager.drawBigNumberWithHeader("Energie heute", inverter.getInverterEnergyToday_kWh(), "kWh", "",  "%.1f");
+//   delay(duration_ms/3);
+//   displayManager.drawBigNumberWithHeader("Energie gesamt", inverter.getInverterEnergyTotal_kWh(), "kWh", "",  "%.1f");
+//   delay(duration_ms/3);
+// }
 
 
-void displayTime(int displayDurationSeconds) {
-    const int delayPerIteration = 300; // Delay per iteration in ms
-    int iterations = (displayDurationSeconds * 1000) / delayPerIteration;
 
-    action.name     =  "Current Time";
-    action.details  = "";
-
-
-    for (int i = 0; i < iterations; i++) {
-        time_t now = time(nullptr); // Get the current time
-        struct tm *timeinfo = localtime(&now); // Convert to local time structure
-
-        char dateStr[24], timeStr[24], syncStr[24];
-        strftime(dateStr, sizeof(dateStr), "Date:   %d.%m.%Y", timeinfo);
-        strftime(timeStr, sizeof(timeStr), "Time:   %H:%M:%S", timeinfo);
-        
-        long syncInterval = (millis() - lastSyncTime) / 1000; // Convert milliseconds to seconds
-        int hours = syncInterval / 3600; // Calculate total hours
-        int minutes = (syncInterval % 3600) / 60; // Calculate remaining minutes
-        int seconds = syncInterval % 60; // Calculate remaining seconds
-
-        if (hours > 0) {
-            // If there are hours, include them in the string
-            sprintf(syncStr, "Last:   %dh %dm %2ds", hours, minutes, seconds);
-        } else if (minutes > 0) {
-            // If there are no hours but there are minutes, only include minutes and seconds
-            sprintf(syncStr, "Last:   %dm %ds", minutes, seconds);
-        } else {
-            // If there are only seconds, just include seconds
-            sprintf(syncStr, "Last:   %2ds", seconds);
-        }
-
-        // Assume action is a global or properly passed to this function
-        action.params[0] = dateStr;
-        action.params[1] = timeStr;
-        action.params[2] = syncStr;
-        action.result = timeSynced ? "In Sync" : "Out of Sync";
-
-        // Call your display manager's method to update the display
-        displayManager.displayAction(action);
-
-        delay(delayPerIteration);
-    }
-}
 
 void displayConnected(String networkType, String ipAddress) {
     action.name = networkType;
@@ -688,14 +648,16 @@ void handleInverterNetworkMode() {
         previousState = currentState;
         currentState = HOME_NETWORK_MODE;
         lastStateChangeMillis = millis();
-        wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");       
+        wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
+        energyDisplay.start(); // Start display updates
     }
+    // Store the previous state
+    previousState = currentState;
 }
 
 void handleHomeNetworkMode() {
     Serial.println("In Home Network Mode");
     
-
     // check if connection is available
     if (connectedToHomeNetwork && (WiFi.status() == WL_CONNECTED)) {
         homeNetworkNotReachableCount = 0; 
@@ -712,13 +674,12 @@ void handleHomeNetworkMode() {
             delay(3000); // Show data for 3 Seconds
         }
         webServerManager.handleClient();
-
         // Display Inverter Data for 10 Seconds
-        displayInverterStatus(inverter, DURATION_TO_DISPLAY_INVERTER_DATA_SECONDS * 1000);
+        energyDisplay.updateDisplay(inverter);
         webServerManager.handleClient();
 
         // Display Time for 10 Seconds
-        displayTime(DURATION_TO_DISPLAY_TIME_SECONDS);
+        //displayTime(DURATION_TO_DISPLAY_TIME_SECONDS);
         webServerManager.handleClient();
     }else{
         connectedToInverterNetwork = false;
@@ -739,7 +700,6 @@ void handleHomeNetworkMode() {
         displayManager.displayAction(action); // Update the display with the current state
         delay(2000); 
         
-        previousState = currentState;
         currentState = AP_MODE;
         lastStateChangeMillis = millis();
         homeNetworkNotReachableCount = 0; 
@@ -761,10 +721,8 @@ void handleHomeNetworkMode() {
         homeNetworkNotReachableCount = 0; 
         wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter WiFi");
     }
-
-    action.result = "Working";
-    displayManager.displayAction(action); // Update the display with the current state
-    delay(1000); // Dummy delay to simulate network activity
+    // Store the previous state
+    previousState = currentState;
 }
 
 void handleAPMode() {
@@ -811,11 +769,17 @@ void handleAPMode() {
         displayManager.displayAction(action); // Update the display with the current state
         delay(2000); 
         
+
         currentState = HOME_NETWORK_MODE;
         lastStateChangeMillis = millis();
+        homeNetworkNotReachableCount = 0;
 
         wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
+
+        energyDisplay.start(); // Start display updates
     }
+    // Store the previous state
+    previousState = currentState;
 }
 
 // Implementation of condition checking functions
@@ -825,6 +789,18 @@ bool cndHomeNetworkToAPNetwork() {
 }
 
 bool cndHomeNetworkToInverterNetwork() {
+    // if at night the inverter normally will be offline. We can use the inverterNotReachableCount to detect that.
+    // if the inverter is not seen for a longer time inverterNotReachableCount > 3 this condition will be true should take the DURATION_STAY_IN_HOME_NETWORK_MS * 10
+    // until it is switching back
+
+    if (inverterNotReachableCount > 3) {
+        // lastInverterUpdateMillis Check again in 10 Minutes
+        // print a message that next try has been shfted to 10 Minutes
+        Serial.println("Inverter not reachable for a longer time (" + String(inverterNotReachableCount)+" times ). Switching back to Inverter Network Mode in 10 Minutes.");
+
+        lastInverterUpdateMillis = millis() + 10 * 60 * 1000;
+    }
+    
     return (millis() - lastInverterUpdateMillis > DURATION_STAY_IN_HOME_NETWORK_MS);
 }
 

@@ -24,9 +24,12 @@ void WebServerManager::handleClient() {
 void WebServerManager::setupRoutes() {
     Serial.println("WebServerManager: Configuring routes...");
     server.on("/", HTTP_GET, std::bind(&WebServerManager::handleRootPage, this));
+    
+    server.on("/wiki", HTTP_GET, std::bind(&WebServerManager::handleWikiPage, this));
+    server.on("/config", HTTP_GET, std::bind(&WebServerManager::handleConfigPage, this));
+
+    // Recieve the Config Updates here
     server.on("/update", HTTP_POST, std::bind(&WebServerManager::handleUpdate, this));
-    server.on("/wiki", HTTP_POST, std::bind(&WebServerManager::handleWikiPage, this));
-    server.on("/config", HTTP_POST, std::bind(&WebServerManager::handleConfigPage, this));
 
     // Define more routes as needed
     Serial.println("WebServerManager: Routes configured.");
