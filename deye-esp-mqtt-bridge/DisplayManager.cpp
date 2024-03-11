@@ -36,6 +36,12 @@ void DisplayManager::init() {
     u8g2->begin();
 }
 
+void DisplayManager::clearScreen() {
+    u8g2->clearBuffer();
+    u8g2->sendBuffer();
+}
+
+
 
 void DisplayManager::displayAction(const ActionData& action) {
   int yPositionBottomLine = 63;

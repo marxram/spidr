@@ -23,6 +23,7 @@ public:
     void drawBigNumberWithHeader(String header, float number, String unit, String annotation, String formattingStr);
     void setI2CAddress(uint8_t adr);
     bool verboseDisplay = false;
+    void clearScreen();
 
 
 private:

@@ -3,10 +3,18 @@
 
 #include "Arduino.h"
 
+enum ParseStatus {
+    PARSE_OK,
+    PARSE_ERROR,
+    PARSE_HTML_ISSUES,
+    PARSE_PARSING_ISSUES
+};
+
+
 class Inverter {
 public:
   Inverter();
-  void updateData(const String& html);
+  ParseStatus updateData(const String& html);
   String getInverterSerial() const;
   String getWebdataMsvn() const;
   String getWebdataSsvn() const;
@@ -31,7 +39,10 @@ public:
   String getRemoteServerStatusB() const;
   String getRemoteServerStatusC() const;
   unsigned long getLastUpdateTimestamp() const;
+  unsigned long getLastSuccessfullTimestamp() const;
+  bool wasReadSuccessfull() const;
   void printVariables() const;
+
 
 private:
   // Member variables
@@ -59,9 +70,12 @@ private:
   String status_b;
   String status_c;
   unsigned long lastUpdateTimestamp;
-  void extractVariables(const String& html);
+  unsigned long lastSuccessfullTimestamp;
+  bool lastReadSuccess;
+  ParseStatus  extractVariables(const String& html);
   String extractValue(const String& html, const String& variableName) const;
   float extractFloatValue(const String& html, const String& variableName) const;
+  String extractAndValidateString(const String& html, const String& key, int& countParseSuccess);
 };
 
 #endif

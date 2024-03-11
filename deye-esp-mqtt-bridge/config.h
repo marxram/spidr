@@ -41,8 +41,8 @@
 
 ///////////////////////////////////////////////////////////////////////
 // Timing behavior
-#define DURATION_STAY_IN_HOME_NETWORK_MS   60000  
-#define DURATION_STAY_IN_AP_NETWORK_MS    120000  
+#define DURATION_STAY_IN_HOME_NETWORK_MS   150000  
+#define DURATION_STAY_IN_AP_NETWORK_MS     150000  
 
 #define DURATION_TO_DISPLAY_TIME_SECONDS 5
 #define DURATION_TO_DISPLAY_INVERTER_DATA_SECONDS 10

@@ -167,14 +167,14 @@ void setup() {
   displayManager.verboseDisplay = true;
 
   // Display Initialization
-  action.name = "Test Item";
-  action.details = "Action details";
-  action.params[0] = "params[0]";
-  action.params[1] = "params[1]";
-  action.params[2] = "params[2]";
-  action.params[3] = "params[3]";
-  action.result = "Result";
-  action.resultDetails = "Details";
+  action.name = "Airgap Bridge";
+  action.details = "Security & Privacy";
+  action.params[0] = "Read Solar Inverters";
+  action.params[1] = "Display Data";
+  action.params[2] = "Send to SmartHome";
+  action.params[3] = "deye-esp-mqtt-bridge";
+  action.result = "Star on";
+  action.resultDetails = "Github";
   displayManager.displayAction(action);
   delay(5000);
   clearActionDisplay();
@@ -444,7 +444,7 @@ void clearActionDisplay(){
     action.params[3] = "";
     action.result = "";
     action.resultDetails = "";
-    displayManager.displayAction(action);
+    displayManager.clearScreen();
 }
 
 void activateAPMode() {
@@ -543,7 +543,11 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
 
     // Print the entire response
     //Serial.print(response);
-    inverter.updateData(response);
+    
+    Serial.print("Start Parsing");
+    ParseStatus result = inverter.updateData(response);
+    
+    Serial.print(String(result));
 
     client.stop();
 
@@ -551,10 +555,16 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
     Serial.printf("Energy today: %f\n", inverter.getInverterEnergyToday_kWh());
     Serial.printf("Energy total: %f\n", inverter.getInverterEnergyTotal_kWh());
 
-    action.params[2] = "Parse: Done";
-    action.result = "Done";
-    action.resultDetails = "";
-    displayManager.displayAction(action);
+    // Check parse result and update display accordingly
+    if (result == OK) {
+      action.params[2] = "Parse: Done";
+      action.result = "Done";
+      action.resultDetails = "Success";
+    } else {
+      action.params[2] = "Parse: Failed";
+      action.result = "FAIL";
+      action.resultDetails = "Parsing Error";
+    }
 
     delay(2000);
 
@@ -568,7 +578,6 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
   }
 
 }
-
 
 
 void displayConnected(String networkType, String ipAddress) {
@@ -824,8 +833,8 @@ void handleAPMode() {
     // get AP IP and create a String Variable to display
     String ip_string = WiFi.softAPIP().toString();
     
-    action.params[1] = action.params[0] = "PSWD: " + String(WIFI_AP_PASSWORD);
-    action.params[2] = "IP: "+ ip_string;
+    action.params[1] = "PSWD: " + String(WIFI_AP_PASSWORD);
+    action.params[2] = "IP:   "+ ip_string;
     
     action.params[3] = "";
     // calculate how long the AP Mode will still be actiove baed on the millis count
