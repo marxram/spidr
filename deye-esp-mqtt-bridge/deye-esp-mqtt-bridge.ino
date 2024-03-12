@@ -461,7 +461,7 @@ void activateAPMode() {
     WiFi.mode(WIFI_AP); // Enable AP+STA mode for simultaneous access point and Wi-Fi client mode
     WiFi.softAP(WIFI_AP_NAME, WIFI_AP_PASSWORD);
     Serial.println("AP mode activated with SSID: " + String(WIFI_AP_NAME) + ", IP: " + WiFi.softAPIP().toString());
-
+    delay(1000); // Wait for the AP to start
     webServerManager.begin();
 
     action.name = "AP Starting";
