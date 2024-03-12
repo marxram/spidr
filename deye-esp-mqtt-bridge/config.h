@@ -50,3 +50,6 @@
 // Timeout how long wifiConnect should try
 #define WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S 15
 
+
+// Inverter Considered to be offline Timeout
+#define INVERTER_OFFLINE_TIMEOUT_SECONDS 1200 // 20 minutes

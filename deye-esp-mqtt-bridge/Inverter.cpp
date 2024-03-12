@@ -33,6 +33,7 @@ Inverter::Inverter() {
     lastUpdateTimestamp = 0;
     lastSuccessfullTimestamp = 0;
     lastReadSuccess = false; // Initialize as false
+    inverterActive = true;
 }
 
 
@@ -67,6 +68,7 @@ void Inverter::printVariables() const {
 ParseStatus Inverter::updateData(const String& html) {
     Serial.println("Start updating data");
     ParseStatus result = extractVariables(html);
+    inverterActive = true;
     return result;
 }
 
@@ -160,6 +162,16 @@ String Inverter::getRemoteServerStatusB() const {
 
 String Inverter::getRemoteServerStatusC() const {
     return status_c;
+}
+
+void Inverter::setInactiveValues() {
+    webdata_now_p = 0.0f;
+    lastReadSuccess = false; // Initialize as false
+    inverterActive = false;
+}
+
+bool Inverter::isInverterActive() {
+    return inverterActive;
 }
 
 unsigned long Inverter::getLastUpdateTimestamp() const {

@@ -341,7 +341,6 @@ void loadPreferencesIntoVariables() {
     Serial.println("Loaded Inverter Web Access Password: [HIDDEN]");
 }
 
-
 ////////////////////////////////////////////////////////////////////
 // WiFi Functions
 void wifi_connect(String ssid, String passkey, String comment) {
@@ -359,59 +358,72 @@ void wifi_connect(String ssid, String passkey, String comment) {
     action.resultDetails = "";
     displayManager.displayAction(action);
     
-    connected = false;
     WiFi.disconnect(true); // Ensure a clean state
     delay(1000); // Wait a bit for disconnect to complete
-    
     WiFi.mode(WIFI_AP_STA); // Set mode to allow AP+STA
-    WiFi.begin(ssid.c_str(), passkey.c_str());
 
-    int attempts = 0;
-    unsigned long attemptStartTime = millis(); // Make sure this is defined at the start of your connection attempt
-
-    while (WiFi.status() != WL_CONNECTED && (millis() - attemptStartTime) < WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000) { 
-        int delay_loop = 300; // Delay per loop iteration
-        delay(delay_loop);
-        Serial.print(".");
-
-        // Calculate the remaining time in seconds
-        unsigned long timeElapsed = millis() - attemptStartTime;
-        int secondsLeft = (WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000 - timeElapsed) / 1000;
-        String attemptMessage = "Time left: " + String(secondsLeft) + " s";
+    bool connected = false;
+    int connectionAttempts = 0;
+    const int maxConnectionAttempts = 2; // Try to connect up to 2 times
+    
+    while (!connected && connectionAttempts < maxConnectionAttempts) {
+        WiFi.begin(ssid.c_str(), passkey.c_str());
         
-        // Update the remaining time message
-        action.params[2] = attemptMessage;
-        displayManager.displayAction(action);
+        unsigned long attemptStartTime = millis();
+        while (WiFi.status() != WL_CONNECTED && (millis() - attemptStartTime) < WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000) {
+            delay(300);
+            Serial.print(".");
+            
+            unsigned long timeElapsed = millis() - attemptStartTime;
+            int secondsLeft = (WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000 - timeElapsed) / 1000;
+            String attemptMessage = "Time left: " + String(secondsLeft) + " s";
+            action.params[2] = attemptMessage;
+            displayManager.displayAction(action);
+        }
+
+        if (WiFi.status() == WL_CONNECTED) {
+            connected = true;
+            Serial.println("\nConnected to WiFi network.");
+
+            if (ssid == WIFI_HOME_SSID) {
+                connectedToHomeNetwork = true;
+                connectedToInverterNetwork = false;
+            } else if (ssid == WIFI_INVERTER_SSID) {
+                connectedToHomeNetwork = false;
+                connectedToInverterNetwork = true;
+            } else {
+                connectedToHomeNetwork = false;
+                connectedToInverterNetwork = false;
+            }
+
+            String ip_string = WiFi.localIP().toString();
+            action.params[1] = "IP: " + ip_string;
+            action.params[2] = "";
+            action.result = "Connected";
+            action.resultDetails = "Success!";
+            displayManager.displayAction(action);
+            delay(3000);
+            break; // Exit the while loop
+        } else {
+            connected = false;
+            Serial.println("\nFailed to connect to WiFi network. Retrying...");
+            
+            action.result = "Retry";
+            action.resultDetails = "";
+            displayManager.displayAction(action);
+
+            // Increment connection attempts
+            connectionAttempts++;
+            
+            // Reset WiFi module before next attempt
+            if (connectionAttempts < maxConnectionAttempts) {
+                WiFi.disconnect(true);
+                delay(1000); // Wait for the disconnect and reset to complete
+            }
+        }
     }
 
-    if (WiFi.status() == WL_CONNECTED) {
-        connected = true;
-        Serial.println("\nConnected to WiFi network.");
-        
-        // if connected do a switch case to set the isConnected to Home Network etc, bolleans tio true and the other to false
-        if (ssid == WIFI_HOME_SSID) {
-            connectedToHomeNetwork = true;
-            connectedToInverterNetwork = false;
-        } else if (ssid == WIFI_INVERTER_SSID) {
-            connectedToHomeNetwork = false;
-            connectedToInverterNetwork = true;
-        } else {
-            connectedToHomeNetwork = false;
-            connectedToInverterNetwork = false;
-        }
-        
-        // Update Display with Success
-        String ip_string = WiFi.localIP().toString();
-        action.params[1] = "IP: " + ip_string;
-        action.params[2] = "";
-        
-        action.result = "Connected";
-        action.resultDetails = "Success!";
-        displayManager.displayAction(action);
-        delay(3000); // Show success message for a while
-    } else {
-        connected = false;
-        // set also Home Network and Inverter Network to false
+    if (!connected) {
         connectedToHomeNetwork = false;
         connectedToInverterNetwork = false;
 
@@ -419,17 +431,15 @@ void wifi_connect(String ssid, String passkey, String comment) {
             homeNetworkNotReachableCount++;
         } else if (ssid == WIFI_INVERTER_SSID) {
             inverterNotReachableCount++;
-        } 
+        }
 
-        Serial.println("\nFailed to connect to WiFi network.");
-        
-        // Update Display with Failure
+        Serial.println("Failed to connect after multiple attempts.");
         action.params[1] = "Check Credentials?";
         action.params[2] = "Network Offline?";
         action.result = "FAILED";
-        action.resultDetails = "";
+        action.resultDetails = "Attempts";
         displayManager.displayAction(action);
-        delay(5000); // Show failure message for a while
+        delay(5000);
     }
     clearActionDisplay();
 }
@@ -629,7 +639,6 @@ void handleInverterNetworkMode() {
         inverterNotReachableCount = 0; 
         // Starting UDP Connection inside the AP Network of inverter
         
-        
         // Display Initialization
         action.name = "Inverter";
         action.details = "Init UDP Connection";
@@ -642,6 +651,15 @@ void handleInverterNetworkMode() {
         displayManager.displayAction(action);
 
         bool udpConnectionCreated =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
+
+        if (!udpConnectionCreated){
+            action.params[0] = "Status: Failed";
+            action.result = "Retry";
+            action.resultDetails = "";
+            displayManager.displayAction(action);
+            delay(1000);
+            udpConnectionCreated =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
+        }
 
         if (udpConnectionCreated){
             action.params[0] = "Status: Connected";
@@ -670,14 +688,29 @@ void handleInverterNetworkMode() {
                 action.result = "Waiting...";
                 action.resultDetails = "";
                 displayManager.displayAction(action);
+                delay(1000);
                 response = inverterUdp.inverter_settime(getCurrentEpochTime());
                 Serial.print(response);
-                action.params[0] = "Status: Time set";
-                action.params[1] = "Time Sync ";
-                action.result = "Done";
-                action.resultDetails = "synced?";
-                displayManager.displayAction(action);
-                delay(2000);
+
+                String response_new = inverterUdp.inverter_readtime();
+                // Print the entire response
+                Serial.print(response_new);
+                if (response_new == TIME_NOT_INITIALIZTED_TOKEN){
+                    Serial.print(response_new);
+                    action.params[0] = "Status: Time set";
+                    action.params[1] = "Time Sync";
+                    action.result = "FAILED";
+                    action.resultDetails = "NOT synced";
+                    displayManager.displayAction(action);
+                    delay(2000);
+                }else{
+                    action.params[0] = "Status: Time set";
+                    action.params[1] = "Time Sync ";
+                    action.result = "Done";
+                    action.resultDetails = "synced";
+                    displayManager.displayAction(action);
+                    delay(2000);
+                }
             }
         }else{            
             action.params[0] = "Status: Failed";
@@ -709,6 +742,15 @@ void handleInverterNetworkMode() {
         connectedToHomeNetwork = false;
         inverterNotReachableCount++;
         Serial.println("[ERR] No WiFi Connection!!");
+
+        // Special case if inverter is not reachable for a long time, like every night ;-)
+        if (inverter.isInverterActive() && (lastInverterUpdateMillis > INVERTER_OFFLINE_TIMEOUT_SECONDS * 1000 )) {
+            Serial.println("Inverter not reachable for too long. Setting Power to 0W");
+            inverter.setInactiveValues();
+
+            // Enforce MQTT sync with 0W Power
+            newInverterDataAvailable = true;
+        }
     }
 
     if (cndInverterNetworkToHomeNetwork()) {
@@ -718,10 +760,11 @@ void handleInverterNetworkMode() {
         action.resultDetails = "-> HOME";
         displayManager.displayAction(action); // Update the display with the current state
         delay(2000); 
-        
+
+
+        wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
         currentState = HOME_NETWORK_MODE;
         lastStateChangeMillis = millis();
-        wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
         energyDisplay.start(); // Start display updates
     }   
 }
@@ -729,6 +772,9 @@ void handleInverterNetworkMode() {
 void handleHomeNetworkMode() {
     // Store the previous state
     previousState = currentState;
+    // Display Inverter Data for 10 Seconds
+    // Now in an async way
+    energyDisplay.updateDisplay(inverter);
 
     // check if connection is available
     if (connectedToHomeNetwork && (WiFi.status() == WL_CONNECTED)) {
@@ -755,9 +801,6 @@ void handleHomeNetworkMode() {
             delay(3000); // Show data for 3 Seconds
         }
         
-        // Display Inverter Data for 10 Seconds
-        // Now in an async way
-        energyDisplay.updateDisplay(inverter);
 
         // Display Time for 10 Seconds
         //displayTime(DURATION_TO_DISPLAY_TIME_SECONDS);
@@ -796,13 +839,11 @@ void handleHomeNetworkMode() {
         displayManager.displayAction(action); // Update the display with the current state
         delay(2000); 
 
-        previousState = currentState;
+        wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter WiFi");
         currentState = INVERTER_NETWORK_MODE;
         lastStateChangeMillis = millis();
         homeNetworkNotReachableCount = 0; 
-        wifi_connect(WIFI_INVERTER_SSID, WIFI_INVERTER_KEY, "Inverter WiFi");
     }
-    
 }
 
 void handleAPMode() {
@@ -876,21 +917,12 @@ bool cndHomeNetworkToAPNetwork() {
 }
 
 bool cndHomeNetworkToInverterNetwork() {
-    // if at night the inverter normally will be offline. We can use the inverterNotReachableCount to detect that.
-    // if the inverter is not seen for a longer time inverterNotReachableCount > 3 this condition will be true should take the DURATION_STAY_IN_HOME_NETWORK_MS * 10
-    // until it is switching back
-
-    
-
+    long timeToNextTry = DURATION_STAY_IN_HOME_NETWORK_MS ;
     if (inverterNotReachableCount > 3) {
-        // lastInverterUpdateMillis Check again in 10 Minutes
-        // print a message that next try has been shfted to 10 Minutes
-        Serial.println("Inverter not reachable for a longer time (" + String(inverterNotReachableCount)+" times ). Switching back to Inverter Network Mode in 10 Minutes.");
-
-        lastInverterUpdateMillis = millis() - 10 * 60 * 1000;
+        timeToNextTry = (10 * 60 * 1000 + DURATION_STAY_IN_HOME_NETWORK_MS);
     }
-    
-    return (millis() - lastInverterUpdateMillis > DURATION_STAY_IN_HOME_NETWORK_MS);
+
+    return (millis() - lastStateChangeMillis > timeToNextTry);
 }
 
 bool cndInverterNetworkToHomeNetwork(){

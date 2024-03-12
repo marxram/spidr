@@ -42,6 +42,8 @@ public:
   unsigned long getLastSuccessfullTimestamp() const;
   bool wasReadSuccessfull() const;
   void printVariables() const;
+  void setInactiveValues();
+  bool isInverterActive();
 
 
 private:
@@ -76,6 +78,7 @@ private:
   String extractValue(const String& html, const String& variableName) const;
   float extractFloatValue(const String& html, const String& variableName) const;
   String extractAndValidateString(const String& html, const String& key, int& countParseSuccess);
+  bool inverterActive;
 };
 
 #endif
