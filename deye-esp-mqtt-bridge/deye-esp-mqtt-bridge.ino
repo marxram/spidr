@@ -781,13 +781,13 @@ void handleHomeNetworkMode() {
         //Serial.println("[DBG] HomeNetwork Internal Loop");
         homeNetworkNotReachableCount = 0; 
 
-        if (previousState != HOME_NETWORK_MODE) {
-            //Serial.println("Start Web Server Manager");
+        if (!webServerManager.isServerActive()) {
+            Serial.println("Start Web Server Manager");
             webServerManager.begin();
         }
 
         if (webServerManager.isServerActive()) {
-            //Serial.println("Handle Webserver Client");
+            Serial.println("Handle Webserver Client");
             webServerManager.handleClient();
         }
         
