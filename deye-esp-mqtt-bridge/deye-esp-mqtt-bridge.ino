@@ -787,7 +787,7 @@ void handleHomeNetworkMode() {
         }
 
         if (webServerManager.isServerActive()) {
-            Serial.println("Handle Webserver Client");
+            //Serial.println("Handle Webserver Client");
             webServerManager.handleClient();
         }
         

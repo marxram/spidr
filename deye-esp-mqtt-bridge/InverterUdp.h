@@ -16,7 +16,7 @@ public:
   String inverter_readtime();
   bool inverter_close();
   bool isconnected();
-  void parseDateTime(String timestring);
+  bool parseDateTime(String timestring);
   bool hexStringToDec(String hexString, int& output) ;
   String decToHex(int dec);
   String inverter_settime(unsigned long epochTime);

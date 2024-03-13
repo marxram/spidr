@@ -151,7 +151,7 @@ void DisplayManager::drawBigNumberNoHeader(float number, String unit, String ann
 
     // Draw the annotation with a predefined font
     u8g2->setFont(bigNumberAnnotationFont);
-    Serial.println(annotation);
+    //Serial.println(annotation);
     u8g2->drawStr(0, 28, annotation.c_str());
     
     // Draw the unit with its (possibly updated) font

@@ -58,42 +58,50 @@ DateTime InverterUdp::getInverterTime(){
 
 String InverterUdp::inverter_readtime(){    
     //send_message("AT+WAP\n");
-    
+    Serial.print("[UDP-ReadTIME] >>>  Register 0016 Length 0003");
     String response;
     
     // Read 0x0003 bytes after address 0x0016 
     response = readModbus("0016", "0003");
     
+    String result = "";
+
     if (response != noResponse){
-        Serial.print("Response was: ");
+        Serial.print("[UDP-ReadTime] Response was: ");
         Serial.println(response);
         connected = true; 
         //String(buffer);
 
         if (response.startsWith(RESP_TIME_UNSET)){
-            Serial.println("Inverter Time is unset ");
+            Serial.println("[UDP-ReadTime] Inverter Time is unset ");
             defaultTimeIsSet = true;
-            response = TIME_NOT_INITIALIZTED_TOKEN;
+            //response = TIME_NOT_INITIALIZTED_TOKEN;
         }else{
             // Parse if makes sense
-            Serial.println("Checking Inverter Time >" + response + "<");
-            parseDateTime(response);
+            Serial.println("[UDP-ReadTime] Checking Inverter Time >" + response + "<");
+            
+            // parsing Time. If 
+            bool timeParsable  = parseDateTime(response);
+            defaultTimeIsSet = !timeParsable;
+            
+            result = response;
         }
         
     } else {
-        Serial.print("[ERROR] No Response in time or Parsing Error ");
+        Serial.print("[UDP-ReadTime] ERROR] No Response in time or Parsing Error ");
         Serial.println(response);
         defaultTimeIsSet = true;
         connected = false;  
     }
-    return response;
-}
 
+    return result;
+}
 
 String InverterUdp::inverter_settime(unsigned long epochTime){    
     tmElements_t tm;
     breakTime(epochTime, tm);
 
+    Serial.print("[UDP-SetTIME] Start");
     String time_reg = decToHex((tm.Year + 1970) % 100) 
             + decToHex(tm.Month)
             + decToHex(tm.Day)
@@ -101,7 +109,7 @@ String InverterUdp::inverter_settime(unsigned long epochTime){
             + decToHex(tm.Minute)
             + decToHex(tm.Second);
     
-    Serial.print("Time String: ");
+    Serial.print("[UDP-SetTIME] Time String: ");
     Serial.println(time_reg);
     
     String response;
@@ -110,12 +118,12 @@ String InverterUdp::inverter_settime(unsigned long epochTime){
     response = writeModbus("0016", "0003", time_reg, "06");
 
     if (response != noResponse){
-        Serial.print("Response was: ");
+        Serial.print("[UDP-SetTIME] Response was: ");
         Serial.println(response);
         connected = true; 
         
     } else {
-        Serial.print("[ERROR] No Response in time or Parsing Error ");
+        Serial.print("[UDP-SetTIME]  [ERROR] No Response in time or Parsing Error ");
         Serial.println(response);
         connected = false;  
     }
@@ -232,7 +240,7 @@ bool InverterUdp::inverter_connect(String udpSrv, int remPort, int locPort, int 
     udp.begin(localPort);   
     
     Serial.println("----------------------------------------------------------");
-    Serial.print("\n[INIT] >>>Begin UDP connection to ");
+    Serial.print("\n[UDP-INIT] >>>Begin UDP connection to ");
     Serial.print(udpServer);
     Serial.print("  Port: " );
     Serial.println(remotePort);
@@ -243,12 +251,12 @@ bool InverterUdp::inverter_connect(String udpSrv, int remPort, int locPort, int 
     
     String response = getResponse(false);
     if (response != noResponse){
-        Serial.print("\n[INIT] >>> Response was: ");
+        Serial.print("\n[UDP-INIT] >>> Response was: ");
         Serial.println(response);
         connected = true; 
         status =  true; 
     } else {
-        Serial.print("[INIT] >>> [ERROR] No Response in time or Parsing error! ");
+        Serial.print("[UDP-INIT] >>> [ERROR] No Response in time or Parsing error! ");
         Serial.println(response);
         connected = false;
         status = false; 
@@ -256,7 +264,7 @@ bool InverterUdp::inverter_connect(String udpSrv, int remPort, int locPort, int 
 
     // Finalize handshake, no response needed
     send_message("+ok");
-    Serial.println("[INIT] >>> Handshake complete");
+    Serial.println("[UDP-INIT]>>> Handshake complete");
     delay (100);
 
     return status;
@@ -325,10 +333,9 @@ String InverterUdp::getResponse(bool deleteSeparatorChars){
 }
 
 bool InverterUdp::inverter_close(){
-  
   send_message("AT+Q");
   delay(500); 
-  Serial.println("[CLOSE] >>> Stopping local udp port");
+  Serial.println("[UDP-CLOSE] >>> Stopping local udp port");
   udp.stop();
   delay(500); 
   connected = false; 
@@ -336,7 +343,7 @@ bool InverterUdp::inverter_close(){
 }
 
 void InverterUdp::send_message(String message){
-    //Serial.println("> Sending Message: "+ message);
+    Serial.println("> Sending Message: "+ message);
     udp.beginPacket(udpServer.c_str(), remotePort);
     udp.print(message);
     udp.endPacket();
@@ -416,8 +423,10 @@ void InverterUdp::removeByte(char* buffer, char byteToRemove, size_t bufferSize)
 }
 
 
-void InverterUdp::parseDateTime(String timestring) {
-    
+bool InverterUdp::parseDateTime(String timestring) {
+    bool parsingPossible = false;
+
+
     // INTO    |size| year  | month | day   | hour | min  | sec  | CRC
     // 12345678|9 10| 11 12 | 13 14 | 15 16 | 17 18| 19 20| 21 22|  23      // Position
     // +ok=0103|0  6|  3  0 |  0  0 |  0  0 |  0  0|  0  0|  0  0|  2485
@@ -450,11 +459,14 @@ void InverterUdp::parseDateTime(String timestring) {
       inverterTime = DateTime((year + 2000), month, day, hour, minute, second);
       Serial.println("Parsed DateTime: " + String(inverterTime.year()) + "/" + String(inverterTime.month()) + "/" + String(inverterTime.day()) + " " + String(inverterTime.hour()) + ":" + String(inverterTime.minute()) + ":" + String(inverterTime.second()));
       defaultTimeIsSet = false;
+      parsingPossible = true;
     } 
     else {
       Serial.println("Invalid hexadecimal or invalid date/time components in string: " + timestring);
     }
   }
+  return parsingPossible;
+
 }
 
 long InverterUdp::calculateUnixTimestamp(int year, int month, int day, int hour, int minute, int second) {

@@ -30,15 +30,15 @@ void EnergyDisplay::updateDisplay(const Inverter& inverter) {
         //Serial.println(_currentState);
         switch (_currentState) {
         case DISPLAY_INVERTER_POWER:
-            Serial.println("Displaying Inverter Power Now.");
+            //Serial.println("Displaying Inverter Power Now.");
             _displayManager.drawBigNumberWithHeader("Leistung aktuell", inverter.getInverterPowerNow_W(), "W", "", "%.0f");
             break;
         case DISPLAY_ENERGY_TODAY:
-            Serial.println("Displaying Inverter Energy Today.");
+            //Serial.println("Displaying Inverter Energy Today.");
             _displayManager.drawBigNumberWithHeader("Energie heute", inverter.getInverterEnergyToday_kWh(), "kWh", "", "%.1f");
             break;
         case DISPLAY_ENERGY_TOTAL:
-            Serial.println("Displaying Inverter Energy Total.");
+            //Serial.println("Displaying Inverter Energy Total.");
             _displayManager.drawBigNumberWithHeader("Energie gesamt", inverter.getInverterEnergyTotal_kWh(), "kWh", "", "%.1f");
             break;
         }
