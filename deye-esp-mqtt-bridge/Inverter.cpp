@@ -169,6 +169,7 @@ String Inverter::getRemoteServerStatusC() const {
 
 void Inverter::setInactiveValues() {
     webdata_now_p = 0.0f;
+    webdata_today_e = 0.0f;
     lastReadSuccess = false; // Initialize as false
     inverterActive = false;
 }

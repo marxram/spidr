@@ -1,7 +1,7 @@
 //#define BOARD_WEMOS_OLED_128x64_ESP32
 //#define BOARD_HELTEC_OLED_128x32_ESP8266
-//#define BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
-#define BOARD_WEMOS_OLED_128x32_ESP32_S2
+#define BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+//#define BOARD_WEMOS_OLED_128x32_ESP32_S2
 
 #define USE_SECRETS_FILE_AS_DEFAULT
 
@@ -13,17 +13,17 @@
 // DISPLAY ------------------------------------------------------------
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
 
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
 // TimeSynchronization and handling
-//#define USE_NTP_SYNC
+#define USE_NTP_SYNC
 #define GMT_OFFSET_SECONDS 3600 // Offset of your timezone to GMT in seconds (3600 = 1h)
 #define DST_OFFSET_SECONDS 3600 // Offset of your Daylight Saving Time in seconds (3600 = 1h)
-#define NTP_SERVER "pool.ntp.org" // Server to use for time sync
-#define NTP_FALLBACK_SERVER "time.nist.gov" // Fallback server in case the first one fails
+#define NTP_SERVER "ptbtime1.ptb.de" // Server to use for time sync
+#define NTP_FALLBACK_SERVER "ptbtime2.ptb.de" // Fallback server in case the first one fails
 
 // Only define Screen Address if display is not working by default
 // The display library tries to detect the address automatically
@@ -40,8 +40,7 @@
 #define DURATION_TO_DISPLAY_INVERTER_DATA_SECONDS 10
 
 // Timeout how long wifiConnect should try
-#define WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S 15
-
+#define WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S 10
 
 // Inverter Considered to be offline Timeout
-#define INVERTER_OFFLINE_TIMEOUT_SECONDS 1200 // 20 minutes
+#define INVERTER_OFFLINE_TIMEOUT_SECONDS 6000 // 100 Minutes

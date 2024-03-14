@@ -42,12 +42,12 @@ private:
     void handleRootPage();
     void handleConfigPage();
     void handleWikiPage();
-    void handleSerialPage();
+    String HTMLEscape(const String& str);
 
     bool serverActive = false;
 
     void handleUpdate();
-    String templateProcessor(const String& var);
+    String configPageTemplateProcessor(const String& var);
     Inverter& inverter; // Reference to the Inverter instance
 };
 

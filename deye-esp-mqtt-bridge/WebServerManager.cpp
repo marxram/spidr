@@ -7,7 +7,6 @@ WebServerManager::WebServerManager(Inverter& inverter, SerialCaptureLines& seria
 void WebServerManager::begin() {
     serialCapture.println("WebServerManager: Initializing preferences manager...");
     preferencesManager.begin(); // Initialize Preferences Manager
-    serialCapture.println("WebServerManager: Setting up routes...");
     setupRoutes();
     server.begin(); // Start the web server
     serialCapture.println("WebServerManager: Web server started.");
@@ -29,7 +28,6 @@ void WebServerManager::handleClient() {
 }
 
 void WebServerManager::setupRoutes() {
-    serialCapture.println("WebServerManager: Configuring routes...");
     server.on("/", HTTP_GET, std::bind(&WebServerManager::handleRootPage, this));
     
     server.on("/wiki", HTTP_GET, std::bind(&WebServerManager::handleWikiPage, this));
@@ -37,21 +35,10 @@ void WebServerManager::setupRoutes() {
 
     // Recieve the Config Updates here
     server.on("/update", HTTP_POST, std::bind(&WebServerManager::handleUpdate, this));
-
-    server.on("/serial", HTTP_GET, std::bind(&WebServerManager::handleSerialPage, this));
-
     // Define more routes as needed
-    serialCapture.println("WebServerManager: Routes configured.");
-}
-
-void WebServerManager::handleSerialPage() {
-    serialCapture.println("WebServerManager: Handling Serial page request...");
-    String serialData = serialCapture.getBuffer(); // Assume serialCapture is accessible
-    server.send(200, "text/plain", serialData);
 }
 
 void WebServerManager::handleRootPage() {
-    serialCapture.println("WebServerManager: Handling root page request...");
     String htmlContent = HomePage_HTML;
 
     // Fetch sensor readings from the Inverter instance
@@ -64,20 +51,22 @@ void WebServerManager::handleRootPage() {
     htmlContent.replace("{{energyToday}}", String(energyToday));
     htmlContent.replace("{{energyTotal}}", String(energyTotal));
 
-    // Use templateProcessor to replace other placeholders
-    htmlContent = templateProcessor(htmlContent);
+    
+    // Replace the {{serial_data}} placeholder with the initial serial data
+    String initialSerialData = serialCapture.getBuffer(); // Get the initial serial data
+    htmlContent.replace("{{serial_data}}", HTMLEscape(initialSerialData));
+
+    // Use configPageTemplateProcessor to replace other placeholders
+    //htmlContent = configPageTemplateProcessor(htmlContent);
 
     server.send(200, "text/html", htmlContent);
-    serialCapture.println("WebServerManager: Root page served.");
 }
 
 void WebServerManager::handleConfigPage() {
-    serialCapture.println("WebServerManager: Handling root page request...");
     String htmlContent = ConfigPage_HTML; // Preferences_HTML defined in WebPages.h
     
     // Dynamically replace placeholders with actual preference values
-    htmlContent = templateProcessor(htmlContent);
-
+    htmlContent = configPageTemplateProcessor(htmlContent);
 
     // Fetch sensor readings from the Inverter instance
     float power = inverter.getInverterPowerNow_W();
@@ -89,15 +78,13 @@ void WebServerManager::handleConfigPage() {
     htmlContent.replace("{{energyTotal}}", String(energyTotal));
     
     server.send(200, "text/html", htmlContent);
-    serialCapture.println("WebServerManager: Confg page served.");
 }
 
 void WebServerManager::handleWikiPage() {
-    serialCapture.println("WebServerManager: Handling root page request...");
     String htmlContent = WikiPage_HTML; // Preferences_HTML defined in WebPages.h
     
     // Dynamically replace placeholders with actual preference values
-    htmlContent = templateProcessor(htmlContent);
+    //htmlContent = configPageTemplateProcessor(htmlContent);
 
     // Fetch sensor readings from the Inverter instance
     float power = inverter.getInverterPowerNow_W();
@@ -110,10 +97,7 @@ void WebServerManager::handleWikiPage() {
     htmlContent.replace("{{energyTotal}}", String(energyTotal));
     
     server.send(200, "text/html", htmlContent);
-    serialCapture.println("WebServerManager: Wiki page served.");
 }
-
-
 
 void WebServerManager::handleUpdate() {
     if (server.method() == HTTP_POST) {
@@ -198,8 +182,7 @@ String HTMLEscape(const String& str) {
     return escapedStr;
 }
 
-String WebServerManager::templateProcessor(const String& htmlTemplate) {
-    serialCapture.println("WebServerManager: Processing HTML template...");
+String WebServerManager::configPageTemplateProcessor(const String& htmlTemplate) {
     String processedHtml = htmlTemplate;
 
     // Replace each placeholder with the corresponding preference value, using HTMLEscape to ensure safety
@@ -219,6 +202,15 @@ String WebServerManager::templateProcessor(const String& htmlTemplate) {
     processedHtml.replace("{{relaisWebUser}}", HTMLEscape(preferencesManager.getRelaisWebUser()));
     processedHtml.replace("{{relaisWebPwd}}", HTMLEscape(preferencesManager.getRelaisWebPwd()));
 
-    serialCapture.println("WebServerManager: HTML template processed.");
     return processedHtml;
+}
+
+String WebServerManager::HTMLEscape(const String& str) {
+    String escapedStr = str;
+    escapedStr.replace("&", "&amp;");
+    escapedStr.replace("<", "&lt;");
+    escapedStr.replace(">", "&gt;");
+    escapedStr.replace("\"", "&quot;");
+    escapedStr.replace("'", "&#39;");
+    return escapedStr;
 }

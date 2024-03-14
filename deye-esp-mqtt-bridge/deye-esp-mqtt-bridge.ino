@@ -95,8 +95,8 @@ MQTTManager* mqttManager = nullptr; // Pointer declaration
 Inverter inverter(serialCapture);
 InverterUdp inverterUdp(serialCapture);
 PreferencesManager prefsManager;
-WebServerManager webServerManager (inverter, serialCapture); // Create an instance of WebServerManager
-EnergyDisplay energyDisplay(displayManager, serialCapture);
+WebServerManager webServerManager (inverter,  serialCapture); // Create an instance of WebServerManager
+EnergyDisplay energyDisplay(displayManager, timeSynced, lastSyncTime, serialCapture);
 
 
 const int udpServerPort = 50000; // manual port
@@ -185,6 +185,9 @@ void setup() {
   delay(5000);
   clearActionDisplay();
   
+  wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
+
+
   // Initiliase the NTP client, or fallback to build time if USE_NTP_SYNC is not defined
   serialCapture.println("Initialize Time...");
   setupTime();
@@ -208,9 +211,6 @@ void setup() {
   serialCapture.println("Generate Test Data");
   inverter.generateTestData();
   // print a statement to the serial monitor
-    
-
-
 }
 
 
@@ -236,17 +236,19 @@ void setupTime() {
     if (!timeSynced || now <= buildEpoch) {
         
         action.name     =  "Time Sync";
-        action.details  = "NTP_SERVER";
-        action.params[0] = "GMT: " + String(GMT_OFFSET_SECONDS/3600);
-        action.params[1] = "DST: " + String(DST_OFFSET_SECONDS/3600);
+        action.details  = String(NTP_SERVER);
+        action.params[0] = "GMT: " + String(GMT_OFFSET_SECONDS/3600) +"h";
+        action.params[1] = "DST: " + String(DST_OFFSET_SECONDS/3600) +"h";
         action.result = "In Progress";
         action.resultDetails = "";
         displayManager.displayAction(action);
         
-        configTime(GMT_OFFSET_SECONDS, DST_OFFSET_SECONDS, NTP_SERVER, NTP_FALLBACK_SERVER);
-        delay(1000); // Give time for NTP request to complete
+        // If 
+        configTime(0, 0, NTP_SERVER, NTP_FALLBACK_SERVER);
+        delay(2000); // Give time for NTP request to complete
 
         now = time(nullptr); // Update current time after NTP request
+        serialCapture.println( String(now) + " " + String(buildEpoch));
         if (now > buildEpoch) {
             serialCapture.println("NTP sync successful.");
             lastSyncTime = millis(); // Record successful sync time
