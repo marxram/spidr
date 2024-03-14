@@ -97,7 +97,7 @@ String PreferencesManager::getMqttBrokerPwd() {
 }
 
 String PreferencesManager::getMqttBrokerMainTopic() {
-    return preferences.getString("mqttBrokerMainTopic");
+    return preferences.getString("mqttTopic");
 }
 
 void PreferencesManager::setMqttBrokerHost(const String& value) {
@@ -117,7 +117,7 @@ void PreferencesManager::setMqttBrokerPwd(const String& value) {
 }
 
 void PreferencesManager::setMqttBrokerMainTopic(const String& value) {
-    preferences.putString("mqttBrokerMainTopic", value);
+    preferences.putString("mqttTopic", value);
 }
 
 // Web Access Credentials

@@ -23,14 +23,17 @@
 
 #define MODBUS 0xA001  // CRC variable
 
+String noResponse = "NoData";
+String RESP_TIME_UNSET = "+ok=0103063000000000002485";
+String RESP_TIME_UPDATE_ACCEPTED = "01100016000361CC";
+
+
 // Constructor
-InverterUdp::InverterUdp() {
+InverterUdp::InverterUdp(SerialCaptureLines& serialCapture): serialCapture(serialCapture)  {
     // as we are switching Nezworks the server IP might change over time. 
     udpLogin = "WIFIKIT-214028-READ";
     //char buffer[64];
     connected = false;
-    String noResponse = "NoData";
-    String RESP_TIME_UNSET = "+ok=0103063000000000002485";
 
     modbusIntro = "AT+INVDATA=";
     modbusOutro = "\n";
@@ -58,7 +61,7 @@ DateTime InverterUdp::getInverterTime(){
 
 String InverterUdp::inverter_readtime(){    
     //send_message("AT+WAP\n");
-    Serial.print("[UDP-ReadTIME] >>>  Register 0016 Length 0003");
+    serialCapture.print("[UDP-ReadTIME] >>>  Register 0016 Length 0003");
     String response;
     
     // Read 0x0003 bytes after address 0x0016 
@@ -67,18 +70,18 @@ String InverterUdp::inverter_readtime(){
     String result = "";
 
     if (response != noResponse){
-        Serial.print("[UDP-ReadTime] Response was: ");
-        Serial.println(response);
+        serialCapture.print("[UDP-ReadTime] Response was: ");
+        serialCapture.println(response);
         connected = true; 
         //String(buffer);
 
         if (response.startsWith(RESP_TIME_UNSET)){
-            Serial.println("[UDP-ReadTime] Inverter Time is unset ");
+            serialCapture.println("[UDP-ReadTime] Inverter Time is unset ");
             defaultTimeIsSet = true;
             //response = TIME_NOT_INITIALIZTED_TOKEN;
         }else{
             // Parse if makes sense
-            Serial.println("[UDP-ReadTime] Checking Inverter Time >" + response + "<");
+            serialCapture.println("[UDP-ReadTime] Checking Inverter Time >" + response + "<");
             
             // parsing Time. If 
             bool timeParsable  = parseDateTime(response);
@@ -88,8 +91,8 @@ String InverterUdp::inverter_readtime(){
         }
         
     } else {
-        Serial.print("[UDP-ReadTime] ERROR] No Response in time or Parsing Error ");
-        Serial.println(response);
+        serialCapture.print("[UDP-ReadTime] ERROR] No Response in time or Parsing Error ");
+        serialCapture.println(response);
         defaultTimeIsSet = true;
         connected = false;  
     }
@@ -101,7 +104,7 @@ String InverterUdp::inverter_settime(unsigned long epochTime){
     tmElements_t tm;
     breakTime(epochTime, tm);
 
-    Serial.print("[UDP-SetTIME] Start");
+    serialCapture.print("[UDP-SetTIME] Start");
     String time_reg = decToHex((tm.Year + 1970) % 100) 
             + decToHex(tm.Month)
             + decToHex(tm.Day)
@@ -109,8 +112,8 @@ String InverterUdp::inverter_settime(unsigned long epochTime){
             + decToHex(tm.Minute)
             + decToHex(tm.Second);
     
-    Serial.print("[UDP-SetTIME] Time String: ");
-    Serial.println(time_reg);
+    serialCapture.print("[UDP-SetTIME] Time String: ");
+    serialCapture.println(time_reg);
     
     String response;
     
@@ -118,13 +121,18 @@ String InverterUdp::inverter_settime(unsigned long epochTime){
     response = writeModbus("0016", "0003", time_reg, "06");
 
     if (response != noResponse){
-        Serial.print("[UDP-SetTIME] Response was: ");
-        Serial.println(response);
-        connected = true; 
+        serialCapture.print("[UDP-SetTIME] Giot Response Response: ");
+        serialCapture.println(response);
+        connected = true;
+
+        if (response == RESP_TIME_UPDATE_ACCEPTED){
+            serialCapture.println("[UDP-SetTIME] Inverter Time was set ");
+            defaultTimeIsSet = false;
+        }
         
     } else {
-        Serial.print("[UDP-SetTIME]  [ERROR] No Response in time or Parsing Error ");
-        Serial.println(response);
+        serialCapture.print("[UDP-SetTIME]  [ERROR] No Response in time or Parsing Error ");
+        serialCapture.println(response);
         connected = false;  
     }
     return response;
@@ -135,7 +143,7 @@ String InverterUdp::inverter_settime(unsigned long epochTime){
 String InverterUdp::readModbus(String address, String  length){    
 
     String cmd = modbusReadToken+address+length;
-    //Serial.println("Modbus Send Command : "+ cmd);
+    //serialCapture.println("Modbus Send Command : "+ cmd);
  
     // ToDo: Ensure the size is half the length of hexDataStr
     uint8_t binaryData[6];  
@@ -145,12 +153,12 @@ String InverterUdp::readModbus(String address, String  length){
     
     
     String crc = byteToHexString(crc_bytes,2);
-    //Serial.println("Modbus CRC: "+ crc);
+    //serialCapture.println("Modbus CRC: "+ crc);
 
     //ToDo:  "8" is fine for most commands OK, but needs calculation
     cmd = modbusIntro+ "8," + cmd + crc + modbusOutro;
 
-    Serial.println("Modbus Send Full Command : "+ cmd );
+    serialCapture.println("Modbus Send Full Command : "+ cmd );
 
     send_message(cmd);
 
@@ -158,13 +166,13 @@ String InverterUdp::readModbus(String address, String  length){
 
 
     if (response != noResponse){
-        //Serial.print("Response was: ");
-        //Serial.println(response);
+        //serialCapture.print("Response was: ");
+        //serialCapture.println(response);
         connected = true; 
         String(buffer);
     } else {
-        Serial.print("[ERROR] No Response in time or Parsing Error! ");
-        Serial.println(response);
+        serialCapture.print("[ERROR] No Response in time or Parsing Error! ");
+        serialCapture.println(response);
         connected = false;  
     }
 
@@ -176,7 +184,7 @@ String InverterUdp::writeModbus(String address, String  length, String payload, 
     String message =  address+length+payloadlength+payload;
     String cmd = modbusWriteToken+message;
 
-    //Serial.println("Modbus Send Command : "+ cmd);
+    //serialCapture.println("Modbus Send Command : "+ cmd);
  
     //const char* hexDataStr = "01030022000"; --> 6 bytes payload
     //const char* hexDataStr = "0110 0016 0003 0617 0A0E 1014 09" --> 13 bytes 
@@ -188,33 +196,33 @@ String InverterUdp::writeModbus(String address, String  length, String payload, 
     
     
     String crc = byteToHexString(crc_bytes,2);
-    //Serial.println("Modbus CRC: "+ crc);
+    //serialCapture.println("Modbus CRC: "+ crc);
     String msg_length = String(message.length());
     
-    Serial.println("Command Length: "+ msg_length);
+    serialCapture.println("Command Length: "+ msg_length);
     
-    Serial.println("PayloadLength Length: "+ payloadlength);
+    serialCapture.println("PayloadLength Length: "+ payloadlength);
 
     //cmd = modbusIntro + msg_length + "," + cmd + crc + modbusOutro;
 
     // ToDo: Make "15" generic and calculated...
     cmd = modbusIntro + "15," + cmd + crc + modbusOutro;
 
-    Serial.println("Modbus Send Full Command : "+ cmd );
+    serialCapture.println("Modbus Send Full Command : "+ cmd );
 
     send_message(cmd);
 
     String response = getResponse(true);
 
     if (response != noResponse){
-        //Serial.print("Response was: ");
-        //Serial.println(response);
+        //serialCapture.print("Response was: ");
+        //serialCapture.println(response);
 
         connected = true; 
         String(buffer);
     } else {
-        Serial.print("[ERROR] No Response in time or Parsing Error! ");
-        Serial.println(response);
+        serialCapture.print("[ERROR] No Response in time or Parsing Error! ");
+        serialCapture.println(response);
         connected = false;  
     }
 
@@ -239,11 +247,11 @@ bool InverterUdp::inverter_connect(String udpSrv, int remPort, int locPort, int 
     // Starting local listening port
     udp.begin(localPort);   
     
-    Serial.println("----------------------------------------------------------");
-    Serial.print("\n[UDP-INIT] >>>Begin UDP connection to ");
-    Serial.print(udpServer);
-    Serial.print("  Port: " );
-    Serial.println(remotePort);
+    serialCapture.println("----------------------------------------------------------");
+    serialCapture.print("\n[UDP-INIT] >>>Begin UDP connection to ");
+    serialCapture.print(udpServer);
+    serialCapture.print("  Port: " );
+    serialCapture.println(remotePort);
 
     send_message(udpLogin);
 
@@ -251,20 +259,20 @@ bool InverterUdp::inverter_connect(String udpSrv, int remPort, int locPort, int 
     
     String response = getResponse(false);
     if (response != noResponse){
-        Serial.print("\n[UDP-INIT] >>> Response was: ");
-        Serial.println(response);
+        serialCapture.print("\n[UDP-INIT] >>> Response was: ");
+        serialCapture.println(response);
         connected = true; 
         status =  true; 
     } else {
-        Serial.print("[UDP-INIT] >>> [ERROR] No Response in time or Parsing error! ");
-        Serial.println(response);
+        serialCapture.print("[UDP-INIT] >>> [ERROR] No Response in time or Parsing error! ");
+        serialCapture.println(response);
         connected = false;
         status = false; 
     }
 
     // Finalize handshake, no response needed
     send_message("+ok");
-    Serial.println("[UDP-INIT]>>> Handshake complete");
+    serialCapture.println("[UDP-INIT]>>> Handshake complete");
     delay (100);
 
     return status;
@@ -281,7 +289,7 @@ String InverterUdp::getResponse(bool deleteSeparatorChars){
         int bytes = udp.parsePacket();
         
         if (bytes > 0) {
-            //Serial.print("\nPacket received with size: " + String(bytes));
+            //serialCapture.print("\nPacket received with size: " + String(bytes));
             int len = udp.read(buffer, 255);
             buffer[len] = 0; // Null-terminate the string
             
@@ -294,12 +302,12 @@ String InverterUdp::getResponse(bool deleteSeparatorChars){
             // Check the response
             if(response.startsWith("+ERR=")) {
                 // Handle the error case, log it and continue listening
-                Serial.println("Error received: " + response);
+                serialCapture.println("Error received: " + response);
                 response = noResponse;
                 break;
             } else if(response.startsWith("+ok=01")) {
                 // Handle the valid case
-                //Serial.println("Valid MODBUS response received: " + response);
+                //serialCapture.println("Valid MODBUS response received: " + response);
                 
                 // If special separator  should be removed, do so here
                 if (deleteSeparatorChars){
@@ -308,10 +316,10 @@ String InverterUdp::getResponse(bool deleteSeparatorChars){
                 
                 if(String(buffer).startsWith("+ok=0103")){
                     response = String(buffer);
-                    Serial.println("\nValid MODBUS-READ response received: " + response);
+                    serialCapture.println("\nValid MODBUS-READ response received: " + response);
                 } else if (String(buffer).startsWith("+ok=0110")){
                     response = String(buffer);
-                    Serial.println("\nValid MODBUS WRITE response received: " + response);
+                    serialCapture.println("\nValid MODBUS WRITE response received: " + response);
                 } else {
                     response = noResponse;   
                 } 
@@ -319,12 +327,12 @@ String InverterUdp::getResponse(bool deleteSeparatorChars){
                 break;
             } else {
                 // Handle unexpected cases
-                Serial.println("Other response like Hello Message " + response);
+                serialCapture.println("Other response like Hello Message " + response);
                 break; 
                 //response = noResponse;
                 }
         } else {
-            Serial.print("+");
+            serialCapture.print("+");
             delay(delay_loop_ms); // Wait for a short period before checking again
         }
     }
@@ -335,7 +343,7 @@ String InverterUdp::getResponse(bool deleteSeparatorChars){
 bool InverterUdp::inverter_close(){
   send_message("AT+Q");
   delay(500); 
-  Serial.println("[UDP-CLOSE] >>> Stopping local udp port");
+  serialCapture.println("[UDP-CLOSE] >>> Stopping local udp port");
   udp.stop();
   delay(500); 
   connected = false; 
@@ -343,7 +351,7 @@ bool InverterUdp::inverter_close(){
 }
 
 void InverterUdp::send_message(String message){
-    Serial.println("> Sending Message: "+ message);
+    //serialCapture.println("> Sending Message: "+ message);
     udp.beginPacket(udpServer.c_str(), remotePort);
     udp.print(message);
     udp.endPacket();
@@ -457,12 +465,12 @@ bool InverterUdp::parseDateTime(String timestring) {
 
     if(isValidYear && isValidMonth && isValidDay && isValidHour && isValidMinute && isValidSecond) {
       inverterTime = DateTime((year + 2000), month, day, hour, minute, second);
-      Serial.println("Parsed DateTime: " + String(inverterTime.year()) + "/" + String(inverterTime.month()) + "/" + String(inverterTime.day()) + " " + String(inverterTime.hour()) + ":" + String(inverterTime.minute()) + ":" + String(inverterTime.second()));
+      serialCapture.println("Parsed DateTime: " + String(inverterTime.year()) + "/" + String(inverterTime.month()) + "/" + String(inverterTime.day()) + " " + String(inverterTime.hour()) + ":" + String(inverterTime.minute()) + ":" + String(inverterTime.second()));
       defaultTimeIsSet = false;
       parsingPossible = true;
     } 
     else {
-      Serial.println("Invalid hexadecimal or invalid date/time components in string: " + timestring);
+      serialCapture.println("Invalid hexadecimal or invalid date/time components in string: " + timestring);
     }
   }
   return parsingPossible;

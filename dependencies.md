@@ -17,8 +17,7 @@ Current (07.03.2024) working list of used libraries
 * [To Install] Time in Version 1.6.1 / Time by Michael Margolis Version 1.6.1 INSTALLED
 * [To Install] RTClib in Version 2.1.1 / RTClib by Adafruit Version 2.1.1 INSTALLED
 * [To Install] Adafruit_BusIO in Version 1.14.4 / Adafruit BusIO by Adafruit Version 1.14.4 INSTALLED
-
-
+* [To Install] Preferences by Volodymyr Shymanskyy Version 2.1.0 --  Preferences library for ESP8266 and Particle Gen3 devices, with ESP32-compatible API
 
 * [Comes with board software] SPI in Version 1.0
 * [Comes with board software] Wire in Version 1.0

@@ -1,22 +1,24 @@
 #include "MQTTManager.h"
 
-MQTTManager::MQTTManager(const char* broker, uint16_t port, const char* user, const char* pwd, DisplayManager& displayManager, Inverter& inverter)
-: _broker(broker), _port(port), _user(user), _pwd(pwd), _displayManager(displayManager), _inverter(inverter), mqttClient(espClient) {
+MQTTManager::MQTTManager(const char* broker, uint16_t port, const char* user, const char* pwd, DisplayManager& displayManager, Inverter& inverter, SerialCaptureLines& serialCapture)
+: _broker(broker), _port(port), _user(user), _pwd(pwd), _displayManager(displayManager), _inverter(inverter), mqttClient(espClient), serialCapture(serialCapture)  {
     mqttClient.setServer(_broker, _port);
     mqttClient.setBufferSize(1024); // Increase the buffer size to 512 bytes
 }
 
-void MQTTManager::reconnect(ActionData& action) {
-    while (!mqttClient.connected()) {
-        Serial.println("Attempting MQTT connection...");
+void MQTTManager::reconnect(ActionData& action, uint8_t attempts) {
+    uint8_t attempt = 0;
+    while (!mqttClient.connected() && attempt < attempts) {
+        attempt++;
+        serialCapture.println("Attempting MQTT connection...");
         if (mqttClient.connect("MQTTClient", _user, _pwd)) {
-            Serial.println("connected");
+            serialCapture.println("connected");
             action.resultDetails = "Connected";
-            _displayManager.displayAction(action); // Optional: update display on successful connection
+_displayManager.displayAction(action); // Optional: update display on successful connection
         } else {
-            Serial.print("failed, rc=");
-            Serial.print(mqttClient.state());
-            Serial.println(" try again in 5 seconds");
+            serialCapture.print("failed, rc=");
+            serialCapture.print(mqttClient.state());
+            serialCapture.println(" try again in 5 seconds");
             delay(5000);
         }
     }
@@ -24,7 +26,7 @@ void MQTTManager::reconnect(ActionData& action) {
 
 void MQTTManager::disconnect() {
     mqttClient.disconnect();
-    Serial.println("MQTT Disconnected");
+    serialCapture.println("MQTT Disconnected");
     //_displayManager.displayAction("MQTT Disconnection", "", "Disconnected");
 }
 
@@ -55,7 +57,7 @@ const char* configEnergyToday = R"({
     "unique_id": "solar_inverter_energy_today",
     "device_class": "energy",
     "suggested_display_precision": 1,
-    "icon": "mdi:sigma",
+    "icon": "mdi:solar-panel",
     "device": {
     "identifiers": ["deye_600_12345678"],
     "name": "Solar Inverter",
@@ -73,6 +75,7 @@ const char* configEnergyTotal = R"({
     "unique_id": "solar_inverter_energy_total",
     "device_class": "energy",
     "suggested_display_precision": 1, 
+    "icon": "mdi:sigma",
     "device": {
     "identifiers": ["deye_600_12345678"],
     "name": "Solar Inverter",
@@ -93,43 +96,37 @@ void MQTTManager::publishAllData() {
     action.name = "MQTT Sync";
     action.details = "Publish data";
     action.params[0] = "Broker: " + String(_broker);
-    action.params[1] = "Port: " + String(_port);
+    action.params[1] = "Port:   " + String(_port);
     action.result = "In Progress";
     
-    _displayManager.displayAction(action); // Initial display update
-
-    if (!mqttClient.connected()) {
-        reconnect(action); // Pass action by reference if you want to update it within reconnect
+_displayManager.displayAction(action); // Initial display update
+    
+    if (!mqttClient.connected()) { 
+        reconnect(action, 3); // Pass action by reference if you want to update it within reconnect
     }
     
-    if (mqttClient.connected()) {
+    if ( mqttClient.connected() ) {
         action.result = "Connected";
         action.resultDetails = "Publishing...";
         _displayManager.displayAction(action); // Update display after connection
-        
 
-       bool publishSuccess;
+        bool publishSuccess;
 
         publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/power/config",configPower , true);
         if (!publishSuccess) {
-            Serial.println("[ERR] Failed to publish config for Power sensor.");
-        } else {
-            Serial.println("[DBG] Config for Power sensor published successfully.");
+            serialCapture.println("[ERR] Failed to publish config for Power sensor.");
         }
 
         publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/energy_today/config", configEnergyToday, true);
         if (!publishSuccess) {
-            Serial.println("[ERR] Failed to publish config for Energy Today sensor.");
-        } else {
-            Serial.println("[DBG] Config for Energy Today sensor published successfully.");
-        }
+            serialCapture.println("[ERR] Failed to publish config for Energy Today sensor.");
+        } 
 
         publishSuccess = mqttClient.publish("homeassistant/sensor/solar_inverter/energy_total/config", configEnergyTotal, true);
         if (!publishSuccess) {
-            Serial.println("[ERR] Failed to publish config for Energy Total sensor.");
-        } else {
-            Serial.println("[DBG] Config for Energy Total sensor published successfully.");
-        }
+            serialCapture.println("[ERR] Failed to publish config for Energy Total sensor.");
+        } 
+
         delay(100); // Wait for the config messages to be processed by the broker
 
         // Publishing all fields using the updated InverterData struct
@@ -155,31 +152,11 @@ void MQTTManager::publishAllData() {
         publish("SolarInverterBridge/remote-server/statusC", _inverter.getRemoteServerStatusC().c_str());
         publish("SolarInverterBridge/lastUpdateTimestamp", String(_inverter.getLastUpdateTimestamp()).c_str());
    
-
-
- 
-
-        // // Publishing MQTT Discovery config messages for Home Assistant
-        // Serial.println("[DBG] Publish config for Power sensor.");
-        // mqttClient.publish("homeassistant/sensor/solar_inverter/power/config", configSmall, false);
-
-        // Serial.println("[DBG] Publish config for Energy Today sensor.");
-        // mqttClient.publish("homeassistant/sensor/solar_inverter/energy_today/config", configSmall, false);
-
-        // Serial.println("[DBG] Publish config for Energy Total sensor.");
-        // mqttClient.publish("homeassistant/sensor/solar_inverter/energy_total/config", configSmall, false);
-
-
-        // <discovery_prefix>/<component>/<node_id>/<object_id>/config
-        //    <discovery_prefix> is usually homeassistant.
-        //    <component> is the type of the Home Assistant component (e.g., sensor for sensor entities).
-        //    <node_id> and <object_id> are unique identifiers for your device and the specific entity. These can be anything that uniquely identifies the entity, like solar_inverter for the node and energy_today for the object.
-
         disconnect();
         action.result = "Done";
         action.resultDetails = "Published";
     } else {
-        Serial.println("[DBG] MQTT Connection not available.");
+        serialCapture.println("[DBG] MQTT Connection not available.");
         action.result = "Failed";
         action.resultDetails = "Check connection";
     }

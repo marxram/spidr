@@ -1,6 +1,7 @@
 //#define BOARD_WEMOS_OLED_128x64_ESP32
 //#define BOARD_HELTEC_OLED_128x32_ESP8266
-#define BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+//#define BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+#define BOARD_WEMOS_OLED_128x32_ESP32_S2
 
 #define USE_SECRETS_FILE_AS_DEFAULT
 
@@ -10,20 +11,10 @@
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
 // DISPLAY ------------------------------------------------------------
-//#define SCREEN_WIDTH 128 // OLED display width, in pixels
 
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
 
-#ifdef BOARD_HELTEC_OLED_128x32_ESP8266
-  #define SCREEN_HEIGHT 32 // OLED display height, in pixels
-  #define HEADER_FONT       u8g2_font_spleen6x12_me
-  #define NORMAL_FONT       u8g2_font_spleen6x12_me
-  #define ANNOTATION_FONT   u8g2_font_5x7_tf 
-#else 
-  #define SCREEN_HEIGHT 64 // OLED display height, in pixels
-  #define HEADER_FONT       u8g2_font_spleen8x16_me 
-  #define NORMAL_FONT       u8g2_font_spleen6x12_me 
-  #define ANNOTATION_FONT   u8g2_font_spleen5x8_me 
-#endif 
 
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
@@ -42,6 +33,7 @@
 ///////////////////////////////////////////////////////////////////////
 // Timing behavior
 #define DURATION_STAY_IN_HOME_NETWORK_MS   300000  
+#define DURATION_STAY_IN_HOME_NETWORK_MS_FIRST_BOOT 10000
 #define DURATION_STAY_IN_AP_NETWORK_MS     150000  
 
 #define DURATION_TO_DISPLAY_TIME_SECONDS 5

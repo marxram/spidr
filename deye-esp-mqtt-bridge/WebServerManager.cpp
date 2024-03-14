@@ -1,21 +1,22 @@
 #include "WebServerManager.h"
 #include "WebPages.h"
+#include "SerialCaptureLines.h"
 
-WebServerManager::WebServerManager() : server(80) {} // Initialize the web server on port 80
+WebServerManager::WebServerManager(Inverter& inverter, SerialCaptureLines& serialCapture) : server(80), inverter(inverter), serialCapture(serialCapture)   {}
 
 void WebServerManager::begin() {
-    Serial.println("WebServerManager: Initializing preferences manager...");
+    serialCapture.println("WebServerManager: Initializing preferences manager...");
     preferencesManager.begin(); // Initialize Preferences Manager
-    Serial.println("WebServerManager: Setting up routes...");
+    serialCapture.println("WebServerManager: Setting up routes...");
     setupRoutes();
     server.begin(); // Start the web server
-    Serial.println("WebServerManager: Web server started.");
+    serialCapture.println("WebServerManager: Web server started.");
     serverActive = true;
 }
 
 void WebServerManager::stop() {
     server.close(); // Close the web server
-    Serial.println("WebServerManager: Web server stopped.");
+    serialCapture.println("WebServerManager: Web server stopped.");
     serverActive = false;
 }
 
@@ -28,7 +29,7 @@ void WebServerManager::handleClient() {
 }
 
 void WebServerManager::setupRoutes() {
-    Serial.println("WebServerManager: Configuring routes...");
+    serialCapture.println("WebServerManager: Configuring routes...");
     server.on("/", HTTP_GET, std::bind(&WebServerManager::handleRootPage, this));
     
     server.on("/wiki", HTTP_GET, std::bind(&WebServerManager::handleWikiPage, this));
@@ -37,41 +38,79 @@ void WebServerManager::setupRoutes() {
     // Recieve the Config Updates here
     server.on("/update", HTTP_POST, std::bind(&WebServerManager::handleUpdate, this));
 
+    server.on("/serial", HTTP_GET, std::bind(&WebServerManager::handleSerialPage, this));
+
     // Define more routes as needed
-    Serial.println("WebServerManager: Routes configured.");
+    serialCapture.println("WebServerManager: Routes configured.");
+}
+
+void WebServerManager::handleSerialPage() {
+    serialCapture.println("WebServerManager: Handling Serial page request...");
+    String serialData = serialCapture.getBuffer(); // Assume serialCapture is accessible
+    server.send(200, "text/plain", serialData);
 }
 
 void WebServerManager::handleRootPage() {
-    Serial.println("WebServerManager: Handling root page request...");
-    String htmlContent = HomePage_HTML; // Preferences_HTML defined in WebPages.h
-    
-    // Dynamically replace placeholders with actual preference values
+    serialCapture.println("WebServerManager: Handling root page request...");
+    String htmlContent = HomePage_HTML;
+
+    // Fetch sensor readings from the Inverter instance
+    float power = inverter.getInverterPowerNow_W();
+    float energyToday = inverter.getInverterEnergyToday_kWh();
+    float energyTotal = inverter.getInverterEnergyTotal_kWh();
+
+    // Dynamically replace placeholders with actual sensor values
+    htmlContent.replace("{{power}}", String(power));
+    htmlContent.replace("{{energyToday}}", String(energyToday));
+    htmlContent.replace("{{energyTotal}}", String(energyTotal));
+
+    // Use templateProcessor to replace other placeholders
     htmlContent = templateProcessor(htmlContent);
-    
+
     server.send(200, "text/html", htmlContent);
-    Serial.println("WebServerManager: Root page served.");
+    serialCapture.println("WebServerManager: Root page served.");
 }
 
 void WebServerManager::handleConfigPage() {
-    Serial.println("WebServerManager: Handling root page request...");
+    serialCapture.println("WebServerManager: Handling root page request...");
     String htmlContent = ConfigPage_HTML; // Preferences_HTML defined in WebPages.h
     
     // Dynamically replace placeholders with actual preference values
     htmlContent = templateProcessor(htmlContent);
+
+
+    // Fetch sensor readings from the Inverter instance
+    float power = inverter.getInverterPowerNow_W();
+    float energyToday = inverter.getInverterEnergyToday_kWh();
+    float energyTotal = inverter.getInverterEnergyTotal_kWh();
+    // Dynamically replace placeholders with actual sensor values
+    htmlContent.replace("{{power}}", String(power));
+    htmlContent.replace("{{energyToday}}", String(energyToday));
+    htmlContent.replace("{{energyTotal}}", String(energyTotal));
     
     server.send(200, "text/html", htmlContent);
-    Serial.println("WebServerManager: Root page served.");
+    serialCapture.println("WebServerManager: Confg page served.");
 }
 
 void WebServerManager::handleWikiPage() {
-    Serial.println("WebServerManager: Handling root page request...");
+    serialCapture.println("WebServerManager: Handling root page request...");
     String htmlContent = WikiPage_HTML; // Preferences_HTML defined in WebPages.h
     
     // Dynamically replace placeholders with actual preference values
     htmlContent = templateProcessor(htmlContent);
+
+    // Fetch sensor readings from the Inverter instance
+    float power = inverter.getInverterPowerNow_W();
+    float energyToday = inverter.getInverterEnergyToday_kWh();
+    float energyTotal = inverter.getInverterEnergyTotal_kWh();
+
+    // Dynamically replace placeholders with actual sensor values
+    htmlContent.replace("{{power}}", String(power));
+    htmlContent.replace("{{energyToday}}", String(energyToday));
+    htmlContent.replace("{{energyTotal}}", String(energyTotal));
     
     server.send(200, "text/html", htmlContent);
-    Serial.println("WebServerManager: Root page served.");
+    serialCapture.println("WebServerManager: Wiki page served.");
 }
 
 
@@ -99,27 +138,27 @@ void WebServerManager::handleUpdate() {
         String relaisWebUser = server.arg("relaisWebUser");
         String relaisWebPwd = server.arg("relaisWebPwd");
 
-        Serial.println("Received form data:");
-        Serial.println("WiFi Settings:");
-        Serial.println("Home SSID: " + homeSSID);
-        Serial.println("Home Key: " + homeKey);
-        Serial.println("Inverter SSID: " + inverterSSID);
-        Serial.println("Inverter Key: " + inverterKey);
-        Serial.println("Relais SSID: " + relaisSSID);
-        Serial.println("Relais Key: " + relaisKey);
+        serialCapture.println("Received form data:");
+        serialCapture.println("WiFi Settings:");
+        serialCapture.println("Home SSID: " + homeSSID);
+        serialCapture.println("Home Key: " + homeKey);
+        serialCapture.println("Inverter SSID: " + inverterSSID);
+        serialCapture.println("Inverter Key: " + inverterKey);
+        serialCapture.println("Relais SSID: " + relaisSSID);
+        serialCapture.println("Relais Key: " + relaisKey);
 
-        Serial.println("MQTT Broker Settings:");
-        Serial.println("Broker Host: " + mqttBrokerHost);
-        Serial.println("Broker Port: " + String(mqttBrokerPort));
-        Serial.println("Broker User: " + mqttBrokerUser);
-        Serial.println("Broker Password: " + mqttBrokerPwd);
-        Serial.println("Main Topic: " + mqttBrokerMainTopic);
+        serialCapture.println("MQTT Broker Settings:");
+        serialCapture.println("Broker Host: " + mqttBrokerHost);
+        serialCapture.println("Broker Port: " + String(mqttBrokerPort));
+        serialCapture.println("Broker User: " + mqttBrokerUser);
+        serialCapture.println("Broker Password: " + mqttBrokerPwd);
+        serialCapture.println("Main Topic: " + mqttBrokerMainTopic);
 
-        Serial.println("Web Access Credentials:");
-        Serial.println("Inverter Web User: " + inverterWebUser);
-        Serial.println("Inverter Web Password: " + inverterWebPwd);
-        Serial.println("Relais Web User: " + relaisWebUser);
-        Serial.println("Relais Web Password: " + relaisWebPwd);
+        serialCapture.println("Web Access Credentials:");
+        serialCapture.println("Inverter Web User: " + inverterWebUser);
+        serialCapture.println("Inverter Web Password: " + inverterWebPwd);
+        serialCapture.println("Relais Web User: " + relaisWebUser);
+        serialCapture.println("Relais Web Password: " + relaisWebPwd);
 
         // Updating the preferences with the received data
         preferencesManager.setHomeSSID(homeSSID);
@@ -143,7 +182,7 @@ void WebServerManager::handleUpdate() {
         server.send(303, "text/plain", "Preferences updated. Redirecting to main page...");
     } else {
         // Handle incorrect method if needed
-        Serial.println("Error: HTTP method not supported.");
+        serialCapture.println("Error: HTTP method not supported.");
         server.send(405, "text/plain", "Method Not Allowed");
     }
 }
@@ -160,7 +199,7 @@ String HTMLEscape(const String& str) {
 }
 
 String WebServerManager::templateProcessor(const String& htmlTemplate) {
-    Serial.println("WebServerManager: Processing HTML template...");
+    serialCapture.println("WebServerManager: Processing HTML template...");
     String processedHtml = htmlTemplate;
 
     // Replace each placeholder with the corresponding preference value, using HTMLEscape to ensure safety
@@ -180,6 +219,6 @@ String WebServerManager::templateProcessor(const String& htmlTemplate) {
     processedHtml.replace("{{relaisWebUser}}", HTMLEscape(preferencesManager.getRelaisWebUser()));
     processedHtml.replace("{{relaisWebPwd}}", HTMLEscape(preferencesManager.getRelaisWebPwd()));
 
-    Serial.println("WebServerManager: HTML template processed.");
+    serialCapture.println("WebServerManager: HTML template processed.");
     return processedHtml;
 }

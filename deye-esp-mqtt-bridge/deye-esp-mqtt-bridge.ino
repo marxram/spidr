@@ -22,6 +22,7 @@
 #include "WebServerManager.h"
 
 #include "EnergyDisplay.h"
+#include "SerialCaptureLines.h"
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -86,14 +87,17 @@ bool connected = false;
 
 ////////////////////////////////////////////////////////////////////
 // Intializations 
-DisplayManager displayManager;
+SerialCaptureLines serialCapture(100); // Adjust the buffer size (number of lines) as needed
+
+DisplayManager displayManager(serialCapture);
 ActionData action; // Action Structure to Display
 MQTTManager* mqttManager = nullptr; // Pointer declaration
-Inverter inverter;
-InverterUdp inverterUdp;
+Inverter inverter(serialCapture);
+InverterUdp inverterUdp(serialCapture);
 PreferencesManager prefsManager;
-WebServerManager webServerManager; // Create an instance of WebServerManager
-EnergyDisplay energyDisplay(displayManager);
+WebServerManager webServerManager (inverter, serialCapture); // Create an instance of WebServerManager
+EnergyDisplay energyDisplay(displayManager, serialCapture);
+
 
 const int udpServerPort = 50000; // manual port
 const int udpLocalPort = 48899; // Fixed port of deye inverter
@@ -102,7 +106,7 @@ const int udpTimeoput_s = 10; // 10 Seconds Timeout
 ////////////////////////////////////////////////////////////////////
 // Function declarations
 void wifi_connect(String ssid, String passkey, String comment);
-void readInverterDataFromWebInterface(String url, String web_user, String web_password);
+bool readInverterDataFromWebInterface(String url, String web_user, String web_password);
 void displayInverterStatus(const Inverter& inverter, unsigned int duration_ms);
 void updateAndPublishData();
 void setupTime();
@@ -142,6 +146,8 @@ unsigned long homeNetworkNotReachableCount = 0;
 bool newInverterDataAvailable = false;
 int remainingTimeInAP = 0;
 
+bool firstBoot = true;
+
 
 ////////////////////////////////////////////////////////////////////
 // SETUP Function
@@ -151,44 +157,43 @@ void setup() {
   delay(500); 
 
   // Initialize Preferences Manager
-  Serial.println("Initialize Preferences Manager...");
+  serialCapture.println("Initialize Preferences Manager...");
   prefsManager.begin();
 
-  Serial.println("Load Preferences into Variables...");
+  serialCapture.println("Load Preferences into Variables...");
   loadPreferencesIntoVariables();
 
   #ifdef SCREEN_ADDRESS
     displayManager.setI2CAddress(SCREEN_ADDRESS); 
   #endif 
 
-  Serial.println("Initialize Display Manager...");
+  serialCapture.println("Initialize Display Manager...");
   displayManager.init();
    // Show also more output and Parameters like Url, IP etc. 
   displayManager.verboseDisplay = true;
 
   // Display Initialization
-  action.name = "Airgap Bridge";
-  action.details = "Security & Privacy";
-  action.params[0] = "Read Solar Inverters";
-  action.params[1] = "Display Data";
-  action.params[2] = "Send to SmartHome";
-  action.params[3] = "deye-esp-mqtt-bridge";
-  action.result = "Star on";
-  action.resultDetails = "Github";
+  action.name = "E SPIDER";
+  action.details = "Esp based";
+  action.params[0] = "Smart";
+  action.params[1] = "Privacy-focused";
+  action.params[2] = "Data";
+  action.params[3] = "Energy";
+  action.result = "Relay";
+  action.resultDetails = "";
   displayManager.displayAction(action);
   delay(5000);
   clearActionDisplay();
   
   // Initiliase the NTP client, or fallback to build time if USE_NTP_SYNC is not defined
-  Serial.println("Initialize Time...");
+  serialCapture.println("Initialize Time...");
   setupTime();
-
 
     // Initialize the MQTT Manager
     
   if (mqttManager == nullptr) {
-    Serial.println("Initialize MQTT Manager...");
-    mqttManager = new MQTTManager(MQTT_BROKER_HOST.c_str(), MQTT_BROKER_PORT, MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str(), displayManager, inverter);
+    serialCapture.println("Initialize MQTT Manager...");
+    mqttManager = new MQTTManager(MQTT_BROKER_HOST.c_str(), MQTT_BROKER_PORT, MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str(), displayManager, inverter, serialCapture);
   }
 
   // Initialize the State Machine
@@ -198,6 +203,13 @@ void setup() {
   wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
   energyDisplay.initializeDisplayIntervals(5000, 5000, 5000);
   energyDisplay.start();
+
+  // Generate TestDate for the Inverter
+  serialCapture.println("Generate Test Data");
+  inverter.generateTestData();
+  // print a statement to the serial monitor
+    
+
 
 }
 
@@ -236,7 +248,7 @@ void setupTime() {
 
         now = time(nullptr); // Update current time after NTP request
         if (now > buildEpoch) {
-            Serial.println("NTP sync successful.");
+            serialCapture.println("NTP sync successful.");
             lastSyncTime = millis(); // Record successful sync time
             timeSynced = true;
             action.result = "Done";
@@ -244,7 +256,7 @@ void setupTime() {
             displayManager.displayAction(action);
             delay(2000);
         } else {
-            Serial.println("Failed to obtain time from NTP server. Using build time as fallback.");
+            serialCapture.println("Failed to obtain time from NTP server. Using build time as fallback.");
             timeSynced = false; // NTP sync attempted and failed
             action.result = "Failed";
             action.resultDetails = "No Server";
@@ -252,7 +264,7 @@ void setupTime() {
             delay(2000);
         }
     } else {
-        Serial.println("Time previously synchronized or NTP sync not required.");
+        serialCapture.println("Time previously synchronized or NTP sync not required.");
     }
     #else
     if (now <= buildEpoch || !timeSynced) {
@@ -260,7 +272,7 @@ void setupTime() {
         // Use build time if NTP sync is disabled or if time hasn't been successfully set yet
         struct timeval tv = { .tv_sec = buildEpoch };
         settimeofday(&tv, NULL);
-        Serial.println("NTP sync is disabled. Using build time as fallback.");
+        serialCapture.println("NTP sync is disabled. Using build time as fallback.");
         lastSyncTime = millis();
         timeSynced = false; // Consider time as synchronized since we fallback to build time
 
@@ -308,50 +320,50 @@ unsigned long getCurrentEpochTime() {
 void loadPreferencesIntoVariables() {
     WIFI_HOME_SSID = prefsManager.getHomeSSID();
     WIFI_HOME_KEY = prefsManager.getHomeKey();
-    Serial.println("Loaded Home WiFi SSID: " + WIFI_HOME_SSID);
-    Serial.println("Loaded Home WiFi Key: [HIDDEN]"); // For security reasons, you might not want to print the actual key
+    serialCapture.println("Loaded Home WiFi SSID: " + WIFI_HOME_SSID);
+    serialCapture.println("Loaded Home WiFi Key: [HIDDEN]"); // For security reasons, you might not want to print the actual key
 
     WIFI_INVERTER_SSID = prefsManager.getInverterSSID();
     WIFI_INVERTER_KEY = prefsManager.getInverterKey();
-    Serial.println("Loaded Inverter WiFi SSID: " + WIFI_INVERTER_SSID);
-    Serial.println("Loaded Inverter WiFi Key: [HIDDEN]");
+    serialCapture.println("Loaded Inverter WiFi SSID: " + WIFI_INVERTER_SSID);
+    serialCapture.println("Loaded Inverter WiFi Key: [HIDDEN]");
 
     WIFI_RELAIS_SSID = prefsManager.getRelaisSSID();
     WIFI_RELAIS_KEY = prefsManager.getRelaisKey();
-    Serial.println("Loaded Relais WiFi SSID: " + WIFI_RELAIS_SSID);
-    Serial.println("Loaded Relais WiFi Key: [HIDDEN]");
+    serialCapture.println("Loaded Relais WiFi SSID: " + WIFI_RELAIS_SSID);
+    serialCapture.println("Loaded Relais WiFi Key: [HIDDEN]");
 
     MQTT_BROKER_HOST = prefsManager.getMqttBrokerHost();
     MQTT_BROKER_PORT = prefsManager.getMqttBrokerPort();
-    Serial.println("Loaded MQTT Broker Host: " + MQTT_BROKER_HOST);
-    Serial.print("Loaded MQTT Broker Port: ");
-    Serial.println(MQTT_BROKER_PORT);
+    serialCapture.println("Loaded MQTT Broker Host: " + MQTT_BROKER_HOST);
+    serialCapture.print("Loaded MQTT Broker Port: ");
+    serialCapture.println(MQTT_BROKER_PORT);
 
     MQTT_BROKER_USER = prefsManager.getMqttBrokerUser();
     MQTT_BROKER_PWD = prefsManager.getMqttBrokerPwd();
-    Serial.println("Loaded MQTT Broker User: " + MQTT_BROKER_USER);
-    Serial.println("Loaded MQTT Broker Password: [HIDDEN]");
+    serialCapture.println("Loaded MQTT Broker User: " + MQTT_BROKER_USER);
+    serialCapture.println("Loaded MQTT Broker Password: [HIDDEN]");
 
     MQTT_BROKER_MAINTOPIC = prefsManager.getMqttBrokerMainTopic();
-    Serial.println("Loaded MQTT Broker Main Topic: " + MQTT_BROKER_MAINTOPIC);
+    serialCapture.println("Loaded MQTT Broker Main Topic: " + MQTT_BROKER_MAINTOPIC);
 
     INVERTER_WEBACCESS_USER = prefsManager.getInverterWebUser();
     INVERTER_WEBACCESS_PWD = prefsManager.getInverterWebPwd();
-    Serial.println("Loaded Inverter Web Access User: " + INVERTER_WEBACCESS_USER);
-    Serial.println("Loaded Inverter Web Access Password: [HIDDEN]");
+    serialCapture.println("Loaded Inverter Web Access User: " + INVERTER_WEBACCESS_USER);
+    serialCapture.println("Loaded Inverter Web Access Password: [HIDDEN]");
 }
 
 ////////////////////////////////////////////////////////////////////
 // WiFi Functions
 void wifi_connect(String ssid, String passkey, String comment) {
-    Serial.println("----------------------------------------------------");
-    Serial.println("Attempting to connect to WiFi");
+    serialCapture.println("----------------------------------------------------");
+    serialCapture.println("Attempting to connect to WiFi " + ssid);
     
     // Display Initialization
     action.name = comment;
     action.details = "Connect to WiFi";
     action.params[0] = "SSID: " + ssid;
-    action.params[1] = "IP: Waiting...";
+    action.params[1] = "IP:   Waiting...";
     action.params[2] = "";
     action.params[3] = "";
     action.result = "In Progress";
@@ -372,7 +384,7 @@ void wifi_connect(String ssid, String passkey, String comment) {
         unsigned long attemptStartTime = millis();
         while (WiFi.status() != WL_CONNECTED && (millis() - attemptStartTime) < WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000) {
             delay(300);
-            Serial.print(".");
+            serialCapture.print(".");
             
             unsigned long timeElapsed = millis() - attemptStartTime;
             int secondsLeft = (WIFI_AP_MODE_ATTEMPT_WINDOW_FOR_HOME_NET_S * 1000 - timeElapsed) / 1000;
@@ -383,7 +395,8 @@ void wifi_connect(String ssid, String passkey, String comment) {
 
         if (WiFi.status() == WL_CONNECTED) {
             connected = true;
-            Serial.println("\nConnected to WiFi network.");
+
+            serialCapture.println("\nConnected to WiFi network: " + ssid +  " with IP: " + WiFi.localIP().toString() );
 
             if (ssid == WIFI_HOME_SSID) {
                 connectedToHomeNetwork = true;
@@ -397,7 +410,7 @@ void wifi_connect(String ssid, String passkey, String comment) {
             }
 
             String ip_string = WiFi.localIP().toString();
-            action.params[1] = "IP: " + ip_string;
+            action.params[1] = "IP:   " + ip_string;
             action.params[2] = "";
             action.result = "Connected";
             action.resultDetails = "Success!";
@@ -406,7 +419,7 @@ void wifi_connect(String ssid, String passkey, String comment) {
             break; // Exit the while loop
         } else {
             connected = false;
-            Serial.println("\nFailed to connect to WiFi network. Retrying...");
+            serialCapture.println("\nFailed to connect to WiFi network. Retrying...");
             
             action.result = "Retry";
             action.resultDetails = "";
@@ -433,7 +446,7 @@ void wifi_connect(String ssid, String passkey, String comment) {
             inverterNotReachableCount++;
         }
 
-        Serial.println("Failed to connect after multiple attempts.");
+        serialCapture.println("Failed to connect after multiple attempts.");
         action.params[1] = "Check Credentials?";
         action.params[2] = "Network Offline?";
         action.result = "FAILED";
@@ -460,7 +473,7 @@ void clearActionDisplay(){
 void activateAPMode() {
     WiFi.mode(WIFI_AP); // Enable AP+STA mode for simultaneous access point and Wi-Fi client mode
     WiFi.softAP(WIFI_AP_NAME, WIFI_AP_PASSWORD);
-    Serial.println("AP mode activated with SSID: " + String(WIFI_AP_NAME) + ", IP: " + WiFi.softAPIP().toString());
+    serialCapture.println("AP mode activated with SSID: " + String(WIFI_AP_NAME) + ", IP: " + WiFi.softAPIP().toString());
     delay(1000); // Wait for the AP to start
     webServerManager.begin();
 
@@ -474,7 +487,7 @@ void activateAPMode() {
 
 void deactivateAPMode() {
     WiFi.mode(WIFI_STA);
-    Serial.println("AP mode deactivated. Switched to STA mode.");
+    serialCapture.println("AP mode deactivated. Switched to STA mode.");
 
     // Add action and displaymanager update to inform about the status
     action.name = "AP Mode";
@@ -493,12 +506,14 @@ void deactivateAPMode() {
 
 ////////////////////////////////////////////////////////////////////
 // Web Parsing Section
-void readInverterDataFromWebInterface(String url, String web_user, String web_password){
+bool readInverterDataFromWebInterface(String url, String web_user, String web_password){
   String serverIp = WiFi.gatewayIP().toString();
   String website = "http://" + serverIp + "/" + url;
 
-  Serial.print("url: ");
-  Serial.println(website);
+  bool readHTML = false;
+
+  serialCapture.print("url: ");
+  serialCapture.println(website);
   
   // Display Initialization
   action.name = "Collect Data";
@@ -512,7 +527,6 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
   displayManager.displayAction(action);
   delay(2000);
 
-  
   // Create an instance of WiFiClient
   WiFiClient client;
 
@@ -520,7 +534,7 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
   if (client.connect(serverIp.c_str(), 80)) {
     // Prepare the HTTP request headers including the Authorization header
     
-    Serial.println("Client connected: trying Basic Auth");
+    serialCapture.println("Client connected: trying Basic Auth");
     String authHeaderValue = "Basic " + base64::encode(web_user + ":" + web_password);
 
     client.println("GET /" + url + " HTTP/1.1");
@@ -537,6 +551,21 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
         char c = client.read();
             if (c == '\n') {
                 // Check if line starts with "var " and append it to the response string
+                // print line
+                //serialCapture.println("Line: " + line);
+
+                // check if line includes "<H4>401 Unauthorized</H4>"
+                if (line.indexOf("<H4>401 Unauthorized</H4>") > 0) {
+                    action.params[1] = "UNAUTHORIZED";
+                    action.params[2] = "404";
+                    action.result = "Check";
+                    action.resultDetails = "WebCredentials";
+                    displayManager.displayAction(action);
+                    readHTML = false;
+                    delay(5000);
+                    return readHTML;
+                }   
+
                 if (line.startsWith("var ")) {
                     response += line + "\n";
                 }
@@ -552,30 +581,35 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
     displayManager.displayAction(action);
 
     // Print the entire response
-    //Serial.print(response);
+    serialCapture.print("[DEBUG] Printing Response: ");
+    serialCapture.print(response);
     
-    Serial.print("Start Parsing");
+    serialCapture.print("Start Parsing");
     ParseStatus result = inverter.updateData(response);
     
-    Serial.print(String(result));
+    serialCapture.print("Parsing Result "+ String(result));
 
     client.stop();
 
-    Serial.printf("\nPower now: %f\n", inverter.getInverterPowerNow_W());
-    Serial.printf("Energy today: %f\n", inverter.getInverterEnergyToday_kWh());
-    Serial.printf("Energy total: %f\n", inverter.getInverterEnergyTotal_kWh());
+    
 
     // Check parse result and update display accordingly
     if (result == OK) {
-      action.params[2] = "Parse: Done";
-      action.result = "Done";
-      action.resultDetails = "Success";
+        action.params[2] = "Parse: Done";
+        action.result = "Done";
+        action.resultDetails = "Success";
+        readHTML = true;
+
+        serialCapture.printf("\nPower now: %f\n", inverter.getInverterPowerNow_W());
+        serialCapture.printf("Energy today: %f\n", inverter.getInverterEnergyToday_kWh());
+        serialCapture.printf("Energy total: %f\n", inverter.getInverterEnergyTotal_kWh());
+
     } else {
       action.params[2] = "Parse: Failed";
       action.result = "FAIL";
       action.resultDetails = "Parsing Error";
+      readHTML = false;
     }
-
     delay(2000);
 
   } else {   
@@ -584,9 +618,11 @@ void readInverterDataFromWebInterface(String url, String web_user, String web_pa
     action.result = "FAIL";
     action.resultDetails = "";
     displayManager.displayAction(action);
+    readHTML = false;
     delay(5000);    
   }
 
+  return readHTML;
 }
 
 
@@ -607,7 +643,7 @@ void updateAndPublishData() {
     // Now you can call methods on mqttManager
     mqttManager->publishAllData();
     }else{
-        Serial.println("MQTT Manager not initialized");
+        serialCapture.println("MQTT Manager not initialized");
     }
 }
 
@@ -631,7 +667,7 @@ void handleInverterNetworkMode() {
     // Store the previous state
     previousState = currentState;
 
-    Serial.println("Entering Inverter Network Mode");
+    serialCapture.println("Entering Inverter Network Mode");
     // If connected with the Solar Inverter
     
     // check if connection is available
@@ -657,7 +693,8 @@ void handleInverterNetworkMode() {
             action.result = "Retry";
             action.resultDetails = "";
             displayManager.displayAction(action);
-            delay(1000);
+            inverterUdp.inverter_close();
+            delay(2000);
             udpConnectionCreated =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
         }
 
@@ -678,10 +715,10 @@ void handleInverterNetworkMode() {
             // Getting time from inverter, stored in inverterUDP object
             String response = inverterUdp.inverter_readtime();
             // Print the entire response
-            Serial.print(response);
+            serialCapture.print(response);
         
             if (response == TIME_NOT_INITIALIZTED_TOKEN){
-                Serial.print("Time needs to be set");
+                serialCapture.print("Time needs to be set");
                 
                 action.params[0] = "Status: Time not set";
                 action.params[1] = "Trigger Time Sync ";
@@ -690,13 +727,13 @@ void handleInverterNetworkMode() {
                 displayManager.displayAction(action);
                 delay(1000);
                 response = inverterUdp.inverter_settime(getCurrentEpochTime());
-                Serial.print(response);
+                serialCapture.print(response);
 
                 String response_new = inverterUdp.inverter_readtime();
                 // Print the entire response
-                Serial.print(response_new);
+                serialCapture.print(response_new);
                 if (response_new == TIME_NOT_INITIALIZTED_TOKEN){
-                    Serial.print(response_new);
+                    serialCapture.print(response_new);
                     action.params[0] = "Status: Time set";
                     action.params[1] = "Time Sync";
                     action.result = "FAILED";
@@ -704,6 +741,7 @@ void handleInverterNetworkMode() {
                     displayManager.displayAction(action);
                     delay(2000);
                 }else{
+                    
                     action.params[0] = "Status: Time set";
                     action.params[1] = "Time Sync ";
                     action.result = "Done";
@@ -720,32 +758,36 @@ void handleInverterNetworkMode() {
             delay(2000);
         }
 
-
-        // Set the time of the inverter to the current time
-        // This is also resetting the energy Production Today Counter, if time was not set before
-        unsigned long epochTime = getCurrentEpochTime();
-        inverterUdp.inverter_settime(epochTime);
-
         // Close connection before leaving to Home Network
         inverterUdp.inverter_close();
 
         // Retrieving the data from the inverter via the web interface
-        readInverterDataFromWebInterface(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
-        newInverterDataAvailable = true; 
-        lastInverterUpdateMillis = millis();
+        
+        // readInverter Data from Web Interface. Try 3 Times
+        bool readHTML = false;
+        for (int i = 0; i < 3; i++) {
+            serialCapture.print("Try to read Inverter Data: ");
+            serialCapture.println(i+1);
+            readHTML = readInverterDataFromWebInterface(status_page_url, INVERTER_WEBACCESS_USER, INVERTER_WEBACCESS_PWD);
+            if (readHTML) {
+                newInverterDataAvailable = true; 
+                lastInverterUpdateMillis = millis();        
+                break;
+            }
+            delay(1000);
+        }        
 
         // Output Information 
-        Serial.println("Print Inverter Data");
+        serialCapture.println("Print Inverter Data");
         inverter.printVariables();
     }else{
         connectedToInverterNetwork = false;
         connectedToHomeNetwork = false;
-        inverterNotReachableCount++;
-        Serial.println("[ERR] No WiFi Connection!!");
+        serialCapture.println("[ERR] No WiFi Connection!!");
 
         // Special case if inverter is not reachable for a long time, like every night ;-)
         if (inverter.isInverterActive() && (lastInverterUpdateMillis > INVERTER_OFFLINE_TIMEOUT_SECONDS * 1000 )) {
-            Serial.println("Inverter not reachable for too long. Setting Power to 0W");
+            serialCapture.println("Inverter not reachable for too long. Setting Power to 0W");
             inverter.setInactiveValues();
 
             // Enforce MQTT sync with 0W Power
@@ -754,7 +796,7 @@ void handleInverterNetworkMode() {
     }
 
     if (cndInverterNetworkToHomeNetwork()) {
-        Serial.println("Exiting Inverter Network Mode --> Home Network Mode");
+        serialCapture.println("Exiting Inverter Network Mode --> Home Network Mode");
        
         action.result = "Inverter";
         action.resultDetails = "-> HOME";
@@ -778,16 +820,16 @@ void handleHomeNetworkMode() {
 
     // check if connection is available
     if (connectedToHomeNetwork && (WiFi.status() == WL_CONNECTED)) {
-        //Serial.println("[DBG] HomeNetwork Internal Loop");
+        //serialCapture.println("[DBG] HomeNetwork Internal Loop");
         homeNetworkNotReachableCount = 0; 
 
         if (!webServerManager.isServerActive()) {
-            Serial.println("Start Web Server Manager");
+            serialCapture.println("Start Web Server Manager");
             webServerManager.begin();
         }
 
         if (webServerManager.isServerActive()) {
-            //Serial.println("Handle Webserver Client");
+            //serialCapture.println("Handle Webserver Client");
             webServerManager.handleClient();
         }
         
@@ -795,7 +837,7 @@ void handleHomeNetworkMode() {
         if (newInverterDataAvailable){
         // Debugging MQTT
         //if (true){
-            Serial.println("New inverter Data available --> Send data via MQTT");
+            serialCapture.println("New inverter Data available --> Send data via MQTT");
             updateAndPublishData();
             newInverterDataAvailable = false;
             delay(3000); // Show data for 3 Seconds
@@ -809,12 +851,12 @@ void handleHomeNetworkMode() {
         connectedToInverterNetwork = false;
         connectedToHomeNetwork = false;
         homeNetworkNotReachableCount++;
-        Serial.println("[ERR] No WiFi Connection!!");
+        serialCapture.println("[ERR] No WiFi Connection!!");
     }
     
     // Check if we need to switch to AP Mode or Inverter Network Mode
     if (cndHomeNetworkToAPNetwork()) {
-        Serial.println("Switching to AP Mode due to timeout.");
+        serialCapture.println("Switching to AP Mode due to timeout.");
         
         // Close the WebServer
         webServerManager.stop();
@@ -829,7 +871,7 @@ void handleHomeNetworkMode() {
         homeNetworkNotReachableCount = 0; 
         activateAPMode();
     } else if (cndHomeNetworkToInverterNetwork()) {
-        Serial.println("Switching to Inverter Network Mode for data update.");
+        serialCapture.println("Switching to Inverter Network Mode for data update.");
         
         // Close the WebServer
         webServerManager.stop();
@@ -850,7 +892,7 @@ void handleAPMode() {
     // Store the previous state
     previousState = currentState;
     
-    // Serial.println("In AP Mode");
+    // serialCapture.println("In AP Mode");
     
     connectedToHomeNetwork = false;
     connectedToInverterNetwork = false;
@@ -886,12 +928,11 @@ void handleAPMode() {
 
 
     if (cndAPToHomeNetwork()) {
-        Serial.println("No client connected. Switching back to Home Network Mode.");
+        serialCapture.println("No client connected. Switching back to Home Network Mode.");
         
         // deactivate AP Mode
         deactivateAPMode();
         activatedAP = false;
-
 
         action.name = "AP Stop";
         action.details = "Shutdown";
@@ -917,12 +958,59 @@ bool cndHomeNetworkToAPNetwork() {
 }
 
 bool cndHomeNetworkToInverterNetwork() {
-    long timeToNextTry = DURATION_STAY_IN_HOME_NETWORK_MS ;
-    if (inverterNotReachableCount > 3) {
-        timeToNextTry = (10 * 60 * 1000 + DURATION_STAY_IN_HOME_NETWORK_MS);
-    }
+    long timeToNextTry;
+    bool switch_reason_first_boot = false;
+    bool switch_reason_time_is_up = false;
 
-    return (millis() - lastStateChangeMillis > timeToNextTry);
+
+    if (inverterNotReachableCount > 5) {
+        timeToNextTry = (10 * 60 * 1000 + DURATION_STAY_IN_HOME_NETWORK_MS);
+        switch_reason_time_is_up = (millis() - lastStateChangeMillis > timeToNextTry) ;
+
+        // if switch_reason_time_is_up is true print a statement that this is the switch reason
+        if (switch_reason_time_is_up){
+            serialCapture.print("millis: ");
+            serialCapture.println(millis());
+            serialCapture.print("lastStateChangeMillis: ");
+            serialCapture.println(lastStateChangeMillis);
+            serialCapture.print("timeToNextTry: ");
+            serialCapture.println(timeToNextTry); 
+            
+            serialCapture.println("Switch Reason NotReacheble_TimeIsUp");
+        }
+    }else{
+        timeToNextTry = DURATION_STAY_IN_HOME_NETWORK_MS;
+        switch_reason_time_is_up = (millis() - lastStateChangeMillis > timeToNextTry);
+        if (switch_reason_time_is_up){
+            serialCapture.print("millis: ");
+            serialCapture.println(millis());
+            serialCapture.print("lastStateChangeMillis: ");
+            serialCapture.println(lastStateChangeMillis);
+            serialCapture.print("timeToNextTry: ");
+            serialCapture.println(timeToNextTry);
+            serialCapture.println("Switch Reason Standard: TimeIsUp");
+        }
+    }
+    
+
+    timeToNextTry = DURATION_STAY_IN_HOME_NETWORK_MS_FIRST_BOOT;
+    if (firstBoot && ( ( millis() - lastStateChangeMillis) > timeToNextTry ) ) {       
+        switch_reason_first_boot = true;
+        firstBoot = false;
+        if (switch_reason_first_boot){
+                        
+            serialCapture.print("millis: ");
+            serialCapture.println(millis());
+            serialCapture.print("lastStateChangeMillis: ");
+            serialCapture.println(lastStateChangeMillis);
+            serialCapture.print("timeToNextTry: ");
+            serialCapture.println(timeToNextTry);
+            
+            serialCapture.println("Switch Reason Standard: FirstBoot Read Inverter");
+        }
+    }
+    
+    return (switch_reason_first_boot || switch_reason_time_is_up);
 }
 
 bool cndInverterNetworkToHomeNetwork(){

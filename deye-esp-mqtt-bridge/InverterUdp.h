@@ -5,13 +5,14 @@
 #include "RTClib.h" // RTC Library
 // AT Commands
 #include <WiFiUdp.h>
+#include "SerialCaptureLines.h"
 
 
 #define TIME_NOT_INITIALIZTED_TOKEN "NO-TIME"
 
 class InverterUdp {
 public:
-  InverterUdp();
+  InverterUdp(SerialCaptureLines& serialCapture);
   bool inverter_connect(String udpSrv, int remPort, int locPort, int timeOut);
   String inverter_readtime();
   bool inverter_close();
@@ -55,6 +56,7 @@ private:
   String modbusOutro;
   String modbusWriteToken;
   String modbusReadToken;
+  SerialCaptureLines& serialCapture;
 };
 
 #endif

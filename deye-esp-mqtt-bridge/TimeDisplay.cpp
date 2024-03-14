@@ -1,6 +1,6 @@
 #include "TimeDisplay.h"
 
-TimeDisplay::TimeDisplay(DisplayManager& displayManager, bool& timeSynced, unsigned long& lastSyncTime) : _displayManager(displayManager), _isActive(false), _lastUpdateTime(0), _updateInterval(300), _timeSynced(timeSynced), _lastSyncTime(lastSyncTime) {}
+TimeDisplay::TimeDisplay(DisplayManager& displayManager, bool& timeSynced, unsigned long& lastSyncTime, SerialCaptureLines& serialCapture) : _displayManager(displayManager), _isActive(false), _lastUpdateTime(0), _updateInterval(300), _timeSynced(timeSynced), _lastSyncTime(lastSyncTime), serialCapture(serialCapture)  {}
 
 void TimeDisplay::start(int displayDurationSeconds) {
     _isActive = true;

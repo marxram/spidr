@@ -2,6 +2,7 @@
 #define PreferencesManager_h
 
 #include <Preferences.h>
+#include "SerialCaptureLines.h"
 
 class PreferencesManager {
 public:

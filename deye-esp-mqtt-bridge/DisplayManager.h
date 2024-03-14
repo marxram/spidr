@@ -5,6 +5,8 @@
 
 #include <U8g2lib.h>
 #include <Arduino.h> 
+#include "Inverter.h"
+#include "SerialCaptureLines.h"
 
 struct ActionData {
   String name;
@@ -16,7 +18,7 @@ struct ActionData {
 
 class DisplayManager {
 public:
-    DisplayManager();
+    DisplayManager(SerialCaptureLines& serialCapture);
     void init();
     void displayAction(const ActionData& action);
     void drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr);
@@ -24,16 +26,18 @@ public:
     void setI2CAddress(uint8_t adr);
     bool verboseDisplay = false;
     void clearScreen();
+    void drawGraph(const Inverter::DataPoint powerData[], int dataSize);
+
 
 
 private:
     U8G2 *u8g2; // Use a pointer to the base class
-    const unsigned int SCREEN_WIDTH = 128;
     unsigned long lastUpdateTime = 0; // Last update time in millis
     const unsigned long screenInterval = 3000; // Time interval for screen update
     const unsigned int MAX_SCREENS = 4; // Maximum number of screens
     int currentScreen = 0; // Keep track of the current screen
     // Add more private members if needed, including global variables to display
+      SerialCaptureLines& serialCapture;
 };
 
 #endif

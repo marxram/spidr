@@ -8,11 +8,12 @@
 #include "DisplayManager.h" // Ensure DisplayManager is accessible
 #include "Inverter.h" // Ensure Inverter is accessible
 #include <WiFiClient.h>
+#include "SerialCaptureLines.h"
 
 
 class MQTTManager {
 public:
-    MQTTManager(const char* broker, uint16_t port, const char* user, const char* pwd, DisplayManager& displayManager, Inverter& inverter);
+    MQTTManager(const char* broker, uint16_t port, const char* user, const char* pwd, DisplayManager& displayManager, Inverter& inverter,SerialCaptureLines& serialCapture);
     void publishAllData(); // Single method to publish all predefined topics
 
 private:
@@ -27,10 +28,11 @@ private:
 
     Inverter& _inverter; // Reference to Inverter instance
 
-    void reconnect(ActionData& action);
+    void reconnect(ActionData& action, uint8_t attempts);
     void disconnect();
 
     void publish(const char* topic, const char* payload); // Private method to publish a single topic
+    SerialCaptureLines& serialCapture;
 };
 
 #endif // MQTTMANAGER_H

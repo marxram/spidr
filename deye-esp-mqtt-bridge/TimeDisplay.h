@@ -3,10 +3,11 @@
 
 #include <Arduino.h>
 #include "DisplayManager.h"
+#include "SerialCaptureLines.h"
 
 class TimeDisplay {
 public:
-    TimeDisplay(DisplayManager& display, bool& timeSynced, unsigned long& lastSyncTime);
+    TimeDisplay(DisplayManager& display, bool& timeSynced, unsigned long& lastSyncTime, SerialCaptureLines& serialCapture);
     void updateDisplay();
     void start(int displayDurationSeconds);
     void stop();
@@ -20,6 +21,7 @@ private:
     bool _timeSynced; // In milliseconds
     
     void displayCurrentTime();
+    SerialCaptureLines& serialCapture;
 };
 
 #endif // TimeDisplay_h

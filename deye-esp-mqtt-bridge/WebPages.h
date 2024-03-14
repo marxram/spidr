@@ -8,27 +8,44 @@ const char ConfigPage_HTML[] PROGMEM = R"rawliteral(
     <meta charset="UTF-8">
     <title>ESP Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #1e1e1e; color: #c5c5c5; margin: 0; padding: 0; }
-        .menu { background-color: #333; overflow: hidden; }
-        .menu a { float: left; display: block; color: white; text-align: center; padding: 14px 20px; text-decoration: none; }
-        .menu a:hover { background-color: #ddd; color: black; }
-        .content { padding: 20px; }
-        .footer { margin-top: 20px; padding: 20px; background-color: #252526; text-align: center; }
+        body { font-family: Arial, sans-serif; background-color: #1e1e1e; color: #c5c5c5; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+        .content, .content-form { padding: 20px; max-width: 800px; width: 100%; box-sizing: border-box; }
+        .content-form form { display: flex; flex-direction: column; }
+        fieldset { padding: 10px; margin-bottom: 20px; }
+        .footer { margin-top: 20px; padding: 20px; background-color: #252526; text-align: center; width: 100%; }
         .footer a { color: #569cd6; text-decoration: none; }
+        label { display: inline-block; width: 180px; margin-bottom: 10px; }
+        input[type="text"], input[type="number"] { width: calc(100% - 190px); padding: 5px; }
+        input[type="submit"] { width: auto; padding: 10px 20px; margin-top: 10px; }
+        .menu {background-color: #333; overflow: hidden; width: 100%; display: flex; justify-content: center; align-items: center;}
+        .menu a {display: block; color: white; text-align: center; padding: 14px 20px; text-decoration: none;} 
+        .menu a:hover {background-color: #ddd; color: black;} 
+        .menu a.active {background-color: #569cd6; color: white; border-bottom: 2px solid white;}
+
     </style>
 </head>
 <body>
 
+<div class="content">
+    <h2>Inverter Status</h2>
+    <div id="sensor-readings">
+        <p>Power: <span id="power">{{power}}</span> W</p>
+        <p>Energy Today: <span id="energyToday">{{energyToday}}</span> kWh</p>
+        <p>Energy Total: <span id="energyTotal">{{energyTotal}}</span> kWh</p>
+    </div>
+</div>
+
 <div class="menu">
     <a href="/">Home</a>
-    <a href="/config">Config</a>
+    <a href="/config" class="active">Config</a>
     <a href="/wiki">Wiki</a>
 </div>
 
-<div class="content">
+<div class="content-form">
     <h2>Welcome to the ESP CONFIG</h2>
 
     <form action="/update" method="POST">
+       <form action="/update" method="POST">
         <fieldset>
             <legend>WiFi Settings</legend>
             <!-- Home WiFi -->
@@ -86,6 +103,7 @@ const char ConfigPage_HTML[] PROGMEM = R"rawliteral(
             </div>
         </fieldset>
         <fieldset>
+        <legend>Relais Web Access (optional - unused)</legend>
             <!-- Relais Web Access -->
             <div>
                 <label for="relaisWebUser">Relais Web User:</label>
@@ -110,8 +128,6 @@ const char ConfigPage_HTML[] PROGMEM = R"rawliteral(
         </div>
     </form>
 
-
-
 </div>
 
 <div class="footer">
@@ -121,6 +137,8 @@ const char ConfigPage_HTML[] PROGMEM = R"rawliteral(
 </body>
 </html>
 )rawliteral";
+
+
 
 const char HomePage_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -129,34 +147,37 @@ const char HomePage_HTML[] PROGMEM = R"rawliteral(
     <meta charset="UTF-8">
     <title>ESP Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #1e1e1e; color: #c5c5c5; margin: 0; padding: 0; }
-        .menu { background-color: #333; overflow: hidden; }
-        .menu a { float: left; display: block; color: white; text-align: center; padding: 14px 20px; text-decoration: none; }
-        .menu a:hover { background-color: #ddd; color: black; }
-        .content { padding: 20px; }
-        .footer { margin-top: 20px; padding: 20px; background-color: #252526; text-align: center; }
-        .footer a { color: #569cd6; text-decoration: none; }
+        body { font-family: 'Courier New', monospace; background-color: #1e1e1e; color: #33ff33; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+        .content, .content-form { padding: 20px; max-width: 800px; width: 100%; box-sizing: border-box; }
+        .footer { margin-top: 20px; padding: 20px; background-color: #252526; text-align: center; width: 100%; }
+        .footer a { color: #add8e6; text-decoration: none; }
+        .menu {background-color: #333; overflow: hidden; width: 100%; display: flex; justify-content: center; align-items: center;}
+        .menu a {display: block; color: white; text-align: center; padding: 14px 20px; text-decoration: none;} 
+        .menu a:hover {background-color: #ddd; color: black;} 
+        .menu a.active {background-color: #569cd6; color: white; border-bottom: 2px solid white;}
+        iframe { width: 70%; height: 300px; border: none; } /* Adjusting iframe size */
+        /* Additional styles for other elements */
     </style>
 </head>
 <body>
-
-<div class="menu">
-    <a href="/">Home</a>
-    <a href="/config">Config</a>
-    <a href="/wiki">Wiki</a>
-</div>
-
-<div class="footer">
-    <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Project GitHub</a>
-</div>
-
-<div class="content">
-    <h2>Welcome HOME</h2>
-</div>
-
+    <div class="menu">
+        <a href="/" class="active">Home</a>
+        <a href="/config">Config</a>
+        <a href="/wiki">Wiki</a>
+    </div>
+    
+    <div class="content">
+        <h2>Welcome HOME</h2>
+        <iframe src="/serial" title="Serial Output"></iframe>
+    </div>
+    
+    <div class="footer">
+        <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Project GitHub</a>
+    </div>
 </body>
 </html>
 )rawliteral";
+
 
 const char WikiPage_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -165,21 +186,37 @@ const char WikiPage_HTML[] PROGMEM = R"rawliteral(
     <meta charset="UTF-8">
     <title>ESP Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #1e1e1e; color: #c5c5c5; margin: 0; padding: 0; }
-        .menu { background-color: #333; overflow: hidden; }
-        .menu a { float: left; display: block; color: white; text-align: center; padding: 14px 20px; text-decoration: none; }
-        .menu a:hover { background-color: #ddd; color: black; }
-        .content { padding: 20px; }
-        .footer { margin-top: 20px; padding: 20px; background-color: #252526; text-align: center; }
+        body { font-family: Arial, sans-serif; background-color: #1e1e1e; color: #c5c5c5; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+        .content, .content-form { padding: 20px; max-width: 800px; width: 100%; box-sizing: border-box; }
+        .content-form form { display: flex; flex-direction: column; }
+        fieldset { padding: 10px; margin-bottom: 20px; }
+        .footer { margin-top: 20px; padding: 20px; background-color: #252526; text-align: center; width: 100%; }
         .footer a { color: #569cd6; text-decoration: none; }
+        label { display: inline-block; width: 180px; margin-bottom: 10px; }
+        input[type="text"], input[type="number"] { width: calc(100% - 190px); padding: 5px; }
+        input[type="submit"] { width: auto; padding: 10px 20px; margin-top: 10px; }
+        .menu {background-color: #333; overflow: hidden; width: 100%; display: flex; justify-content: center; align-items: center;}
+        .menu a {display: block; color: white; text-align: center; padding: 14px 20px; text-decoration: none;} 
+        .menu a:hover {background-color: #ddd; color: black;} 
+        .menu a.active {background-color: #569cd6; color: white; border-bottom: 2px solid white;}
     </style>
 </head>
 <body>
 
+<div class="content">
+    <h2>Inverter Status</h2>
+    <div id="sensor-readings">
+        <p>Power: <span id="power">{{power}}</span> W</p>
+        <p>Energy Today: <span id="energyToday">{{energyToday}}</span> kWh</p>
+        <p>Energy Total: <span id="energyTotal">{{energyTotal}}</span> kWh</p>
+    </div>
+</div>
+
+
 <div class="menu">
     <a href="/">Home</a>
     <a href="/config">Config</a>
-    <a href="/wiki">Wiki</a>
+   <a href="/wiki" class="active">Wiki</a>
 </div>
 
 <div class="footer">
@@ -194,4 +231,50 @@ const char WikiPage_HTML[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
+
+const char SerialPage_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Serial Output</title>
+    <style>
+        body { 
+            background-color: #000000; 
+            margin: 0; 
+            padding: 0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #serialOutput { 
+            color: #33ff33; /* Console green text */
+            white-space: pre-wrap; /* Preserves whitespace and allows word wrap */
+            margin: 0;
+            padding: 10px;
+            height: calc(100vh - 20px); /* Full height with padding */
+            overflow-y: auto; /* Allows vertical scrolling if needed */
+        }
+    </style>
+    <script>
+        function refreshSerialData() {
+            fetch('/serial')
+                .then(response => response.text())
+                .then(data => {
+                    const serialOutput = document.getElementById('serialOutput');
+                    serialOutput.innerText = data;
+                    serialOutput.scrollTop = serialOutput.scrollHeight; // Auto-scroll to bottom
+                    setTimeout(refreshSerialData, 5000); // Refresh every 5 seconds
+                })
+                .catch(console.error);
+        }
+    </script>
+</head>
+<body onload="refreshSerialData()">
+    <h2>Serial Output</h2>
+    <pre id="serialOutput">Loading...</pre>
+</body>
+</html>
+)rawliteral";
+
+ 
 #endif /* WebPages_h */

@@ -2,6 +2,7 @@
 #define Inverter_h
 
 #include "Arduino.h"
+#include "SerialCaptureLines.h"
 
 enum ParseStatus {
     PARSE_OK,
@@ -11,10 +12,19 @@ enum ParseStatus {
 };
 
 
+
 class Inverter {
 public:
-  Inverter();
+  
+  struct DataPoint {
+    unsigned long timestamp; // Stores the time when the data was recorded
+    float value;             // Stores the corresponding value
+};
+
+  Inverter(SerialCaptureLines& serialCapture);
   ParseStatus updateData(const String& html);
+  static const int bufferSize = 576; // Buffer size for 2 days of data at 5-minute intervals
+
   String getInverterSerial() const;
   String getWebdataMsvn() const;
   String getWebdataSsvn() const;
@@ -44,10 +54,14 @@ public:
   void printVariables() const;
   void setInactiveValues();
   bool isInverterActive();
+  const DataPoint* getPowerData() const; // Returns a pointer to the power data array
+  int getPowerDataSize() const; // Returns the current size or count of effective data points
+  void generateTestData();
 
 
 private:
   // Member variables
+  SerialCaptureLines& serialCapture;
   String webdata_sn;
   String webdata_msvn;
   String webdata_ssvn;
@@ -79,6 +93,14 @@ private:
   float extractFloatValue(const String& html, const String& variableName) const;
   String extractAndValidateString(const String& html, const String& key, int& countParseSuccess);
   bool inverterActive;
+  void addDataPoint(DataPoint buffer[], int &index, float value);
+  void updateDataPoints(float power, float energyToday, float energyTotal);
+  DataPoint powerData[bufferSize];
+  DataPoint energyTodayData[bufferSize];
+  DataPoint energyTotalData[bufferSize];
+  int powerIndex = 0;
+  int energyTodayIndex = 0;
+  int energyTotalIndex = 0;
 };
 
 #endif
