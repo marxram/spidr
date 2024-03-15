@@ -72,6 +72,7 @@ ParseStatus Inverter::updateData(const String& html) {
     serialCapture.println("Start updating data");
     ParseStatus result = extractVariables(html);
     inverterActive = true;
+    serialCapture.println("Inverter Set Active");
     return result;
 }
 
@@ -168,6 +169,7 @@ String Inverter::getRemoteServerStatusC() const {
 }
 
 void Inverter::setInactiveValues() {
+    serialCapture.println("Inverter Set InActive");
     webdata_now_p = 0.0f;
     webdata_today_e = 0.0f;
     lastReadSuccess = false; // Initialize as false
@@ -200,9 +202,9 @@ ParseStatus Inverter::extractVariables(const String& html) {
 
     // Define temporary variables for parsing
     serialCapture.println("Extracting float values...");
-    float temp_webdata_now_p = extractFloatValue(html, "var webdata_now_p =");
-    float temp_webdata_today_e = extractFloatValue(html, "var webdata_today_e =");
-    float temp_webdata_total_e = extractFloatValue(html, "var webdata_total_e =");
+    float temp_webdata_now_p = extractFloatValue(html, "webdata_now_p =");
+    float temp_webdata_today_e = extractFloatValue(html, "webdata_today_e =");
+    float temp_webdata_total_e = extractFloatValue(html, "webdata_total_e =");
     serialCapture.printf("Extracted float values: now_p=%f, today_e=%f, total_e=%f\n", temp_webdata_now_p, temp_webdata_today_e, temp_webdata_total_e);
 
     // Validate important float values
@@ -214,30 +216,30 @@ ParseStatus Inverter::extractVariables(const String& html) {
 
     serialCapture.println("Extracting and validating string values...");
     // Extract and validate string values (Medium importance)
-    String temp_webdata_sn = extractAndValidateString(html, "var webdata_sn =", countParseSuccess );
+    String temp_webdata_sn = extractAndValidateString(html, "webdata_sn =", countParseSuccess );
     serialCapture.printf("Extracted webdata_sn: %s\n", temp_webdata_sn.c_str());
 
-    String temp_webdata_msvn = extractAndValidateString(html, "var webdata_msvn =", countParseSuccess);
-    String temp_webdata_ssvn = extractAndValidateString(html, "var webdata_ssvn =", countParseSuccess);
-    String temp_webdata_pv_type = extractAndValidateString(html, "var webdata_pv_type =", countParseSuccess);
-    String temp_webdata_rate_p = extractAndValidateString(html, "var webdata_rate_p =", countParseSuccess);
-    String temp_webdata_alarm = extractAndValidateString(html, "var webdata_alarm =", countParseSuccess);
-    String temp_webdata_utime = extractAndValidateString(html, "var webdata_utime =", countParseSuccess);
+    String temp_webdata_msvn = extractAndValidateString(html, "webdata_msvn =", countParseSuccess);
+    String temp_webdata_ssvn = extractAndValidateString(html, "webdata_ssvn =", countParseSuccess);
+    String temp_webdata_pv_type = extractAndValidateString(html, "webdata_pv_type =", countParseSuccess);
+    String temp_webdata_rate_p = extractAndValidateString(html, "webdata_rate_p =", countParseSuccess);
+    String temp_webdata_alarm = extractAndValidateString(html, "webdata_alarm =", countParseSuccess);
+    String temp_webdata_utime = extractAndValidateString(html, "webdata_utime =", countParseSuccess);
 
     // Less important values, success counting only
-    String temp_cover_mid = extractAndValidateString(html, "var cover_mid =", countParseSuccess);
-    String temp_cover_ver = extractAndValidateString(html, "var cover_ver =", countParseSuccess);
-    String temp_cover_wmode = extractAndValidateString(html, "var cover_wmode =", countParseSuccess);
-    String temp_cover_ap_ssid = extractAndValidateString(html, "var cover_ap_ssid =", countParseSuccess);
-    String temp_cover_ap_ip = extractAndValidateString(html, "var cover_ap_ip =", countParseSuccess);
-    String temp_cover_ap_mac = extractAndValidateString(html, "var cover_ap_mac =", countParseSuccess);
-    String temp_cover_sta_ssid = extractAndValidateString(html, "var cover_sta_ssid =", countParseSuccess);
-    String temp_cover_sta_rssi = extractAndValidateString(html, "var cover_sta_rssi =", countParseSuccess);
-    String temp_cover_sta_ip = extractAndValidateString(html, "var cover_sta_ip =", countParseSuccess);
-    String temp_cover_sta_mac = extractAndValidateString(html, "var cover_sta_mac =", countParseSuccess);
-    String temp_status_a = extractAndValidateString(html, "var status_a =", countParseSuccess);
-    String temp_status_b = extractAndValidateString(html, "var status_b =", countParseSuccess);
-    String temp_status_c = extractAndValidateString(html, "var status_c =", countParseSuccess);
+    String temp_cover_mid = extractAndValidateString(html, "cover_mid =", countParseSuccess);
+    String temp_cover_ver = extractAndValidateString(html, "cover_ver =", countParseSuccess);
+    String temp_cover_wmode = extractAndValidateString(html, "cover_wmode =", countParseSuccess);
+    String temp_cover_ap_ssid = extractAndValidateString(html, "cover_ap_ssid =", countParseSuccess);
+    String temp_cover_ap_ip = extractAndValidateString(html, "cover_ap_ip =", countParseSuccess);
+    String temp_cover_ap_mac = extractAndValidateString(html, "cover_ap_mac =", countParseSuccess);
+    String temp_cover_sta_ssid = extractAndValidateString(html, "cover_sta_ssid =", countParseSuccess);
+    String temp_cover_sta_rssi = extractAndValidateString(html, "cover_sta_rssi =", countParseSuccess);
+    String temp_cover_sta_ip = extractAndValidateString(html, "cover_sta_ip =", countParseSuccess);
+    String temp_cover_sta_mac = extractAndValidateString(html, "cover_sta_mac =", countParseSuccess);
+    String temp_status_a = extractAndValidateString(html, "status_a =", countParseSuccess);
+    String temp_status_b = extractAndValidateString(html, "status_b =", countParseSuccess);
+    String temp_status_c = extractAndValidateString(html, "status_c =", countParseSuccess);
 
     serialCapture.printf("Parse successes: %d, Parse errors: %d\n", countParseSuccess, countParseErrors);
 

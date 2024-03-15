@@ -9,7 +9,7 @@
 class EnergyDisplay {
 public:
     EnergyDisplay(DisplayManager& displayManager, bool& timeSynced, unsigned long& lastSyncTime, SerialCaptureLines& serialCapture);
-    void initializeDisplayIntervals(unsigned int powerDisplayTime, unsigned int energyTodayDisplayTime, unsigned int energyTotalDisplayTime);
+    void initializeDisplayIntervals(unsigned int powerDisplayTime, unsigned int energyTodayDisplayTime, unsigned int energyTotalDisplayTime, unsigned int energyGraphTime, unsigned int timeDisplayTime);
     void updateDisplay(const Inverter& inverter);
     void start(); // Start the display update cycle
     void stop();  // Stop the display update cycle

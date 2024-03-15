@@ -9,18 +9,20 @@ _displayManager(displayManager), _currentState(DISPLAY_INVERTER_POWER), _lastUpd
 
 }
 
-void EnergyDisplay::initializeDisplayIntervals(unsigned int powerDisplayTime, unsigned int energyTodayDisplayTime, unsigned int energyTotalDisplayTime) {
+void EnergyDisplay::initializeDisplayIntervals(unsigned int powerDisplayTime, unsigned int energyTodayDisplayTime, unsigned int energyTotalDisplayTime, unsigned int energyGraphTime, unsigned int timeDisplayTime) {
     serialCapture.println(F("EnergyDisplay: Initializing display intervals."));
+    
     _intervals[DISPLAY_INVERTER_POWER] = powerDisplayTime;
-    // Maybe create own interval for the graph
-    _intervals[DISPLAY_POWER_GRAPH] = powerDisplayTime;
+    _intervals[DISPLAY_POWER_GRAPH] = energyGraphTime;
     _intervals[DISPLAY_ENERGY_TODAY] = energyTodayDisplayTime;
     _intervals[DISPLAY_ENERGY_TOTAL] = energyTotalDisplayTime;
-    _intervals[DISPLAY_TIME] = powerDisplayTime;
+    _intervals[DISPLAY_TIME] = timeDisplayTime;
     
     serialCapture.print(F("Intervals set to: Power: ")); serialCapture.print(powerDisplayTime);
     serialCapture.print(F(" ms, Today: ")); serialCapture.print(energyTodayDisplayTime);
-    serialCapture.print(F(" ms, Total: ")); serialCapture.println(energyTotalDisplayTime);
+    serialCapture.print(F(" ms, Total: ")); serialCapture.print(energyTotalDisplayTime);
+    serialCapture.print(F(" ms, Graph: ")); serialCapture.print(energyGraphTime);
+    serialCapture.print(F(" ms, Time: ")); serialCapture.println(timeDisplayTime);
     
 }
 
@@ -30,10 +32,9 @@ void EnergyDisplay::updateDisplay(const Inverter& inverter) {
 
     unsigned long currentTime = millis();
 
-    if (currentTime - _lastUpdateTime >= _intervals[_currentState]) {
-        //serialCapture.print("Switching display. Current State: ");
-        //serialCapture.println(_currentState);
+    if (currentTime - _lastUpdateTime >= _intervals[(_currentState + NUM_STATES -1) % NUM_STATES]) {
         switch (_currentState) {
+        // Only Triggerin on changes from one state to the other.
         case DISPLAY_INVERTER_POWER:
             //serialCapture.println("Displaying Inverter Power Now.");
             if (SCREEN_HEIGHT == 32) {
@@ -61,19 +62,22 @@ void EnergyDisplay::updateDisplay(const Inverter& inverter) {
             break;
         case DISPLAY_POWER_GRAPH:
                 _displayManager.drawGraph(inverter.getPowerData(), inverter.getPowerDataSize());
+                delay(_intervals[_currentState]);
            break;
         }
-        
+    
         // Switch to next state
         _currentState = static_cast<DisplayState>((_currentState + 1) % NUM_STATES);
 
         _previousState = _currentState ;
         _lastUpdateTime = currentTime;
     }
-    if (_currentState == DISPLAY_TIME) {
+    // Weired Logic Ahaed Unfortunatly needs to be like this ;-) 
+    if (_currentState == 0 ) {
         displayCurrentTime();
-        _lastUpdateTime = currentTime;
-
+        //serialCapture.print("TIME DISPLAY ");
+        //serialCapture.println(_currentState);
+        //_lastUpdateTime = currentTime;
     }
 
 }

@@ -138,6 +138,8 @@ String PreferencesManager::getRelaisWebPwd() {
 }
 
 
+
+
 // // Setters
 void PreferencesManager::setHomeSSID(const String& value) { 
     preferences.putString("homeSSID", value); 
@@ -177,4 +179,147 @@ void PreferencesManager::setRelaisWebUser(const String& value) {
 
 void PreferencesManager::setRelaisWebPwd(const String& value) {
     preferences.putString("relaisWebPwd", value);
+}
+
+
+// New Configuration Values
+// Configuration for NTP
+// Configuration for NTP
+String PreferencesManager::getNtpServerA() {
+    return preferences.getString("ntpA");
+}
+
+String PreferencesManager::getNtpServerB() {
+    return preferences.getString("ntpB");
+}
+
+bool PreferencesManager::getIsNtpActive() {
+    return preferences.getBool("ntpActive");
+}
+
+int PreferencesManager::getNtpGmtOffset() {
+    return preferences.getInt("ntpGmtOff");
+}
+
+int PreferencesManager::getNtpDstOffset() {
+    return preferences.getInt("ntpDstOff");
+}
+
+// Timing behavior
+int PreferencesManager::getTimingStayInHomeNetwork_MS() {
+    return preferences.getInt("homeNetMS");
+}
+
+int PreferencesManager::getTimingStayInHomeNetworkFirstBoot_MS() {
+    return preferences.getInt("homeFirstBootMS");
+}
+
+int PreferencesManager::getTimingStayInApMode_MS() {
+    return preferences.getInt("apModeMS");
+}
+
+int PreferencesManager::getTimingWiFiConnectWaitDuration_S() {
+    return preferences.getInt("wifiWaitS");
+}
+
+int PreferencesManager::getTimingInverterOfflineTimeout_S() {
+    return preferences.getInt("invOffTimeoutS");
+}
+
+int PreferencesManager::getTimingDisplayDurtationPower_MS() {
+    return preferences.getInt("dispPowerMS");
+}
+
+int PreferencesManager::getTimingDisplayDurtationEnergyToday_MS() {
+    return preferences.getInt("dispEnergyTodayMS");
+}
+
+int PreferencesManager::getTimingDisplayDurtationEnergyTotal_MS() {
+    return preferences.getInt("dispEnergyTotalMS");
+}
+
+int PreferencesManager::getTimingDisplayDurtationEnergyTime_MS() {
+    return preferences.getInt("dispEnergyTimeMS");
+}
+
+int PreferencesManager::getTimingDisplayDurtationEnergyGraph_MS() {
+    return preferences.getInt("dispEnergyGraphMS");
+}
+
+// Setters for NTP Configuration
+void PreferencesManager::setNtpServerA(const String& value) {
+    preferences.putString("ntpA", value);
+}
+
+void PreferencesManager::setNtpServerB(const String& value) {
+    preferences.putString("ntpB", value);
+}
+
+void PreferencesManager::setIsNtpActive(bool value) {
+    preferences.putBool("ntpActive", value);
+}
+
+void PreferencesManager::setNtpGmtOffset(int value) {
+    preferences.putInt("ntpGmtOff", value);
+}
+
+void PreferencesManager::setNtpDstOffset(int value) {
+    preferences.putInt("ntpDstOff", value);
+}
+
+// Setters for Timing Behavior
+void PreferencesManager::setTimingStayInHomeNetwork_MS(int value) {
+    preferences.putInt("homeNetMS", value);
+}
+
+void PreferencesManager::setTimingStayInHomeNetworkFirstBoot_MS(int value) {
+    preferences.putInt("homeFirstBootMS", value);
+}
+
+void PreferencesManager::setTimingStayInApMode_MS(int value) {
+    preferences.putInt("apModeMS", value);
+}
+
+void PreferencesManager::setTimingWiFiConnectWaitDuration_S(int value) {
+    preferences.putInt("wifiWaitS", value);
+}
+
+void PreferencesManager::setTimingInverterOfflineTimeout_S(int value) {
+    preferences.putInt("invOffTimeoutS", value);
+}
+
+void PreferencesManager::setTimingDisplayDurtationPower_MS(int value) {
+    preferences.putInt("dispPowerMS", value);
+}
+
+void PreferencesManager::setTimingDisplayDurtationEnergyToday_MS(int value) {
+    preferences.putInt("dispEnergyTodayMS", value);
+}
+
+void PreferencesManager::setTimingDisplayDurtationEnergyTotal_MS(int value) {
+    preferences.putInt("dispEnergyTotalMS", value);
+}
+
+void PreferencesManager::setTimingDisplayDurtationEnergyTime_MS(int value) {
+    preferences.putInt("dispEnergyTimeMS", value);
+}
+
+void PreferencesManager::setTimingDisplayDurtationEnergyGraph_MS(int value) {
+    preferences.putInt("dispEnergyGraphMS", value);
+}
+
+
+void PreferencesManager::setApSSID(const String& value) { 
+    preferences.putString("apSSID", value); 
+}
+
+void PreferencesManager::setApKey(const String& value) { 
+    preferences.putString("apKey", value); 
+}
+
+String PreferencesManager::getApSSID() { 
+    return preferences.getString("apSSID"); 
+}
+String PreferencesManager::getApKey() { 
+    return preferences.getString("apKey"); 
 }

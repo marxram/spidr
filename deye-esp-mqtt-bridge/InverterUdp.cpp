@@ -11,7 +11,6 @@
 // ESP8266 specific setup and functions
 #endif
 
-
 // AT Commands
 #include <WiFiUdp.h>
 
@@ -22,11 +21,6 @@
 #include <TimeLib.h>
 
 #define MODBUS 0xA001  // CRC variable
-
-String noResponse = "NoData";
-String RESP_TIME_UNSET = "+ok=0103063000000000002485";
-String RESP_TIME_UPDATE_ACCEPTED = "01100016000361CC";
-
 
 // Constructor
 InverterUdp::InverterUdp(SerialCaptureLines& serialCapture): serialCapture(serialCapture)  {
@@ -40,14 +34,15 @@ InverterUdp::InverterUdp(SerialCaptureLines& serialCapture): serialCapture(seria
     modbusWriteToken = "0110";
     modbusReadToken = "0103";
     noResponse = "NORESPONSE";
-    
+    RESP_TIME_UNSET =    "+ok=0103063000000000002485";
+    RESP_TIME_UPDATE_ACCEPTED = "01100016000361CC";
 }
 
 bool InverterUdp::isconnected(){
     return connected;
 }
 
-bool InverterUdp::isDefaultTimeIsSet(){
+bool InverterUdp::isDefaultTimeSet(){
     return defaultTimeIsSet;
 }
 
@@ -61,7 +56,7 @@ DateTime InverterUdp::getInverterTime(){
 
 String InverterUdp::inverter_readtime(){    
     //send_message("AT+WAP\n");
-    serialCapture.print("[UDP-ReadTIME] >>>  Register 0016 Length 0003");
+    serialCapture.print("[UDP-ReadTIME] >>>  Register 0016 Length 0003 ");
     String response;
     
     // Read 0x0003 bytes after address 0x0016 
@@ -70,10 +65,7 @@ String InverterUdp::inverter_readtime(){
     String result = "";
 
     if (response != noResponse){
-        serialCapture.print("[UDP-ReadTime] Response was: ");
-        serialCapture.println(response);
         connected = true; 
-        //String(buffer);
 
         if (response.startsWith(RESP_TIME_UNSET)){
             serialCapture.println("[UDP-ReadTime] Inverter Time is unset ");
@@ -121,7 +113,7 @@ String InverterUdp::inverter_settime(unsigned long epochTime){
     response = writeModbus("0016", "0003", time_reg, "06");
 
     if (response != noResponse){
-        serialCapture.print("[UDP-SetTIME] Giot Response Response: ");
+        serialCapture.print("[UDP-SetTIME] Got Response Response: ");
         serialCapture.println(response);
         connected = true;
 

@@ -21,7 +21,7 @@ public:
   bool hexStringToDec(String hexString, int& output) ;
   String decToHex(int dec);
   String inverter_settime(unsigned long epochTime);
-  bool isDefaultTimeIsSet();
+  bool isDefaultTimeSet();
   DateTime getInverterTime();
   bool isTimeSynchronized();
 
@@ -41,6 +41,7 @@ private:
 
   String noResponse;
   String RESP_TIME_UNSET;
+  String RESP_TIME_UPDATE_ACCEPTED;
   bool connected;
   // Member variables
   String webdata_sn;

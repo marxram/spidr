@@ -24,77 +24,111 @@ bool WebServerManager::isServerActive() {
 }
 
 void WebServerManager::handleClient() {
+    // Print debug message
+    //serialCapture.println("WebServerManager: Handling client requests...");
     server.handleClient(); // Handle incoming client requests
 }
 
 void WebServerManager::setupRoutes() {
+    // Print debug message
+    serialCapture.println("WebServerManager: Setting up routes...");
     server.on("/", HTTP_GET, std::bind(&WebServerManager::handleRootPage, this));
-    
+    server.on("/serial", HTTP_GET, std::bind(&WebServerManager::handleSerialPage, this));
+
     server.on("/wiki", HTTP_GET, std::bind(&WebServerManager::handleWikiPage, this));
     server.on("/config", HTTP_GET, std::bind(&WebServerManager::handleConfigPage, this));
+    server.on("/configoptions", HTTP_GET, std::bind(&WebServerManager::handleConfigPageOptions, this));
 
     // Recieve the Config Updates here
     server.on("/update", HTTP_POST, std::bind(&WebServerManager::handleUpdate, this));
-    // Define more routes as needed
+    server.on("/updateoptions", HTTP_POST, std::bind(&WebServerManager::handleUpdateOptions, this));
 }
 
-void WebServerManager::handleRootPage() {
-    String htmlContent = HomePage_HTML;
-
+String WebServerManager::preparePagetemplate(String htmlRaw, String header, String pageHead){
+    // Print debug message    
+    //serialCapture.println("WebServerManager: Preparing page template...");
     // Fetch sensor readings from the Inverter instance
     float power = inverter.getInverterPowerNow_W();
     float energyToday = inverter.getInverterEnergyToday_kWh();
     float energyTotal = inverter.getInverterEnergyTotal_kWh();
 
-    // Dynamically replace placeholders with actual sensor values
-    htmlContent.replace("{{power}}", String(power));
-    htmlContent.replace("{{energyToday}}", String(energyToday));
-    htmlContent.replace("{{energyTotal}}", String(energyTotal));
+    //serialCapture.println("Energy Parsed...");
 
+    String inverterRaw = INVERTER_HTML;
+    String page = htmlRaw;
+
+    // Dynamically replace placeholders with actual sensor values
+    inverterRaw.replace("{{power}}", String(power));
+    //serialCapture.println("Replaced power");
+
+    inverterRaw.replace("{{energyToday}}", String(energyToday));
+    //serialCapture.println("Replaced Energy Today");
+
+    inverterRaw.replace("{{energyTotal}}", String(energyTotal));
+    //serialCapture.println("Replaced Energy Total ");
     
-    // Replace the {{serial_data}} placeholder with the initial serial data
+    page.replace("{{INVERTER_STATUS}}", inverterRaw);
+    //serialCapture.println("Replaced INVERTER");
+
+    page.replace("{{MENU}}", MENU_HTML);
+    //serialCapture.println("Replaced MENU");
+    page.replace("{{STYLES}}", STYLES_HTML);
+    //serialCapture.println("Replaced SYTLES");
+    page.replace("{{FOOTER}}", FOOTER_HTML);
+    //serialCapture.println("Replaced FOOTER");
+    page.replace("{{HEADLINE}}", header);
+    //serialCapture.println("Replaced HEADLINE");
+    page.replace("{{PAGEHEAD}}", pageHead);
+
+
+    return page;
+}
+
+void WebServerManager::handleRootPage() {
+    // Print debug message
+    //serialCapture.println("WebServerManager: Handling root page...");
+
+    String htmlContent = preparePagetemplate(HomePage_HTML, "General Status", "Welcome to your E|S|P|I|D|E|R - Web Interface!");
+    
+    // Print debug message
+    //serialCapture.println("WebServerManager: Sending root page...");
+    htmlContent = rootPageTemplateProcessor(htmlContent);
+    
+    server.send(200, "text/html", htmlContent);
+    // Print debug message
+    //serialCapture.println("WebServerManager: Root page sent.");
+}
+
+void WebServerManager::handleSerialPage() {
+    String htmlContent = preparePagetemplate(Serial_HTML, "Last Serial Output for debugging", "E|S|P|I|D|E|R Serial Monitor");
+    
     String initialSerialData = serialCapture.getBuffer(); // Get the initial serial data
     htmlContent.replace("{{serial_data}}", HTMLEscape(initialSerialData));
-
-    // Use configPageTemplateProcessor to replace other placeholders
-    //htmlContent = configPageTemplateProcessor(htmlContent);
 
     server.send(200, "text/html", htmlContent);
 }
 
+
 void WebServerManager::handleConfigPage() {
-    String htmlContent = ConfigPage_HTML; // Preferences_HTML defined in WebPages.h
-    
+    String htmlContent = preparePagetemplate(ConfigPage_HTML, "Configuration of Essential Parameters",  "E|S|P|I|D|E|R - Config");
+  
     // Dynamically replace placeholders with actual preference values
     htmlContent = configPageTemplateProcessor(htmlContent);
+    
+    server.send(200, "text/html", htmlContent);
+}
 
-    // Fetch sensor readings from the Inverter instance
-    float power = inverter.getInverterPowerNow_W();
-    float energyToday = inverter.getInverterEnergyToday_kWh();
-    float energyTotal = inverter.getInverterEnergyTotal_kWh();
-    // Dynamically replace placeholders with actual sensor values
-    htmlContent.replace("{{power}}", String(power));
-    htmlContent.replace("{{energyToday}}", String(energyToday));
-    htmlContent.replace("{{energyTotal}}", String(energyTotal));
+void WebServerManager::handleConfigPageOptions() {
+    String htmlContent = preparePagetemplate(ConfigPageOptions_HTML, "Configuration of Optional Parameters", "E|S|P|I|D|E|R Config Options");
+  
+    // Dynamically replace placeholders with actual preference values
+    htmlContent = configOptionsTemplateProcessor(htmlContent);
     
     server.send(200, "text/html", htmlContent);
 }
 
 void WebServerManager::handleWikiPage() {
-    String htmlContent = WikiPage_HTML; // Preferences_HTML defined in WebPages.h
-    
-    // Dynamically replace placeholders with actual preference values
-    //htmlContent = configPageTemplateProcessor(htmlContent);
-
-    // Fetch sensor readings from the Inverter instance
-    float power = inverter.getInverterPowerNow_W();
-    float energyToday = inverter.getInverterEnergyToday_kWh();
-    float energyTotal = inverter.getInverterEnergyTotal_kWh();
-
-    // Dynamically replace placeholders with actual sensor values
-    htmlContent.replace("{{power}}", String(power));
-    htmlContent.replace("{{energyToday}}", String(energyToday));
-    htmlContent.replace("{{energyTotal}}", String(energyTotal));
+    String htmlContent = preparePagetemplate(WikiPage_HTML, "Knowledge Base and References", "E|S|P|I|D|E|R Wiki");
     
     server.send(200, "text/html", htmlContent);
 }
@@ -161,8 +195,7 @@ void WebServerManager::handleUpdate() {
         preferencesManager.setRelaisWebUser(relaisWebUser);
         preferencesManager.setRelaisWebPwd(relaisWebPwd);
 
-        // Redirecting to the root page after successful update
-        server.sendHeader("Location", "/", true);
+        server.sendHeader("Location", "/config", true);
         server.send(303, "text/plain", "Preferences updated. Redirecting to main page...");
     } else {
         // Handle incorrect method if needed
@@ -171,8 +204,79 @@ void WebServerManager::handleUpdate() {
     }
 }
 
+void WebServerManager::handleUpdateOptions() {
+    if (server.method() == HTTP_POST) {
+        // Previous code for extracting WiFi, MQTT, and Web Access Credentials remains unchanged
+
+        // Extracting NTP Configuration
+        String ntpServerA = server.arg("ntpA");
+        String ntpServerB = server.arg("ntpB");
+        bool isNtpActive = server.arg("ntpActive") == "on"; // Checkboxes are typically submitted if they're checked
+        // print the value of the checkbox
+        serialCapture.println("NTP Active: " + String(server.arg("ntpActive")));
+        int ntpGmtOffset = server.arg("ntpGmtOff").toInt();
+        int ntpDstOffset = server.arg("ntpDstOff").toInt();
+
+        // Extracting Timing Behavior Settings
+        int homeNetMS = server.arg("homeNetMS").toInt();
+        int homeFirstBootMS = server.arg("homeFirstBootMS").toInt();
+        int apModeMS = server.arg("apModeMS").toInt();
+        int wifiWaitS = server.arg("wifiWaitS").toInt();
+        int invOffTimeoutS = server.arg("invOffTimeoutS").toInt();
+
+        String apSSID = server.arg("apSSID");
+        String apKey = server.arg("apKey");
+
+        // Previous code for serial output of WiFi, MQTT, and Web Access Credentials remains unchanged
+
+        // Serial output for NTP Configuration and Timing Behavior Settings
+         serialCapture.println("\n[UpdateOptions] Values Rcieved:");
+        
+        serialCapture.println("NTP Configuration:");
+        serialCapture.println("NTP Server A: " + ntpServerA);
+        serialCapture.println("NTP Server B: " + ntpServerB);
+        serialCapture.println("NTP Active: " + String(isNtpActive));
+        serialCapture.println("GMT Offset: " + String(ntpGmtOffset));
+        serialCapture.println("DST Offset: " + String(ntpDstOffset));
+
+        serialCapture.println("Timing Behavior Settings:");
+        serialCapture.println("Home Network Stay (ms): " + String(homeNetMS));
+        serialCapture.println("First Boot Home Stay (ms): " + String(homeFirstBootMS));
+        serialCapture.println("AP Mode Duration (ms): " + String(apModeMS));
+        serialCapture.println("WiFi Connect Wait (s): " + String(wifiWaitS));
+        serialCapture.println("Inverter Offline Timeout (s): " + String(invOffTimeoutS));
+        serialCapture.println("AP SSID: " + apSSID);
+        serialCapture.println("AP Key: " + apKey);
+
+        // Previous code for updating the preferences with WiFi, MQTT, and Web Access Credentials remains unchanged
+
+        // Updating the preferences with NTP Configuration and Timing Behavior Settings
+        preferencesManager.setNtpServerA(ntpServerA);
+        preferencesManager.setNtpServerB(ntpServerB);
+        preferencesManager.setIsNtpActive(isNtpActive);
+        preferencesManager.setNtpGmtOffset(ntpGmtOffset);
+        preferencesManager.setNtpDstOffset(ntpDstOffset);
+
+        preferencesManager.setTimingStayInHomeNetwork_MS(homeNetMS);
+        preferencesManager.setTimingStayInHomeNetworkFirstBoot_MS(homeFirstBootMS);
+        preferencesManager.setTimingStayInApMode_MS(apModeMS);
+        preferencesManager.setTimingWiFiConnectWaitDuration_S(wifiWaitS);
+        preferencesManager.setTimingInverterOfflineTimeout_S(invOffTimeoutS);
+        preferencesManager.setApSSID(apSSID);
+        preferencesManager.setApKey(apKey);
+
+        server.sendHeader("Location", "/configoptions", true);
+        server.send(303, "text/plain", "Preferences updated. Redirecting to main page...");
+    } else {
+        // Handle incorrect method if needed
+        serialCapture.println("Error: HTTP method not supported.");
+        server.send(405, "text/plain", "Method Not Allowed");
+    }
+}
+
+
 // Helper function to escape special HTML characters
-String HTMLEscape(const String& str) {
+String WebServerManager::HTMLEscape(const String& str) {
     String escapedStr = str;
     escapedStr.replace("&", "&amp;");
     escapedStr.replace("<", "&lt;");
@@ -205,12 +309,57 @@ String WebServerManager::configPageTemplateProcessor(const String& htmlTemplate)
     return processedHtml;
 }
 
-String WebServerManager::HTMLEscape(const String& str) {
-    String escapedStr = str;
-    escapedStr.replace("&", "&amp;");
-    escapedStr.replace("<", "&lt;");
-    escapedStr.replace(">", "&gt;");
-    escapedStr.replace("\"", "&quot;");
-    escapedStr.replace("'", "&#39;");
-    return escapedStr;
+String WebServerManager::configOptionsTemplateProcessor(const String& htmlTemplate) {
+    String processedHtml = htmlTemplate;
+
+    // New NTP and timing preferences
+    processedHtml.replace("{{ntpA}}", HTMLEscape(preferencesManager.getNtpServerA()));
+    processedHtml.replace("{{ntpB}}", HTMLEscape(preferencesManager.getNtpServerB()));
+    processedHtml.replace("{{ntpActive}}", preferencesManager.getIsNtpActive() ? "checked" : "");
+    processedHtml.replace("{{ntpGmtOff}}", HTMLEscape(String(preferencesManager.getNtpGmtOffset())));
+    processedHtml.replace("{{ntpDstOff}}", HTMLEscape(String(preferencesManager.getNtpDstOffset())));
+    processedHtml.replace("{{homeNetMS}}", HTMLEscape(String(preferencesManager.getTimingStayInHomeNetwork_MS())));
+    processedHtml.replace("{{homeFirstBootMS}}", HTMLEscape(String(preferencesManager.getTimingStayInHomeNetworkFirstBoot_MS())));
+    processedHtml.replace("{{apModeMS}}", HTMLEscape(String(preferencesManager.getTimingStayInApMode_MS())));
+    processedHtml.replace("{{wifiWaitS}}", HTMLEscape(String(preferencesManager.getTimingWiFiConnectWaitDuration_S())));
+    processedHtml.replace("{{invOffTimeoutS}}", HTMLEscape(String(preferencesManager.getTimingInverterOfflineTimeout_S())));
+    processedHtml.replace("{{apSSID}}", HTMLEscape(String(preferencesManager.getApSSID())));
+    processedHtml.replace("{{apKey}}", HTMLEscape(String(preferencesManager.getApKey())));
+
+    return processedHtml;
+}
+
+String WebServerManager::rootPageTemplateProcessor(const String& htmlTemplate) {
+    String processedHtml = htmlTemplate;
+    // Replace placeholders with inverter data
+    processedHtml.replace("{{webdata_sn}}", HTMLEscape(inverter.getInverterSerial()));
+    processedHtml.replace("{{webdata_msvn}}", HTMLEscape(inverter.getWebdataMsvn()));
+    processedHtml.replace("{{webdata_ssvn}}", HTMLEscape(inverter.getWebdataSsvn()));
+    processedHtml.replace("{{webdata_pv_type}}", HTMLEscape(inverter.getWebdataPvType()));
+    processedHtml.replace("{{webdata_rate_p}}", HTMLEscape(inverter.getWebdataRateP()));
+    processedHtml.replace("{{webdata_now_p}}", HTMLEscape(String(inverter.getInverterPowerNow_W())));
+    processedHtml.replace("{{webdata_today_e}}", HTMLEscape(String(inverter.getInverterEnergyToday_kWh())));
+    processedHtml.replace("{{webdata_total_e}}", HTMLEscape(String(inverter.getInverterEnergyTotal_kWh())));
+    processedHtml.replace("{{webdata_alarm}}", HTMLEscape(inverter.getWebdataAlarm()));
+    processedHtml.replace("{{webdata_utime}}", HTMLEscape(inverter.getWebdataUtime()));
+    processedHtml.replace("{{cover_mid}}", HTMLEscape(inverter.getLoggerModuleID()));
+    processedHtml.replace("{{cover_ver}}", HTMLEscape(inverter.getLoggerSoftwareVersion()));
+    processedHtml.replace("{{cover_wmode}}", HTMLEscape(inverter.getLoggerWifiMode()));
+    processedHtml.replace("{{cover_ap_ssid}}", HTMLEscape(inverter.getLoggerApSsid()));
+    processedHtml.replace("{{cover_ap_ip}}", HTMLEscape(inverter.getLoggerApIp()));
+    processedHtml.replace("{{cover_ap_mac}}", HTMLEscape(inverter.getLoggerApMac()));
+    processedHtml.replace("{{cover_sta_ssid}}", HTMLEscape(inverter.getLoggerStaSsid()));
+    processedHtml.replace("{{cover_sta_rssi}}", HTMLEscape(inverter.getLoggerStaRssi()));
+    processedHtml.replace("{{cover_sta_ip}}", HTMLEscape(inverter.getLoggerStaIp()));
+    processedHtml.replace("{{cover_sta_mac}}", HTMLEscape(inverter.getLoggerStaMac()));
+    String statusA = inverter.getRemoteServerStatusA().equals("1") ? "Connected" : "Not Connected";
+    String statusB = inverter.getRemoteServerStatusB().equals("1") ? "Connected" : "Not Connected";
+    String statusC = inverter.getRemoteServerStatusC().equals("1") ? "Connected" : "Not Connected";
+
+    processedHtml.replace("{{status_a}}", HTMLEscape(statusA));
+    processedHtml.replace("{{status_b}}", HTMLEscape(statusB));
+    processedHtml.replace("{{status_c}}", HTMLEscape(statusC));
+
+    return processedHtml;
+    return processedHtml;
 }

@@ -11,7 +11,7 @@ private:
     size_t lineCount; // Total number of lines currently stored
 
 public:
-    SerialCaptureLines(size_t _maxLines = 100);
+    SerialCaptureLines(size_t _maxLines = 200);
     virtual ~SerialCaptureLines();
     size_t write(uint8_t character) override;
     void clearBuffer();

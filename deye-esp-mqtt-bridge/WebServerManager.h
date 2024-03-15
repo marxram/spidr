@@ -41,13 +41,21 @@ private:
     void setupRoutes();
     void handleRootPage();
     void handleConfigPage();
+    void handleSerialPage();
+    void handleConfigPageOptions();
     void handleWikiPage();
+    String preparePagetemplate(String htmlRaw, String header, String pageHead);
+
     String HTMLEscape(const String& str);
 
     bool serverActive = false;
 
     void handleUpdate();
+    void handleUpdateOptions();
     String configPageTemplateProcessor(const String& var);
+    String configOptionsTemplateProcessor(const String& var);
+    String rootPageTemplateProcessor(const String& htmlTemplate);
+
     Inverter& inverter; // Reference to the Inverter instance
 };
 

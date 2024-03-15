@@ -11,6 +11,21 @@ SerialCaptureLines::~SerialCaptureLines() {
 size_t SerialCaptureLines::write(uint8_t character) {
     Serial.write(character); // Echo the character to the standard serial output
     if (character == '\n') {
+
+        time_t now = time(nullptr); // Get the current time
+        struct tm *timeinfo = localtime(&now); // Convert to local time structure
+
+        char timeStr[34];
+        strftime(timeStr, sizeof(timeStr), "%d.%m.%Y %H:%M:%S", timeinfo);
+
+
+        // Get current time and format it as a timestamp
+        char timestamp[20]; // Assuming timestamp length will be less than 20 characters
+        snprintf(timestamp, sizeof(timestamp), "[%lu] ", millis());
+        
+        // Add the timestamp to the current line
+        lines[currentLine] = String(timestamp) + String(timeStr) + " : " + lines[currentLine];
+
         currentLine = (currentLine + 1) % maxLines;
         if (lineCount < maxLines) lineCount++;
         lines[currentLine] = ""; // Prepare the new line

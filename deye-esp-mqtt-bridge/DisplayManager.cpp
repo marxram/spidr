@@ -267,7 +267,7 @@ void DisplayManager::drawBigNumberWithHeader(String header, float number, String
 
 void DisplayManager::drawGraph(const Inverter::DataPoint powerData[], int dataSize) {
     int pointsToDisplay = SCREEN_WIDTH; // 128 points for 128 pixels wide display
-    int verticalMargin = 8; // Margin at the top and bottom of the graph
+    int verticalMargin = 2; // Margin at the top and bottom of the graph
     float scaleY = (SCREEN_HEIGHT - 2 * verticalMargin) / 610.0; // Scale factor for Y axis
 
     // Sample or average the data points to fit the display width
