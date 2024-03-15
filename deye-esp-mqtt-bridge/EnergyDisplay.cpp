@@ -62,7 +62,6 @@ void EnergyDisplay::updateDisplay(const Inverter& inverter) {
             break;
         case DISPLAY_POWER_GRAPH:
                 _displayManager.drawGraph(inverter.getPowerData(), inverter.getPowerDataSize());
-                delay(_intervals[_currentState]);
            break;
         }
     

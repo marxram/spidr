@@ -88,7 +88,7 @@ void WebServerManager::handleRootPage() {
     // Print debug message
     //serialCapture.println("WebServerManager: Handling root page...");
 
-    String htmlContent = preparePagetemplate(HomePage_HTML, "General Status", "Welcome to your E|S|P|I|D|E|R - Web Interface!");
+    String htmlContent = preparePagetemplate(HomePage_HTML, "General Status", "Welcome to your S|P|I|D|R - Web Interface!");
     
     // Print debug message
     //serialCapture.println("WebServerManager: Sending root page...");
@@ -100,7 +100,7 @@ void WebServerManager::handleRootPage() {
 }
 
 void WebServerManager::handleSerialPage() {
-    String htmlContent = preparePagetemplate(Serial_HTML, "Last Serial Output for debugging", "E|S|P|I|D|E|R Serial Monitor");
+    String htmlContent = preparePagetemplate(Serial_HTML, "Last Serial Output for debugging", "S|P|I|D|R Serial Monitor");
     
     String initialSerialData = serialCapture.getBuffer(); // Get the initial serial data
     htmlContent.replace("{{serial_data}}", HTMLEscape(initialSerialData));
@@ -110,7 +110,7 @@ void WebServerManager::handleSerialPage() {
 
 
 void WebServerManager::handleConfigPage() {
-    String htmlContent = preparePagetemplate(ConfigPage_HTML, "Configuration of Essential Parameters",  "E|S|P|I|D|E|R - Config");
+    String htmlContent = preparePagetemplate(ConfigPage_HTML, "Configuration of Essential Parameters",  "S|P|I|D|R - Config");
   
     // Dynamically replace placeholders with actual preference values
     htmlContent = configPageTemplateProcessor(htmlContent);
@@ -119,7 +119,7 @@ void WebServerManager::handleConfigPage() {
 }
 
 void WebServerManager::handleConfigPageOptions() {
-    String htmlContent = preparePagetemplate(ConfigPageOptions_HTML, "Configuration of Optional Parameters", "E|S|P|I|D|E|R Config Options");
+    String htmlContent = preparePagetemplate(ConfigPageOptions_HTML, "Configuration of Optional Parameters", "S|P|I|D|R Config Options");
   
     // Dynamically replace placeholders with actual preference values
     htmlContent = configOptionsTemplateProcessor(htmlContent);
@@ -128,7 +128,7 @@ void WebServerManager::handleConfigPageOptions() {
 }
 
 void WebServerManager::handleWikiPage() {
-    String htmlContent = preparePagetemplate(WikiPage_HTML, "Knowledge Base and References", "E|S|P|I|D|E|R Wiki");
+    String htmlContent = preparePagetemplate(WikiPage_HTML, "Knowledge Base and References", "S|P|I|D|R Wiki");
     
     server.send(200, "text/html", htmlContent);
 }
@@ -211,9 +211,10 @@ void WebServerManager::handleUpdateOptions() {
         // Extracting NTP Configuration
         String ntpServerA = server.arg("ntpA");
         String ntpServerB = server.arg("ntpB");
-        bool isNtpActive = server.arg("ntpActive") == "on"; // Checkboxes are typically submitted if they're checked
-        // print the value of the checkbox
-        serialCapture.println("NTP Active: " + String(server.arg("ntpActive")));
+        
+        bool isNtpActive = server.hasArg("ntpActive") && server.arg("ntpActive") == "on";
+        serialCapture.println("NTP Active: " + String(isNtpActive ? "Yes" : "No"));
+
         int ntpGmtOffset = server.arg("ntpGmtOff").toInt();
         int ntpDstOffset = server.arg("ntpDstOff").toInt();
 

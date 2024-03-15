@@ -14,7 +14,7 @@ const char MENU_HTML[] PROGMEM = R"rawliteral(
 
 
 const char STYLES_HTML[] PROGMEM = R"rawliteral(
-    body { font-family: Arial, sans-serif; background-color: #1e1e1e; color: #c5c5c5; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+    		body { font-family: Arial, sans-serif; background-color: #1e1e1e; color: #c5c5c5; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
         .content, .content-form { padding: 20px; max-width: 1024px; width: 100%; box-sizing: border-box; }
         .content-form form { display: flex; flex-direction: column; }
         fieldset { padding: 10px; margin-bottom: 20px; }
@@ -31,6 +31,13 @@ const char STYLES_HTML[] PROGMEM = R"rawliteral(
         .values-container { display: flex; flex-wrap: wrap; justify-content: space-between; }
         .meter-value { flex-basis: 15%; margin-bottom: 10px; }
         .meter-value span { color: #6588F2; font-size: xx-large; }
+		h2 { color: #2f848d; padding-top: 10px; }
+		h3 { color:#6588F2 ; }
+		li a { color: #2f848d; text-decoration: none; }
+		ul {
+			list-style-type: square; /* Options include disc, circle, square, decimal, lower-alpha, and more */
+		}
+
 	pre {
         width: 65%;             /* Width of the <pre> element as a percentage of its container's width */
 		height: 50vh; 			/* 50% of the viewport height */
@@ -50,7 +57,7 @@ const char STYLES_HTML[] PROGMEM = R"rawliteral(
 
 const char FOOTER_HTML[] PROGMEM = R"rawliteral(
 <div class="footer">
-    <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Visit E|S|P|I|D|E|R on Github</a>
+    <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Visit S|P|I|D|R on Github</a>
 </div>
 )rawliteral";
 
@@ -85,8 +92,6 @@ const char ConfigPage_HTML[] PROGMEM = R"rawliteral(
 <h1>{{PAGEHEAD}}</h1>
 
 {{MENU}}
-
-{{INVERTER_STATUS}}
 
 
 <div class="content-form">
@@ -199,9 +204,7 @@ const char ConfigPageOptions_HTML[] PROGMEM = R"rawliteral(
 <h1>{{PAGEHEAD}}</h1>
 
 {{MENU}}
-
-{{INVERTER_STATUS}}
-    
+   
 <div class="content-form">
     <h2>{{HEADLINE}}</h2>
 
@@ -218,7 +221,7 @@ const char ConfigPageOptions_HTML[] PROGMEM = R"rawliteral(
             </div>
             <div>
                 <label for="ntpActive">NTP Active:</label>
-                <input type="checkbox" id="ntpActive" name="ntpActive" value="{{ntpActive}}">
+                <input type="checkbox" id="ntpActive" name="ntpActive" {{ntpActive}}>
             </div>
             <div>
                 <label for="ntpGmtOff">GMT Offset:</label>
@@ -462,8 +465,6 @@ const char Serial_HTML[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 
-
-
 const char WikiPage_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
@@ -479,12 +480,113 @@ const char WikiPage_HTML[] PROGMEM = R"rawliteral(
 
 {{MENU}}
 
-{{INVERTER_STATUS}}
-
 <div class="content">
     <h2>{{HEADLINE}}</h2>
+<h1 id="s-p-i-d-r">S|P|I|D|R</h1>
+<p>S| mart Home and
+P| rivacy focused
+I| oT
+D| ata
+R| relay</p>
+<h2 id="table-of-contents-contents">Table of contents Contents</h2>
+<ul>
+<li><a href="#features">Features</a></li>
+<li><a href="#networking">Networking</a></li>
+<li><a href="#inverter">Inverter</a></li>
+<li><a href="#smart-home-integration">Smart Home Integration</a></li>
+<li><a href="#display">Display</a></li>
+<li><a href="#webinterface">Webinterface</a></li>
+<li><a href="#hardware-compatibility">Hardware Compatibility</a></li>
+<li><a href="#todo">ToDo</a></li>
+<li><a href="#bugfixing">Bugfixing</a></li>
+</ul>
+<h2 id="features">Features</h2>
+<h3 id="networking">Networking</h3>
+<ul>
+<li>WiFi Accesspoint Mode if Home Network is not available or set incorrectly</li>
+<li>Retry if Networks were not reachable for the first time (necessary debugging)</li>
+<li>Option: NTP Time Sync (needed for special things like resetting the daily counter, etc.)</li>
+</ul>
+<h3 id="inverter">Inverter</h3>
+<ul>
+<li>Retrieve Data via Screen Scraping</li>
+<li>Energy Today Counter is reset via UDP commands to synchronize the time</li>
+<li>UDP Commands can be extended in the Future</li>
+</ul>
+<h3 id="smart-home-integration">Smart Home Integration</h3>
+<ul>
+<li>Inverter Data is sent to a local MQTT Broker</li>
+<li>If Broker is Configured with HomeAssistant the Inverter Should be automatically Detected by HA</li>
+<li>Icons and topics can be set in the MQTTManager</li>
+</ul>
+<h2 id="display">Display</h2>
+<ul>
+<li>Current Power</li>
+<li>Energy Production today</li>
+<li>Energy Production total</li>
+<li>Power Graph (just PoC, using generated values at ESP startup)</li>
+<li>Time Display</li>
+<li>Show different Action Results</li>
+</ul>
+<h3 id="webinterface">Webinterface</h3>
+<ul>
+<li>Webserver available in Home-Network and AP-Mode <strong>There might be issues if the system is switching for Inverter Mode</strong> --&gt; Just wait</li>
+<li>Home Page: showing Inverter Status</li>
+<li>Config Page: for most important Settings (Handling Configuration Changes with Preferences Manager)</li>
+<li>Config Options Page: For more detailed setting of behavior (Handling Configuration Changes with Preferences Manager)</li>
+<li>Serial Page: See Debug Information, Serial Log</li>
+<li>WiKi Page: Information and Links</li>
+</ul>
+<h2 id="hardware-compatibility">Hardware Compatibility</h2>
+<ul>
+<li>Generally compatible and tested with some ESP8266</li>
+<li>Generally compatible and tested with some ESP32</li>
+<li>Different I2C OLED Display types with 128x64 and 128x32 were tested (Using U8g2)</li>
+<li>Special Boards were tested and have Config Defines<ul>
+<li>BOARD_WEMOS_OLED_128x64_ESP32</li>
+<li>BOARD_HELTEC_OLED_128x32_ESP8266</li>
+<li>BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32</li>
+<li>BOARD_WEMOS_OLED_128x32_ESP32_S2</li>
+<li>Use Generic ESP32 or ESP8266 and set the I2C Address (SCREEN_ADDRESS
+ 0x3C) or change a U8g2 Constructor in the 
+DisplayManager::DisplayManager Constructor</li>
+</ul>
+</li>
+</ul>
+<h2 id="todo">ToDo</h2>
+<h3 id="known-bugs">Known Bugs</h3>
+<ul>
+<li>Check if Relay gets disconnected because of UDP commands</li>
+<li>Check NTPisActive Parameter</li>
+<li>Bugfix NTP behavior</li>
+<li>AP - ssid not what is set in Pr</li>
+<li>MQTT Topic using from Preferences -&gt; Currently Hardcoded: "state_topic": "SolarInverterBridge/inverter</li>
+</ul>
+<h2 id="feature-improvements">Feature Improvements</h2>
+<h3 id="oled-handling-screensaver">OLED Handling Screensaver</h3>
+<ul>
+<li>Turn OLED Off during Night</li>
+<li>Enable by pressing User Button</li>
+<li>Disable after a certain amount of time</li>
+<li>Better Graph Display</li>
+</ul>
+<h3 id="convenience">Convenience</h3>
+<ul>
+<li>Use User LED to display errors</li>
+</ul>
+<h3 id="inverter-and-data-handling">Inverter and Data Handling</h3>
+<ul>
+<li>Reset Daily counter early morning (currently done with the invOffTimeoutS Preference)</li>
+</ul>
+<h2 id="bugfixing">Bugfixing</h2>
+<h3 id="issue-display-stays-blank">Issue: Display stays blank</h3>
+<p>Before you change anything in this code, I advise you to create a 
+small Demo project with your Controller and LED Setup using U8g2 lib.
+If this is working, check if the Constructor used in this project is set
+ correctly. 
+Hint: The different specific Board DEFINES also set the U8g2 
+Constructor. You might need to uncomment them out!</p>
 </div>
-
 {{FOOTER}}
 
 </body>

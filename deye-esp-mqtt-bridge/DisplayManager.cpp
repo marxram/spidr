@@ -170,7 +170,6 @@ void DisplayManager::displayAction(const ActionData& action) {
   u8g2->sendBuffer();
 }
 
-
 void DisplayManager::drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr) {
     char numberBuffer[20]; // Buffer to hold the formatted number as a string
 

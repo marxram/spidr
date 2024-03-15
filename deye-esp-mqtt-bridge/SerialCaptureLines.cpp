@@ -16,15 +16,15 @@ size_t SerialCaptureLines::write(uint8_t character) {
         struct tm *timeinfo = localtime(&now); // Convert to local time structure
 
         char timeStr[34];
-        strftime(timeStr, sizeof(timeStr), "%d.%m.%Y %H:%M:%S", timeinfo);
+        strftime(timeStr, sizeof(timeStr), "%d.%m.%Y %Hh%Mm%S", timeinfo);
 
 
         // Get current time and format it as a timestamp
         char timestamp[20]; // Assuming timestamp length will be less than 20 characters
-        snprintf(timestamp, sizeof(timestamp), "[%lu] ", millis());
+        snprintf(timestamp, sizeof(timestamp), "%7lu", millis());
         
         // Add the timestamp to the current line
-        lines[currentLine] = String(timestamp) + String(timeStr) + " : " + lines[currentLine];
+        lines[currentLine] = String(timestamp) + " | "+ String(timeStr) + " | " + lines[currentLine];
 
         currentLine = (currentLine + 1) % maxLines;
         if (lineCount < maxLines) lineCount++;

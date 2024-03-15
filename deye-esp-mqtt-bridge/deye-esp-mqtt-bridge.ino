@@ -115,7 +115,7 @@ bool connected = false;
 
 ////////////////////////////////////////////////////////////////////
 // Intializations 
-SerialCaptureLines serialCapture(200); // Adjust the buffer size (number of lines) as needed
+SerialCaptureLines serialCapture(300); // Adjust the buffer size (number of lines) as needed
 
 DisplayManager displayManager(serialCapture);
 ActionData action; // Action Structure to Display
@@ -206,11 +206,11 @@ void setup() {
   displayManager.verboseDisplay = true;
 
   // Display Initialization
-  action.name = "E|S|P|I|D|E|R";
-  action.details = "E|sp based S|mart";
+  action.name = "S|P|I|D|R";
+  action.details =   "S|mart Home and";
   action.params[0] = "P|rivacy focused";
-  action.params[1] = "D|ata    E|nergy";
-  action.params[2] = "";
+  action.params[1] = "I|oT ";
+  action.params[2] = "D|ata   R|elay";
   action.params[3] = "";
   action.result = "Starting Up";
   action.resultDetails = "";
@@ -831,7 +831,6 @@ void updateStateMachine() {
                 serialCapture.println("# [STATECHANGE] ENTERING >> HOME_NETWORK_MODE                  #");
                 serialCapture.println("#------------------------------------------------------------- #");    
             }
-            
             handleHomeNetworkMode();
             break;
         case AP_MODE:
@@ -964,7 +963,10 @@ void handleInverterNetworkMode() {
 
         // Special case if inverter is not reachable for a long time, like every night ;-)
         if ((millis() - lastInverterUpdateMillis > INVERTER_OFFLINE_TIMEOUT_SECONDS * 1000 )) {
-            serialCapture.println("[handleInverterNetworkMode] Inverter not reachable for too long. Setting Power to 0W");
+            serialCapture.println("#------------------------------------------------------------- #");
+            serialCapture.println("# [INVERTER VALUES RESET] For Overnight                        #");
+            serialCapture.println("#------------------------------------------------------------- #");   
+
             inverter.setInactiveValues();
             // Enforce MQTT sync with 0W Power
             newInverterDataAvailable = true;
@@ -974,11 +976,6 @@ void handleInverterNetworkMode() {
     if (cndInverterNetworkToHomeNetwork()) {
         serialCapture.println("[handleInverterNetworkMode] Exiting Inverter Network Mode --> Home Network Mode");
        
-        //action.result = "Inverter";
-        //action.resultDetails = "-> HOME";
-        //displayManager.displayAction(action); // Update the display with the current state
-        //delay(2000); 
-
         wifi_connect(WIFI_HOME_SSID, WIFI_HOME_KEY, "Home WiFi");
         currentState = HOME_NETWORK_MODE;
         lastStateChangeMillis = millis();
@@ -995,12 +992,12 @@ void handleHomeNetworkMode() {
 
     // check if connection is available
     if (connectedToHomeNetwork && (WiFi.status() == WL_CONNECTED)) {
-        //serialCapture.println("[DBG] HomeNetwork Internal Loop");
         homeNetworkNotReachableCount = 0; 
-
         if (!webServerManager.isServerActive()) {
             serialCapture.println("[handleHomeNetworkMode] Start Web Server Manager");
             webServerManager.begin();
+        }else{
+            webServerManager.handleClient();
         }
 
         // Update and Publish Data if new data is available  
@@ -1011,7 +1008,6 @@ void handleHomeNetworkMode() {
             newInverterDataAvailable = false;
             delay(1000); // Show data for 3 Seconds
         }
-        
     }else{
         connectedToInverterNetwork = false;
         connectedToHomeNetwork = false;
@@ -1056,8 +1052,12 @@ void handleAPMode() {
     action.resultDetails = String(remainingTimeInAP) + "s";
     displayManager.displayAction(action);
 
+
     if (webServerManager.isServerActive()) {
         webServerManager.handleClient();
+    }else{
+        webServerManager.begin();
+        serialCapture.println("[Webserver] Startup.");
     }
 
     // Display Initialization
