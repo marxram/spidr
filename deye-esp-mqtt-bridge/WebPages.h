@@ -302,10 +302,6 @@ const char HomePage_HTML[] PROGMEM = R"rawliteral(
 
 {{INVERTER_STATUS}}
     
-<div class="content">
-    <h2>{{HEADLINE}}</h2>
-</div>
-
 <div class="content-form">
     <h2>Solar Inverter Data</h2>
 

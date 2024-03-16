@@ -21,8 +21,8 @@
 // Configurations that have been moved to the Preferences Manager and can be updated during Runtime
 // Only Defaults below
 
-#define DEF_WIFI_AP_NAME "e-spider"
-#define DEF_WIFI_AP_PASSWORD "e-spider"
+#define DEF_WIFI_AP_NAME "spider-net"
+#define DEF_WIFI_AP_PASSWORD "spider-pass"
 
 
 // TimeSynchronization and handling

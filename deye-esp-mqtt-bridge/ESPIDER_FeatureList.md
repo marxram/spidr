@@ -70,6 +70,7 @@ R| relay
 * Bugfix NTP behavior
 * AP - ssid not what is set in Pr
 * MQTT Topic using from Preferences -> Currently Hardcoded: "state_topic": "SolarInverterBridge/inverter
+* Saving AP Net Parameters seems not to work
 
 ## Feature Improvements
 

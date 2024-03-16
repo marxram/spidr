@@ -27,6 +27,7 @@ public:
     bool verboseDisplay = false;
     void clearScreen();
     void drawGraph(const Inverter::DataPoint powerData[], int dataSize);
+    void setDisplayActive(bool active);
 
 
 
@@ -37,7 +38,8 @@ private:
     const unsigned int MAX_SCREENS = 4; // Maximum number of screens
     int currentScreen = 0; // Keep track of the current screen
     // Add more private members if needed, including global variables to display
-      SerialCaptureLines& serialCapture;
+    SerialCaptureLines& serialCapture;
+    bool displayActive = true;
 };
 
 #endif

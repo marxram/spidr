@@ -355,6 +355,7 @@ int Inverter::getPowerDataSize() const {
 
 void Inverter::generateTestData() {
     // Clear existing data
+    // Clear existing data
     powerIndex = 0;
 
     // Generate test data for a 24-hour period, with data points every 5 minutes
@@ -369,13 +370,32 @@ void Inverter::generateTestData() {
 
         // Example simplistic curve: quadratic, peaking at noon
         if (hour < 6 || hour > 18) { // Nighttime
-            powerValue = 50; // Minimal power generation/consumption
+            powerValue = 0; // Minimal power generation/consumption
         } else if (hour < 12) { // Morning ramp-up
             powerValue = 50 + (610.0f / 36.0f) * (hour - 6) * (hour - 6);
         } else { // Afternoon ramp-down
             powerValue = 50 + (610.0f / 36.0f) * (18 - hour) * (18 - hour);
         }
+        
+        // Fill the data point into the buffer
+        unsigned long timestamp = (i * interval * 60); // Example timestamp, in seconds
+        addDataPoint(powerData, powerIndex, powerValue);
+        powerData[powerIndex % bufferSize].timestamp = timestamp; // Adjust timestamp directly for test data
+        powerIndex++;
+    }
+}
 
+
+void Inverter::initializeDataBuffer(float powerValue) {
+    // Clear existing data
+    powerIndex = 0;
+
+    const int interval = 5; // Data point interval in minutes
+    const int dataPoints = bufferSize; // minutesPerDay / interval;
+
+    for (int i = 0; i < dataPoints; ++i) {
+        // Simulate a power generation curve: low at night, peaks at midday
+        int hour = (i * interval) / 60;
         // Fill the data point into the buffer
         unsigned long timestamp = (i * interval * 60); // Example timestamp, in seconds
         addDataPoint(powerData, powerIndex, powerValue);

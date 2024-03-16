@@ -178,6 +178,17 @@ int remainingTimeInAP = 0;
 bool firstBoot = true;
 
 
+#ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+const int buttonPin = 0; 
+bool displayOn = true;
+unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+unsigned long debounceDelay = 100;    // the debounce time; increase if the output flickers
+int buttonState;             // the current reading from the input pin
+int lastButtonState = LOW;   // the previous reading from the input pin
+int ledPIN = 35;
+#endif
+
+
 ////////////////////////////////////////////////////////////////////
 // SETUP Function
 
@@ -192,6 +203,7 @@ void setup() {
     serialCapture.println("Initialize Preferences Manager...");
 
   prefsManager.begin();
+  webServerManager.setPreferencesCallback(loadPreferencesIntoVariables);
 
   serialCapture.println("Load Preferences into Variables...");
   loadPreferencesIntoVariables();
@@ -199,6 +211,11 @@ void setup() {
   #ifdef SCREEN_ADDRESS
     displayManager.setI2CAddress(SCREEN_ADDRESS); 
   #endif 
+
+  #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+    displayManager.setDisplayActive(displayOn);
+    pinMode(ledPIN, OUTPUT);
+  #endif
 
   serialCapture.println("Initialize Display Manager...");
   displayManager.init();
@@ -209,8 +226,8 @@ void setup() {
   action.name = "S|P|I|D|R";
   action.details =   "S|mart Home and";
   action.params[0] = "P|rivacy focused";
-  action.params[1] = "I|oT ";
-  action.params[2] = "D|ata   R|elay";
+  action.params[1] = "I|oT  D|ata  R|elay";
+  action.params[2] = "";
   action.params[3] = "";
   action.result = "Starting Up";
   action.resultDetails = "";
@@ -247,18 +264,67 @@ void setup() {
 
   // Generate TestDate for the Inverter
   serialCapture.println("Generate Test Data");
-  inverter.generateTestData();
+  inverter.initializeDataBuffer(0);
   // print a statement to the serial monitor
+
+
+#ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+    pinMode(buttonPin, INPUT_PULLUP);
+#endif
+
+
 }
 
 
 ////////////////////////////////////////////////////////////////////
 // MAIN LOOP
 void loop() {   
-    // Update the state machine
-    updateStateMachine();
+    static unsigned long lastSetupTimeCalled = 0; // Stores the last time setupTime was called
+    const unsigned long intervalSetupTime = 120000; // 2 minutes expressed in milliseconds 
 
-    delay(200); // Dummy delay to simulate network activity
+    static unsigned long lastStatemachineCalled = 0; // Stores the last time setupTime was called
+    const unsigned long intervalStatemachine = 200; // 2 minutes expressed in milliseconds  
+    
+    // Update the state machine  
+    if (millis() - lastStatemachineCalled >= intervalStatemachine) {
+        updateStateMachine(); // Call the setupTime function
+        lastStatemachineCalled = millis(); // Update the last time setupTime was called
+    }
+
+    // Check if 2 minutes have elapsed since the last time setupTime was called
+    if (millis() - lastSetupTimeCalled >= intervalSetupTime) {
+        setupTime(); // Call the setupTime function
+        lastSetupTimeCalled = millis(); // Update the last time setupTime was called
+    }
+
+    #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+        int reading = digitalRead(buttonPin);
+
+        // Check if the button state has changed (for debouncing)
+        if (reading != lastButtonState) {
+            // reset the debouncing timer
+            lastDebounceTime = millis();
+        }
+
+        if ((millis() - lastDebounceTime) > debounceDelay) {
+            // if the button state has changed:
+            if (reading != buttonState) {
+                buttonState = reading;
+
+                // only toggle the variable if the new button state is HIGH
+                if (buttonState == HIGH) {
+                    displayOn = !displayOn; // Toggle the global variable
+                    displayManager.setDisplayActive(displayOn); // Set the display active or not
+                    Serial.print("Screensaver Toggled via Button. Display is: ");
+                    Serial.println(displayOn);
+                    digitalWrite(ledPIN, !displayOn);
+                }
+            }
+        }
+        // save the reading. Next time through the loop, it'll be the lastButtonState:
+        lastButtonState = reading;
+    #endif
+    delay(5); // Dummy delay to simulate network activity
 }
 
 
@@ -266,52 +332,73 @@ void loop() {
 // Sync Time
 
 void setupTime() {
-
-
     time_t now = time(nullptr);
     time_t buildEpoch = buildTimeToEpoch(__DATE__, __TIME__);
+    // print __DATE__ and __TIME__ to the serial monitor
+    serialCapture.println("Build Date: " + String(__DATE__) + "  Build Time: " + String(__TIME__));
+    // print now() and buildEpoch to the serial monitor
+    serialCapture.println("Now() = " + String(now) + "  Build Epoch" + String(buildEpoch));
+
+    //print what NTP servers are being used
+    serialCapture.println("NTP Server: " + NTP_SERVER);
+    serialCapture.println("NTP Fallback Server: " + NTP_FALLBACK_SERVER);
+
+    // Print the GMT and DST offsets
+    serialCapture.println("GMT Offset: " + String(GMT_OFFSET_SECONDS/3600) + "h");
+    serialCapture.println("DST Offset: " + String(DST_OFFSET_SECONDS/3600) + "h");
+
  
     // Only sync time if USE_NTP_SYNC is defined and it's the first run or last sync was unsuccessful
-    #ifdef USE_NTP_SYNC
-    if (!timeSynced || now <= buildEpoch) {
+    if (USE_NTP_SYNC) {
         
-        action.name     =  "Time Sync";
-        action.details  = String(NTP_SERVER);
-        action.params[0] = "GMT: " + String(GMT_OFFSET_SECONDS/3600) +"h";
-        action.params[1] = "DST: " + String(DST_OFFSET_SECONDS/3600) +"h";
-        action.result = "In Progress";
-        action.resultDetails = "";
-        displayManager.displayAction(action);
-        
-        // If 
-        configTime(0, 0, NTP_SERVER, NTP_FALLBACK_SERVER);
-        delay(2000); // Give time for NTP request to complete
-
-        now = time(nullptr); // Update current time after NTP request
-        serialCapture.println( String(now) + " " + String(buildEpoch));
-        if (now > buildEpoch) {
-            serialCapture.println("NTP sync successful.");
-            lastSyncTime = millis(); // Record successful sync time
-            timeSynced = true;
-            action.result = "Done";
-            action.resultDetails = "synced";
-            displayManager.displayAction(action);
-            delay(2000);
-        } else {
-            serialCapture.println("Failed to obtain time from NTP server. Using build time as fallback.");
-            timeSynced = false; // NTP sync attempted and failed
-            action.result = "Failed";
-            action.resultDetails = "No Server";
-            displayManager.displayAction(action);
-            delay(2000);
+        if (WiFi.status() == WL_CONNECTED) {
+            serialCapture.println("Connected to Wi-Fi.");
         }
-    } else {
-        serialCapture.println("Time previously synchronized or NTP sync not required.");
+
+        if (!timeSynced || now <= buildEpoch) {
+            
+            action.name     =  "Time Sync";
+            action.details  = String(NTP_SERVER);
+            action.params[0] = "GMT: " + String(GMT_OFFSET_SECONDS/3600) +"h";
+            action.params[1] = "DST: " + String(DST_OFFSET_SECONDS/3600) +"h";
+            action.result = "In Progress";
+            action.resultDetails = "";
+            displayManager.displayAction(action);
+            
+            // If 
+            configTime(GMT_OFFSET_SECONDS, 0, NTP_SERVER.c_str(), NTP_FALLBACK_SERVER.c_str());
+
+            serialCapture.println("Waiting for time to synchronize with NTP server...");
+
+            unsigned long startTime = millis();
+            while (time(nullptr) <= buildEpoch && millis() - startTime < 20000) { // 10-second timeout
+                delay(100);
+            }
+
+            now = time(nullptr); // Update current time after NTP request
+            serialCapture.println("Now() = " + String(now) + "  Build Epoch " + String(buildEpoch));
+            if (now > buildEpoch) {
+                serialCapture.println("NTP sync successful.");
+                lastSyncTime = millis(); // Record successful sync time
+                timeSynced = true;
+                action.result = "Done";
+                action.resultDetails = "synced";
+                displayManager.displayAction(action);
+                delay(2000);
+            } else {
+                serialCapture.println("Failed to obtain time from NTP server. Using build time as fallback.");
+                timeSynced = false; // NTP sync attempted and failed
+                action.result = "Failed";
+                action.resultDetails = "No Server";
+                displayManager.displayAction(action);
+                delay(2000);
+            }
+        } else {
+            serialCapture.println("Time previously synchronized or NTP sync not required.");
+        }
     }
-    #else
-    if (now <= buildEpoch || !timeSynced) {
-        
-        // Use build time if NTP sync is disabled or if time hasn't been successfully set yet
+    else if (now <= buildEpoch) {       
+        // Use build time if NTP sync is disabled 
         struct timeval tv = { .tv_sec = buildEpoch };
         settimeofday(&tv, NULL);
         serialCapture.println("NTP sync is disabled. Using build time as fallback.");
@@ -342,7 +429,6 @@ void setupTime() {
         displayManager.displayAction(action);
         delay(500);
     }
-    #endif
 }
 
 // Implement the helper function to convert build date and time to epoch time
@@ -409,6 +495,7 @@ void loadPreferencesIntoVariables() {
     // For booleans, directly use the getter as it naturally falls back to false if not set. Adjust if your default is true.
     USE_NTP_SYNC = prefsManager.getIsNtpActive() ? prefsManager.getIsNtpActive() : DEF_USE_NTP_SYNC;
     serialCapture.println("NTP Sync Enabled: " + String(USE_NTP_SYNC));
+
 
     GMT_OFFSET_SECONDS = prefsManager.getNtpGmtOffset() != 0 ? prefsManager.getNtpGmtOffset() : DEF_GMT_OFFSET_SECONDS;
     DST_OFFSET_SECONDS = prefsManager.getNtpDstOffset() != 0 ? prefsManager.getNtpDstOffset() : DEF_DST_OFFSET_SECONDS;

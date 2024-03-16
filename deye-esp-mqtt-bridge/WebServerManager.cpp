@@ -195,6 +195,12 @@ void WebServerManager::handleUpdate() {
         preferencesManager.setRelaisWebUser(relaisWebUser);
         preferencesManager.setRelaisWebPwd(relaisWebPwd);
 
+        if (preferencesCallback != nullptr) {
+            serialCapture.println("RELOADING PREFERENCES");
+            preferencesCallback(); // Call the callback function
+        }
+
+
         server.sendHeader("Location", "/config", true);
         server.send(303, "text/plain", "Preferences updated. Redirecting to main page...");
     } else {
@@ -265,6 +271,12 @@ void WebServerManager::handleUpdateOptions() {
         preferencesManager.setTimingInverterOfflineTimeout_S(invOffTimeoutS);
         preferencesManager.setApSSID(apSSID);
         preferencesManager.setApKey(apKey);
+
+
+        if (preferencesCallback != nullptr) {
+            serialCapture.println("RELOADING PREFERENCES");
+            preferencesCallback(); // Call the callback function
+        }
 
         server.sendHeader("Location", "/configoptions", true);
         server.send(303, "text/plain", "Preferences updated. Redirecting to main page...");

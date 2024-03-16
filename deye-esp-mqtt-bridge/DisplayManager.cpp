@@ -3,6 +3,7 @@
 #include "DisplayManager.h"
 #include "config.h"
 #include "Inverter.h"
+#include "SplashImages.h"
 
 // Fonts for 64 Pixel Displays
 const uint8_t *bigNumberHeadlineFont = u8g2_font_luRS10_tr;
@@ -53,6 +54,19 @@ void DisplayManager::setI2CAddress(uint8_t adr) {
 
 void DisplayManager::init() {
     u8g2->begin();
+    // if (SCREEN_HEIGHT == 64){
+    //       u8g2->clearBuffer();
+    //       u8g2->drawXBM(0, 0, 128, 64, Splash64);
+    //       u8g2->sendBuffer();
+    //       serialCapture.println("Showing 128x64 pixel splash screen");
+    // }
+    // else if (SCREEN_HEIGHT == 32){
+    //       u8g2->clearBuffer();
+    //       u8g2->drawXBM(0, 0, 128, 32, Splash32);
+    //       u8g2->sendBuffer();
+    //       serialCapture.println("Showing 128x32 pixel splash screen");
+    // }
+    // delay(3000);
 }
 
 void DisplayManager::clearScreen() {
@@ -60,8 +74,22 @@ void DisplayManager::clearScreen() {
     u8g2->sendBuffer();
 }
 
+void DisplayManager::setDisplayActive(bool active){
+  displayActive = active;
+  if (!displayActive){
+    u8g2->clearBuffer(); // Clear the internal memory
+    u8g2->sendBuffer();  // Transfer the internal memory to the display, making it blank
+    u8g2->setPowerSave(1); // Enable power save mode (turn off display)
+  }else{
+    u8g2->setPowerSave(0); // Disable power save mode (turn on display)
+  }
+
+}
 
 void DisplayManager::displayAction(const ActionData& action) {
+  if (!displayActive) {
+    return;
+  }
   int yPositionBottomLine = SCREEN_HEIGHT - 1;
   String actionStr(action.name.c_str());
   
@@ -171,6 +199,9 @@ void DisplayManager::displayAction(const ActionData& action) {
 }
 
 void DisplayManager::drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr) {
+  if (!displayActive) {
+    return;
+  }
     char numberBuffer[20]; // Buffer to hold the formatted number as a string
 
     // Format the floating-point number according to the provided formatting string
@@ -200,7 +231,8 @@ void DisplayManager::drawBigNumberNoHeader(float number, String unit, String ann
     if ((numberWidth + unitWidth + 4) > 128) {
         //serialCapture.println("Switching to smaller fonts");
         if (SCREEN_HEIGHT == 64){
-            currentNumberFont = smallNumberFont_32; // Choose a suitable font for the action name
+            currentNumberFont = smallNumberFont; // Choose a suitable font for the action name
+            currentUnitFont = smallUnitFont;
         }else if (SCREEN_HEIGHT == 32){
             currentNumberFont = smallNumberFont_32; // Choose a suitable font for the action name
         }
@@ -242,6 +274,9 @@ void DisplayManager::drawBigNumberNoHeader(float number, String unit, String ann
 }
 
 void DisplayManager::drawBigNumberWithHeader(String header, float number, String unit, String annotation, String formattingStr) {
+  if (!displayActive) {
+    return;
+  }
   u8g2->clearBuffer();
 
   uint_fast8_t headlineYPosition = 0;
@@ -265,6 +300,10 @@ void DisplayManager::drawBigNumberWithHeader(String header, float number, String
 
 
 void DisplayManager::drawGraph(const Inverter::DataPoint powerData[], int dataSize) {
+   if (!displayActive) {
+    return;
+  }
+    
     int pointsToDisplay = SCREEN_WIDTH; // 128 points for 128 pixels wide display
     int verticalMargin = 2; // Margin at the top and bottom of the graph
     float scaleY = (SCREEN_HEIGHT - 2 * verticalMargin) / 610.0; // Scale factor for Y axis
