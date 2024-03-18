@@ -96,7 +96,7 @@ void EnergyDisplay::stop() {
 void EnergyDisplay::displayCurrentTime() {
     ActionData action; // Assuming ActionData is properly defined elsewhere
 
-    action.name     =  "Current Time";
+    action.name     =  "Aktuelle Zeit";
     action.details  = "";
 
     time_t now = time(nullptr); // Get the current time

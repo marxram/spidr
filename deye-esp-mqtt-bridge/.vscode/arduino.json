@@ -1,5 +1,6 @@
 {
     "board": "esp32:esp32:heltec_wifi_lora_32_V3",
     "port": "COM17",
-    "configuration": "LoopCore=1,EventsCore=1,CPUFreq=240,UploadSpeed=921600,DebugLevel=none,LORAWAN_REGION=0,LoRaWanDebugLevel=0,LORAWAN_DEVEUI=0,LORAWAN_PREAMBLE_LENGTH=0,EraseFlash=none"
+    "configuration": "LoopCore=1,EventsCore=1,CPUFreq=240,UploadSpeed=921600,DebugLevel=none,LORAWAN_REGION=0,LoRaWanDebugLevel=0,LORAWAN_DEVEUI=0,LORAWAN_PREAMBLE_LENGTH=0,EraseFlash=none",
+    "sketch": "deye-esp-mqtt-bridge.ino"
 }

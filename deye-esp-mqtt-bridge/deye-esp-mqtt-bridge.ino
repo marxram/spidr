@@ -23,6 +23,10 @@
 #include "EnergyDisplay.h"
 #include "SerialCaptureLines.h"
 
+#ifdef USE_NEOPIXEL_LED
+#include <Adafruit_NeoPixel.h>
+#endif
+
 
 ///////////////////////////////////////////////////////////////////////
 // Configuration and user settings
@@ -188,6 +192,22 @@ int lastButtonState = LOW;   // the previous reading from the input pin
 int ledPIN = 35;
 #endif
 
+#ifdef USE_NEOPIXEL_LED
+#define NEOPIXEL_PIN 26
+#define NUMPIXELS 6
+// Declare our NeoPixel strip object:
+Adafruit_NeoPixel strip(NUMPIXELS, NEOPIXEL_PIN, NEO_GRBW + NEO_KHZ800);
+
+// Fill the dots one after the other with a color
+void setStripColor(uint32_t color) {
+  for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
+    strip.setPixelColor(i, color);         //  Set pixel's color (in RAM)
+  }
+  strip.show(); 
+}
+
+#endif
+
 
 ////////////////////////////////////////////////////////////////////
 // SETUP Function
@@ -198,6 +218,13 @@ void setup() {
     serialCapture.println("#------------------------------------------------------------- #");
     serialCapture.println("# [Start Up] Setup()                                           #");
     serialCapture.println("#------------------------------------------------------------- #");   
+
+    #ifdef USE_NEOPIXEL_LED
+        strip.begin(); // Initialize the NeoPixel library.
+        strip.setBrightness(100); // Set BRIGHTNESS to about 1/5 (max = 255)
+        setStripColor(strip.Color(255, 0, 0, 0)); 
+        strip.show(); // Initialize all pixels to 'off'
+    #endif
 
     // Initialize Preferences Manager
     serialCapture.println("Initialize Preferences Manager...");
@@ -229,7 +256,7 @@ void setup() {
   action.params[1] = "I|oT  D|ata  R|elay";
   action.params[2] = "";
   action.params[3] = "";
-  action.result = "Starting Up";
+  action.result = "Starte";
   action.resultDetails = "";
   displayManager.displayAction(action);
   delay(5000);
@@ -299,7 +326,6 @@ void loop() {
 
     #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
         int reading = digitalRead(buttonPin);
-
         // Check if the button state has changed (for debouncing)
         if (reading != lastButtonState) {
             // reset the debouncing timer
@@ -357,11 +383,11 @@ void setupTime() {
 
         if (!timeSynced || now <= buildEpoch) {
             
-            action.name     =  "Time Sync";
+            action.name     =  "Zeit Sync.";
             action.details  = String(NTP_SERVER);
             action.params[0] = "GMT: " + String(GMT_OFFSET_SECONDS/3600) +"h";
             action.params[1] = "DST: " + String(DST_OFFSET_SECONDS/3600) +"h";
-            action.result = "In Progress";
+            action.result = "In Arbeit";
             action.resultDetails = "";
             displayManager.displayAction(action);
             
@@ -381,15 +407,15 @@ void setupTime() {
                 serialCapture.println("NTP sync successful.");
                 lastSyncTime = millis(); // Record successful sync time
                 timeSynced = true;
-                action.result = "Done";
-                action.resultDetails = "synced";
+                action.result = "Fertig";
+                action.resultDetails = "synchron";
                 displayManager.displayAction(action);
                 delay(2000);
             } else {
                 serialCapture.println("Failed to obtain time from NTP server. Using build time as fallback.");
                 timeSynced = false; // NTP sync attempted and failed
-                action.result = "Failed";
-                action.resultDetails = "No Server";
+                action.result = "Fehler";
+                action.resultDetails = "Kein Server";
                 displayManager.displayAction(action);
                 delay(2000);
             }
@@ -418,13 +444,13 @@ void setupTime() {
         strftime(timeStr, sizeof(timeStr), "Time: %H:%M:%S", &timeinfo);
 
         // Assuming 'action' and 'displayManager' are accessible here
-        action.name     =  "Set Time";
-        action.details  = "Using Build Time";
+        action.name     =  "Setze Zeit";
+        action.details  = "Nutze Build-Zeit";
         action.params[0] = dateStr;
         action.params[1] = timeStr;
         action.params[2] = "";
         action.params[3] = "";
-        action.result = "Done";
+        action.result = "Fertig";
         action.resultDetails = "";
         displayManager.displayAction(action);
         delay(500);
@@ -576,12 +602,12 @@ void wifi_connect(String ssid, String passkey, String comment) {
 
     // Display Initialization
     action.name = comment;
-    action.details = "Connect to WiFi";
+    action.details = "WLAN";
     action.params[0] = "SSID: " + ssid;
-    action.params[1] = "IP:   Waiting...";
+    action.params[1] = "IP:   Warte...";
     action.params[2] = "";
     action.params[3] = "";
-    action.result = "In Progress";
+    action.result = "Verbinde";
     action.resultDetails = "";
     displayManager.displayAction(action);
 
@@ -590,8 +616,8 @@ void wifi_connect(String ssid, String passkey, String comment) {
     if (WiFi.SSID() == ssid) {
         serialCapture.println("[wifi_connect] Already connected to " + ssid + " with IP: " + WiFi.localIP().toString());
         action.params[1] = "IP:   " + WiFi.localIP().toString();
-        action.result = "Connected";
-        action.resultDetails = "Connected";
+        action.result = "Verbunden";
+        action.resultDetails = "Verbunden";
         displayManager.displayAction(action);
         delay(1500);
         return;
@@ -629,7 +655,7 @@ void wifi_connect(String ssid, String passkey, String comment) {
             
             unsigned long timeElapsed = millis() - attemptStartTime;
             int secondsLeft = (WIFI_CONNECT_TIME_WINDOW_S * 1000 - timeElapsed) / 1000;
-            String attemptMessage = "Time left: " + String(secondsLeft) + " s";
+            String attemptMessage = "Noch " + String(secondsLeft) + " s";
             action.params[2] = attemptMessage;
             displayManager.displayAction(action);
         }
@@ -653,8 +679,8 @@ void wifi_connect(String ssid, String passkey, String comment) {
             String ip_string = WiFi.localIP().toString();
             action.params[1] = "IP:   " + ip_string;
             action.params[2] = "";
-            action.result = "Connected";
-            action.resultDetails = "Success!";
+            action.result = "Verbunden";
+            action.resultDetails = "OK";
             displayManager.displayAction(action);
             delay(1500);
             break; // Exit the while loop
@@ -662,8 +688,8 @@ void wifi_connect(String ssid, String passkey, String comment) {
             connected = false;
             serialCapture.println("\n[wifi_connect] Failed to connect to WiFi network. Retrying...");
             
-            action.result = "Retry";
-            action.resultDetails = "";
+            action.result = "Nochmal";
+            action.resultDetails = "Versuch + " + String(connectionAttempts);
             displayManager.displayAction(action);
 
             // Increment connection attempts
@@ -688,10 +714,10 @@ void wifi_connect(String ssid, String passkey, String comment) {
         }
 
         serialCapture.println("Failed to connect after multiple attempts.");
-        action.params[1] = "Check Credentials?";
-        action.params[2] = "Network Offline?";
-        action.result = "FAILED";
-        action.resultDetails = "Attempts";
+        action.params[1] = "Passwort falsch?";
+        action.params[2] = "Netzwerk falsch?";
+        action.result = "Fehler";
+        action.resultDetails = "Versuche";
         displayManager.displayAction(action);
         delay(5000);
     }
@@ -723,7 +749,7 @@ void activateAPMode() {
     delay(1000); // Wait for the AP to start
     webServerManager.begin();
 
-    action.name = "AP Starting";
+    action.name = "Starte AP";
     action.details = "";
     action.result = "";
     action.resultDetails = "";
@@ -740,13 +766,13 @@ void deactivateAPMode() {
     serialCapture.println("AP mode deactivated. Switched to STA mode.");
 
     // Add action and displaymanager update to inform about the status
-    action.name = "AP Mode";
-    action.details = "Deactivated";
+    action.name = "AP Modus";
+    action.details = "Deaktiviert";
     action.params[0] = "";
     action.params[1] = "";
     action.params[2] = "";
     action.params[3] = "";
-    action.result = "Closed";
+    action.result = "Ende";
     action.resultDetails = "";
     displayManager.displayAction(action);
     webServerManager.stop();
@@ -767,13 +793,13 @@ bool readInverterDataFromWebInterface(String url, String web_user, String web_pa
     serialCapture.println("#------------------------------------------------------------- #");
 
   // Display Initialization
-  action.name = "Collect Data";
-  action.details = "Read Inverter";
+  action.name = "Sammle Daten";
+  action.details = "Lese Inverter";
   action.params[0] = "http://" + serverIp;
   action.params[1] = url;
-  action.params[2] = "Waiting...";
+  action.params[2] = "Warte...";
   action.params[3] = "";
-  action.result = "In Progress";
+  action.result = "In Arbeit";
   action.resultDetails = "";
   displayManager.displayAction(action);
 
@@ -808,8 +834,8 @@ bool readInverterDataFromWebInterface(String url, String web_user, String web_pa
                 if (line.indexOf("<H4>401 Unauthorized</H4>") > 0) {
                     action.params[1] = "UNAUTHORIZED";
                     action.params[2] = "404";
-                    action.result = "Check";
-                    action.resultDetails = "WebCredentials";
+                    action.result = "Checken";
+                    action.resultDetails = "Zugangsdaten";
                     displayManager.displayAction(action);
                     readHTML = false;
                     delay(5000);
@@ -827,7 +853,7 @@ bool readInverterDataFromWebInterface(String url, String web_user, String web_pa
       }
     }
 
-    action.params[2] = "Fetched content";
+    action.params[2] = "Seite geladen";
     displayManager.displayAction(action);
 
     // Print the entire response
@@ -841,13 +867,11 @@ bool readInverterDataFromWebInterface(String url, String web_user, String web_pa
 
     client.stop();
 
-    
-
     // Check parse result and update display accordingly
     if (result == OK) {
-        action.params[2] = "Parse: Done";
-        action.result = "Done";
-        action.resultDetails = "Success";
+        action.params[2] = "Parsen: Fertig";
+        action.result = "abgeschlossen";
+        action.resultDetails = "OK";
         readHTML = true;
 
         serialCapture.printf("\nPower now: %f\n", inverter.getInverterPowerNow_W());
@@ -855,17 +879,17 @@ bool readInverterDataFromWebInterface(String url, String web_user, String web_pa
         serialCapture.printf("Energy total: %f\n", inverter.getInverterEnergyTotal_kWh());
 
     } else {
-      action.params[2] = "Parse: Failed";
-      action.result = "FAIL";
-      action.resultDetails = "Parsing Error";
+      action.params[2] = "Parsen: Fertig";
+      action.result = "Nicht lesbar";
+      action.resultDetails = "Fehler";
       readHTML = false;
     }
     delay(2000);
 
   } else {   
-    action.params[1] = "Fetch: Failed";
-    action.params[2] = "Parse: Failed";
-    action.result = "FAIL";
+    action.params[1] = "Lesen:  Fehler";
+    action.params[2] = "Parsen: Fehler";
+    action.result = "Fehler";
     action.resultDetails = "";
     displayManager.displayAction(action);
     readHTML = false;
@@ -877,12 +901,12 @@ bool readInverterDataFromWebInterface(String url, String web_user, String web_pa
 
 void displayConnected(String networkType, String ipAddress) {
     action.name = networkType;
-    action.details = "Connected";
+    action.details = "Verbunden";
     action.params[0] = "SSID: " + (networkType == "Home Network" ? WIFI_HOME_SSID : WIFI_AP_NAME);
-    action.params[1] = "IP: " + ipAddress;
+    action.params[1] = "IP:   " + ipAddress;
     action.params[2] = "";
     action.params[3] = "";
-    action.result = "Active";
+    action.result = "Aktiv";
     action.resultDetails = "";
     displayManager.displayAction(action);
 }
@@ -908,7 +932,12 @@ void updateStateMachine() {
             if (previousState != INVERTER_NETWORK_MODE) {
                 serialCapture.println("#------------------------------------------------------------- #");
                 serialCapture.println("# [STATECHANGE] ENTERING >> INVERTER NETWORK MODE              #");
-                serialCapture.println("#------------------------------------------------------------- #");    
+                serialCapture.println("#------------------------------------------------------------- #"); 
+                #ifdef USE_NEOPIXEL_LED
+                    strip.setBrightness(100); // Set BRIGHTNESS to about 1/5 (max = 255)
+                    setStripColor(strip.Color(183, 57, 0, 0)); 
+                    strip.show(); // Initialize all pixels to 'off'
+                #endif   
             }
             handleInverterNetworkMode();
             break;
@@ -916,7 +945,12 @@ void updateStateMachine() {
             if (previousState != HOME_NETWORK_MODE) {
                 serialCapture.println("#------------------------------------------------------------- #");
                 serialCapture.println("# [STATECHANGE] ENTERING >> HOME_NETWORK_MODE                  #");
-                serialCapture.println("#------------------------------------------------------------- #");    
+                serialCapture.println("#------------------------------------------------------------- #");
+                #ifdef USE_NEOPIXEL_LED
+                    strip.setBrightness(100); // Set BRIGHTNESS to about 1/5 (max = 255)
+                    setStripColor(strip.Color(110  , 110, 255, 100)); 
+                    strip.show(); // Initialize all pixels to 'off'
+                #endif  
             }
             handleHomeNetworkMode();
             break;
@@ -925,6 +959,11 @@ void updateStateMachine() {
                 serialCapture.println("#------------------------------------------------------------- #");
                 serialCapture.println("# [STATECHANGE] ENTERING >> AP_MODE                            #");
                 serialCapture.println("#------------------------------------------------------------- #");
+                #ifdef USE_NEOPIXEL_LED
+                    strip.setBrightness(100); // Set BRIGHTNESS to about 1/5 (max = 255)
+                    setStripColor(strip.Color(255, 50, 255, 0)); 
+                    strip.show(); // Initialize all pixels to 'off'
+                #endif  
             }
             handleAPMode();
             break;
@@ -942,20 +981,20 @@ void handleInverterNetworkMode() {
         
         // Display Initialization
         action.name = "Inverter";
-        action.details = "Init UDP Connection";
+        action.details = "Starte UDP-Kanal";
         action.params[0] = "Status: Login";
         action.params[1] = "";
         action.params[2] = "";
         action.params[3] = "";
-        action.result = "Pending";
+        action.result = "Warte...";
         action.resultDetails = "";
         displayManager.displayAction(action);
 
         bool udpConnectionCreated =  inverterUdp.inverter_connect(WiFi.gatewayIP().toString(),udpServerPort, udpLocalPort, udpTimeoput_s);
 
         if (!udpConnectionCreated){
-            action.params[0] = "Status: Failed";
-            action.result = "Retry";
+            action.params[0] = "Status: Fehler";
+            action.result = "Nochmal";
             action.resultDetails = "";
             displayManager.displayAction(action);
             inverterUdp.inverter_close();
@@ -964,14 +1003,14 @@ void handleInverterNetworkMode() {
         }
 
         if (udpConnectionCreated){
-            action.params[0] = "Status: Connected";
-            action.result = "Connected";
+            action.params[0] = "Status: Verbunden";
+            action.result = "OK";
             action.resultDetails = "";
             displayManager.displayAction(action);
 
-            action.details = "Get Time via UDP";
+            action.details = "Lese Zeit via UDP";
             action.params[0] = "";
-            action.result = "Waiting...";
+            action.result = "Warte...";
             action.resultDetails = "";
             displayManager.displayAction(action);
 
@@ -983,9 +1022,9 @@ void handleInverterNetworkMode() {
             if (inverterUdp.isDefaultTimeSet()){
                 serialCapture.print("Time needs to be set");
                 
-                action.params[0] = "Status: Time not set";
-                action.params[1] = "Trigger Time Sync ";
-                action.result = "Waiting...";
+                action.params[0] = "Status: Keine Zeit";
+                action.params[1] = "Triggere Time Sync";
+                action.result = "Warte...";
                 action.resultDetails = "";
                 displayManager.displayAction(action);
                 //delay(1000);
@@ -997,16 +1036,16 @@ void handleInverterNetworkMode() {
                 serialCapture.print("[handleInverterNetworkMode]" + response_new);
                 if (response_new == TIME_NOT_INITIALIZTED_TOKEN){
                     serialCapture.print(response_new);
-                    action.params[0] = "Status: Time set";
-                    action.params[1] = "Time Sync";
-                    action.result = "FAILED";
-                    action.resultDetails = "NOT synced";
+                    action.params[0] = "Status: Fehler";
+                    action.params[1] = "Nicht synchronisiert";
+                    action.result = "Fehler";
+                    action.resultDetails = "";
                     displayManager.displayAction(action);
                     delay(2000);
                 }else{
                     
-                    action.params[0] = "Status: Time set";
-                    action.params[1] = "Time Sync ";
+                    action.params[0] = "Status: Zeit gesetzt";
+                    action.params[1] = "Synchronisiert";
                     action.result = "Done";
                     action.resultDetails = "synced";
                     displayManager.displayAction(action);
@@ -1014,9 +1053,9 @@ void handleInverterNetworkMode() {
                 }
             }
         }else{            
-            action.params[0] = "Status: Failed";
+            action.params[0] = "Status: Fehler";
             action.result = "Failed";
-            action.resultDetails = "";
+            action.resultDetails = "Kein UDP";
             displayManager.displayAction(action);
             delay(2000);
         }
@@ -1134,12 +1173,6 @@ void handleAPMode() {
     connectedToInverterNetwork = false;
     activatedAP = true;
 
-    remainingTimeInAP = ( DURATION_STAY_IN_AP_NETWORK_MS - (millis() - lastStateChangeMillis)  ) / 1000;
-    action.result = "Remaining";
-    action.resultDetails = String(remainingTimeInAP) + "s";
-    displayManager.displayAction(action);
-
-
     if (webServerManager.isServerActive()) {
         webServerManager.handleClient();
     }else{
@@ -1148,8 +1181,8 @@ void handleAPMode() {
     }
 
     // Display Initialization
-    action.name = "AP Mode";
-    action.details = "Connect Now";
+    action.name = "AP Online";
+    action.details = "Verbinden unter";
     // Convert SSID from WIFI_AP_NAME to String and add to action.params[0]
     action.params[0] = "SSID: " + String(WIFI_AP_NAME);
 
@@ -1162,7 +1195,7 @@ void handleAPMode() {
     action.params[3] = "";
     // calculate how long the AP Mode will still be actiove baed on the millis count
     int remainingTime = DURATION_STAY_IN_AP_NETWORK_MS - (millis() - lastStateChangeMillis) / 1000;
-    action.result = "Remaining";
+    action.result = "Noch";
     action.resultDetails = String(remainingTimeInAP) + "s";
     displayManager.displayAction(action);
 
@@ -1175,7 +1208,7 @@ void handleAPMode() {
         activatedAP = false;
 
         action.name = "AP Stop";
-        action.details = "Shutdown";
+        action.details = "Beendet";
         action.result = "AP";
         action.resultDetails = "-> HOME";
         displayManager.displayAction(action); // Update the display with the current state

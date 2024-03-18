@@ -43,6 +43,8 @@ DisplayManager::DisplayManager(SerialCaptureLines& serialCapture): serialCapture
     u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/ 18, /* data=*/ 17, /* reset=*/ 21); 
 #elif defined(BOARD_WEMOS_OLED_128x32_ESP32_S2)
      u8g2 = new U8G2_SSD1306_128X32_UNIVISION_F_SW_I2C (U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ 18);
+#elif defined(BOARD_ESP8266_OLED_Black_128x64_SDA_D1__SDC_D2)
+    u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/ 2, /* data=*/ 1, /* reset=*/ U8X8_PIN_NONE);
 #else
     u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);
 #endif

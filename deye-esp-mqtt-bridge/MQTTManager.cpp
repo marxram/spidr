@@ -94,10 +94,10 @@ const char* configEnergyTotal = R"({
 void MQTTManager::publishAllData() {
     ActionData action;
     action.name = "MQTT Sync";
-    action.details = "Publish data";
+    action.details = "Sende Daten";
     action.params[0] = "Broker: " + String(_broker);
     action.params[1] = "Port:   " + String(_port);
-    action.result = "In Progress";
+    action.result = "In Arbeit";
     
 _displayManager.displayAction(action); // Initial display update
     
@@ -106,8 +106,8 @@ _displayManager.displayAction(action); // Initial display update
     }
     
     if ( mqttClient.connected() ) {
-        action.result = "Connected";
-        action.resultDetails = "Publishing...";
+        action.result = "Verbunden";
+        action.resultDetails = "Sende...";
         _displayManager.displayAction(action); // Update display after connection
 
         bool publishSuccess;
