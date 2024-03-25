@@ -126,7 +126,7 @@ void EnergyDisplay::displayCurrentTime() {
     action.params[0] = dateStr;
     action.params[1] = timeStr;
     action.params[2] = syncStr;
-    action.result = _timeSynced ? "In Sync" : "Out of Sync";    
+    action.result = _timeSynced ? "Synchron" : "Nicht Synchron";    
     _displayManager.displayAction(action); // Update the display with the current time and sync status
 }
 

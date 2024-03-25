@@ -171,10 +171,18 @@ String Inverter::getRemoteServerStatusC() const {
 void Inverter::setInactiveValues() {
     serialCapture.println("Inverter Set InActive");
     webdata_now_p = 0.0f;
+    //webdata_today_e = 0.0f;
+    lastReadSuccess = false; // Initialize as false
+    inverterActive = false;
+}
+
+void Inverter::resetEnergyTodayCounter() {
+    serialCapture.println("Inverter Set Resetting Daily Energy Counter");
     webdata_today_e = 0.0f;
     lastReadSuccess = false; // Initialize as false
     inverterActive = false;
 }
+
 
 bool Inverter::isInverterActive() {
     return inverterActive;

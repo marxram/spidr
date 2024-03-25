@@ -58,6 +58,7 @@ public:
   int getPowerDataSize() const; // Returns the current size or count of effective data points
   void generateTestData();
   void initializeDataBuffer(float powerValue);
+  void resetEnergyTodayCounter();
 
 
 private:

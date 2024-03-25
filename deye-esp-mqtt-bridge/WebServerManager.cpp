@@ -122,8 +122,14 @@ void WebServerManager::handleConfigPageOptions() {
     String htmlContent = preparePagetemplate(ConfigPageOptions_HTML, "Configuration of Optional Parameters", "S|P|I|D|R Config Options");
   
     // Dynamically replace placeholders with actual preference values
+
+    // Add print debug message
+    serialCapture.println("WebServerManager: Processing config options template...");
+    // print whole htmlContent
+    serialCapture.println(htmlContent);
     htmlContent = configOptionsTemplateProcessor(htmlContent);
-    
+    serialCapture.println(htmlContent);
+
     server.send(200, "text/html", htmlContent);
 }
 
@@ -325,6 +331,10 @@ String WebServerManager::configPageTemplateProcessor(const String& htmlTemplate)
 String WebServerManager::configOptionsTemplateProcessor(const String& htmlTemplate) {
     String processedHtml = htmlTemplate;
 
+
+    // print Debug preferencesManager.getNtpServerA()
+    serialCapture.println("WebServerManager: Processing config options template..." + preferencesManager.getNtpServerA());
+    
     // New NTP and timing preferences
     processedHtml.replace("{{ntpA}}", HTMLEscape(preferencesManager.getNtpServerA()));
     processedHtml.replace("{{ntpB}}", HTMLEscape(preferencesManager.getNtpServerB()));
@@ -372,7 +382,5 @@ String WebServerManager::rootPageTemplateProcessor(const String& htmlTemplate) {
     processedHtml.replace("{{status_a}}", HTMLEscape(statusA));
     processedHtml.replace("{{status_b}}", HTMLEscape(statusB));
     processedHtml.replace("{{status_c}}", HTMLEscape(statusC));
-
-    return processedHtml;
     return processedHtml;
 }

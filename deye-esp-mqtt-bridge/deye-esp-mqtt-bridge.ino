@@ -4,7 +4,7 @@
 #include <U8g2lib.h>
 
 #include <time.h>
-
+#include <RTClib.h>
 
 // Web and WiFi
 #include <WiFiClient.h>
@@ -41,6 +41,7 @@
 #include <ESP8266WiFi.h> // ESP8266 specific WiFi library
 // ESP8266 specific setup and functions
 #endif
+#include <TimeLib.h>
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -78,8 +79,6 @@ int TIMING_DISPLAY_DURATION_ENERGY_TODAY_MS;
 int TIMING_DISPLAY_DURATION_ENERGY_TOTAL_MS; 
 int TIMING_DISPLAY_DURATION_ENERGY_TIME_MS; 
 int TIMING_DISPLAY_DURATION_ENERGY_GRAPH_MS;
-
-
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -299,7 +298,6 @@ void setup() {
     pinMode(buttonPin, INPUT_PULLUP);
 #endif
 
-
 }
 
 
@@ -381,7 +379,10 @@ void setupTime() {
             serialCapture.println("Connected to Wi-Fi.");
         }
 
-        if (!timeSynced || now <= buildEpoch) {
+        bool shouldResync = (millis() - lastSyncTime) > 300000; // Resync every 5 minutes
+
+
+        if (!timeSynced || now <= buildEpoch || shouldResync) {
             
             action.name     =  "Zeit Sync.";
             action.details  = String(NTP_SERVER);
@@ -629,7 +630,7 @@ void wifi_connect(String ssid, String passkey, String comment) {
     WiFi.mode(WIFI_AP_STA); // Set mode to allow AP+STA
 
     bool connected = false;
-    int connectionAttempts = 0;
+    int connectionAttempts = 1;
     const int maxConnectionAttempts = 2; // Try to connect up to 2 times
     
     if (ssid == WIFI_INVERTER_SSID) {
@@ -645,7 +646,7 @@ void wifi_connect(String ssid, String passkey, String comment) {
         WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
     }
 
-    while (!connected && connectionAttempts < maxConnectionAttempts) {
+    while (!connected && connectionAttempts <= maxConnectionAttempts) {
         WiFi.begin(ssid.c_str(), passkey.c_str());
         
         unsigned long attemptStartTime = millis();
@@ -657,6 +658,8 @@ void wifi_connect(String ssid, String passkey, String comment) {
             int secondsLeft = (WIFI_CONNECT_TIME_WINDOW_S * 1000 - timeElapsed) / 1000;
             String attemptMessage = "Noch " + String(secondsLeft) + " s";
             action.params[2] = attemptMessage;
+            action.result = "Versuch";
+            action.resultDetails = String(connectionAttempts)+ " / " + String(maxConnectionAttempts);
             displayManager.displayAction(action);
         }
 
@@ -688,15 +691,11 @@ void wifi_connect(String ssid, String passkey, String comment) {
             connected = false;
             serialCapture.println("\n[wifi_connect] Failed to connect to WiFi network. Retrying...");
             
-            action.result = "Nochmal";
-            action.resultDetails = "Versuch + " + String(connectionAttempts);
-            displayManager.displayAction(action);
-
             // Increment connection attempts
             connectionAttempts++;
             
             // Reset WiFi module before next attempt
-            if (connectionAttempts < maxConnectionAttempts) {
+            if (connectionAttempts <= maxConnectionAttempts) {
                 WiFi.disconnect(true);
                 delay(500); // Wait for the disconnect and reset to complete
             }
@@ -717,7 +716,7 @@ void wifi_connect(String ssid, String passkey, String comment) {
         action.params[1] = "Passwort falsch?";
         action.params[2] = "Netzwerk falsch?";
         action.result = "Fehler";
-        action.resultDetails = "Versuche";
+        action.resultDetails = "";
         displayManager.displayAction(action);
         delay(5000);
     }
@@ -793,7 +792,7 @@ bool readInverterDataFromWebInterface(String url, String web_user, String web_pa
     serialCapture.println("#------------------------------------------------------------- #");
 
   // Display Initialization
-  action.name = "Sammle Daten";
+  action.name = "Hole Daten";
   action.details = "Lese Inverter";
   action.params[0] = "http://" + serverIp;
   action.params[1] = url;
@@ -1090,13 +1089,24 @@ void handleInverterNetworkMode() {
         // Special case if inverter is not reachable for a long time, like every night ;-)
         if ((millis() - lastInverterUpdateMillis > INVERTER_OFFLINE_TIMEOUT_SECONDS * 1000 )) {
             serialCapture.println("#------------------------------------------------------------- #");
-            serialCapture.println("# [INVERTER VALUES RESET] For Overnight                        #");
+            serialCapture.println("# [INVERTER VALUES RESET] For Sunset                        #");
             serialCapture.println("#------------------------------------------------------------- #");   
 
             inverter.setInactiveValues();
             // Enforce MQTT sync with 0W Power
             newInverterDataAvailable = true;
         }
+
+        if (hour() == 0 && inverter.getInverterEnergyToday_kWh() > 0.0) { // Reset Energy Values at Midnight
+            serialCapture.println("#------------------------------------------------------------- #");
+            serialCapture.println("# [INVERTER VALUES RESET] For Midnight                        #");
+            serialCapture.println("#------------------------------------------------------------- #");   
+
+            inverter.resetEnergyTodayCounter();
+            // Enforce MQTT sync with 0W Power
+            newInverterDataAvailable = true;
+        }
+
     }
 
     if (cndInverterNetworkToHomeNetwork()) {

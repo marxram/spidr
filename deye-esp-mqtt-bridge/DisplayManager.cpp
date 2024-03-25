@@ -85,7 +85,6 @@ void DisplayManager::setDisplayActive(bool active){
   }else{
     u8g2->setPowerSave(0); // Disable power save mode (turn on display)
   }
-
 }
 
 void DisplayManager::displayAction(const ActionData& action) {

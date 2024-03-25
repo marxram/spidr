@@ -46,15 +46,16 @@
 
 ///////////////////////////////////////////////////////////////////////
 // Timing behavior
-#define DEF_DURATION_STAY_IN_HOME_NETWORK_MS   150000  
+#define DEF_DURATION_STAY_IN_HOME_NETWORK_MS   180000  
 #define DEF_DURATION_STAY_IN_HOME_NETWORK_MS_FIRST_BOOT 10000
-#define DEF_DURATION_STAY_IN_AP_NETWORK_MS     150000  
+#define DEF_DURATION_STAY_IN_AP_NETWORK_MS     180000  
 
 // Timeout how long wifiConnect should try
 #define DEF_WIFI_CONNECT_TIME_WINDOW_S 10
 
 // Inverter Considered to be offline Timeout
-#define DEF_INVERTER_OFFLINE_TIMEOUT_SECONDS 6000 // 100 Minutes
+#define DEF_INVERTER_OFFLINE_TIMEOUT_SECONDS 360 // 6 Minutes
+                                                 // Last known power will be reset to 0 W after this time
 
 #define DEF_DISP_POWER_MS 5000 // Default display duration for power, in milliseconds
 #define DEF_DISP_ENERGY_TODAY_MS 5000 // Default display duration for energy today, in milliseconds
