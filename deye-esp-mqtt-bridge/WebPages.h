@@ -13,7 +13,7 @@ const char MENU_HTML[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 
-const char STYLES_HTML[] PROGMEM = R"rawliteral(
+const char STYLES_HTML_DARK[] PROGMEM = R"rawliteral(
     		body { font-family: Arial, sans-serif; background-color: #1e1e1e; color: #c5c5c5; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
         .content, .content-form { padding: 20px; max-width: 1024px; width: 100%; box-sizing: border-box; }
         .content-form form { display: flex; flex-direction: column; }
@@ -54,6 +54,51 @@ const char STYLES_HTML[] PROGMEM = R"rawliteral(
         box-sizing: border-box; /* Includes padding and border in the element's total width and height */
     }
 )rawliteral";
+
+const char STYLES_HTML_LIGHT[] PROGMEM = R"rawliteral(
+        body { font-family: Arial, sans-serif; background-color: #ffffff; color: #000000; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+        .content, .content-form { padding: 20px; max-width: 1024px; width: 100%; box-sizing: border-box; }
+        .content-form form { display: flex; flex-direction: column; }
+        fieldset { padding: 10px; margin-bottom: 20px; border: 1px solid #ddd; } /* Added a border color for better visibility */
+        .footer { margin-top: 20px; padding: 20px; background-color: #f5f5f5; text-align: center; width: 100%; } /* Lighter footer background */
+        .footer a { color: #007bff; text-decoration: none; } /* Changed link color for better visibility */
+        label { display: inline-block; width: 220px; margin-bottom: 10px; }
+        input[type="text"], input[type="number"] { width: calc(100% - 240px); padding: 5px; border: 1px solid #ccc; } /* Border color for inputs for better visibility */
+        input[type="submit"] { width: auto; padding: 10px 20px; margin-top: 10px; background-color: #007bff; color: #ffffff; border: none; cursor: pointer; } /* Styled submit button */
+        .menu {background-color: #e9ecef; overflow: hidden; width: 100%; display: flex; justify-content: center; align-items: center;} /* Lighter menu background */
+        .menu a {display: block; color: #000000; text-align: center; padding: 14px 20px; text-decoration: none;} 
+        .menu a:hover {background-color: #007bff; color: white;} 
+        .menu a.active {background-color: #007bff; color: white; border-bottom: 2px solid white;}
+        .meter {color: #000000;}
+        .values-container { display: flex; flex-wrap: wrap; justify-content: space-between; }
+        .meter-value { flex-basis: 15%; margin-bottom: 10px; }
+        .meter-value span { color: #007bff; font-size: xx-large; } /* Adjusted the color for visibility */
+        h2 { color: #007bff; padding-top: 10px; }
+        h3 { color: #17a2b8; } /* Lighter shade for headings */
+        li a { color: #007bff; text-decoration: none; } /* Consistent link colors */
+        ul {
+            list-style-type: square;
+        }
+
+    pre {
+        width: 65%;
+        height: 50vh;
+        overflow-y: auto;
+        max-height: 20%;
+        margin: 0 auto;
+        background-color: #f8f9fa; /* Light background for <pre> */
+        color: #333; /* Darker text color for readability */
+        font-family: 'Courier New', monospace;
+        font-size: smaller;
+        white-space: pre-wrap;
+        padding: 10px;
+        box-sizing: border-box;
+        border: 1px solid #ccc; /* Added a subtle border for <pre> elements */
+    }
+)rawliteral";
+
+
+
 
 const char FOOTER_HTML[] PROGMEM = R"rawliteral(
 <div class="footer">
@@ -449,8 +494,6 @@ const char Serial_HTML[] PROGMEM = R"rawliteral(
     function refreshSerialData() {
     location.reload(); // This will reload the entire page
     }
-
-    // Call the function to reload the page every 5 seconds
     setInterval(refreshSerialData, 30000);
 </script>
 

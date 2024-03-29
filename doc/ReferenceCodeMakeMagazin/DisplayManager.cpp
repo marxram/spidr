@@ -1,5 +1,5 @@
 
-// Benutzung von u8Gg2
+// # Benutzung von u8Gg2
 //
 // Die wichtigsten u8g2 Funktionen sind:
 
@@ -21,6 +21,37 @@
 
 
 // Zu den Konstruktoren:
+// Gefühlt sind alle boards mit OLED modulen und auch die OLED module selbst unterschieldich.
+// Es unterscheiden asich natürlich die Pixeldimensionen, was aber das einfachste ist. Daneben gibt es noch die I2C Adresse, die z.T. aufgedruckt und änderbar ist.
+// Bei den boards gibt es welche, bei denen der I2C Bus mit den dafür vorgesehenen HW-OPins verbunden ist, bei manchen boards wurden belibige Pins genommen. 
+// Stellenweise habe ich hier auch für manche boards widersprüchliche Informationen gefunden.
+
+// Sehr hilfreich war hier die Library u8g2. Im Vergleich zur Adafruit Graphics Library konnte man hier viel mehr einstellen, als die I2C Adresse. 
+// Mit der Adafruit Library gelang es mir auch ein OLEd anzusprechen, allerdings unter einer anderen I2C Adresse und nur mit halber Auflösung. 
+
+// Die U8g2 library benötogt in der Regel nicht einmal die Angabe der I2C Adresse. Weswegen die Konstruktoren ohne auskommen. 
+// Nur bei Problemem kann man diese auch mahnuell setzen. Das macht ins besondere Sinn, wenn man Mehrere Displays verwenden möchte. 
+
+// Für bestimmte boards habe ich die Konstruktoren mit den entsprechenden Pins und I2C Adressen versehen. 
+
+DisplayManager(SerialCaptureLines& serialCapture): serialCapture(serialCapture)  {
+    // Conditional initialization based on board type
+#ifdef BOARD_WEMOS_OLED_128x64_ESP32
+    u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/ 4, /* data=*/ 5, /* reset=*/ U8X8_PIN_NONE);
+#elif defined(BOARD_HELTEC_OLED_128x32_ESP8266)
+    u8g2 = new U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ SCL, /* data=*/ SDA);
+#elif defined(BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32)
+    u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/ 18, /* data=*/ 17, /* reset=*/ 21); 
+#elif defined(BOARD_WEMOS_OLED_128x32_ESP32_S2)
+     u8g2 = new U8G2_SSD1306_128X32_UNIVISION_F_SW_I2C (U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ 18);
+#elif defined(BOARD_ESP8266_OLED_Black_128x64_SDA_D1__SDC_D2)
+    u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/ 2, /* data=*/ 1, /* reset=*/ U8X8_PIN_NONE);
+#else
+    u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);
+#endif
+}
+
+
 
 
 
@@ -41,7 +72,7 @@ struct ActionData {
 // Klasse für die Ansteuerung des Displays
 // ActionData wird als Parameter übergeben und damit 
 // alle Informationen für die Anzeige
-void DisplayManager::displayAction(const ActionData& action) {
+void displayAction(const ActionData& action) {
     int yPositionBottomLine = SCREEN_HEIGHT - 1;
     String actionStr(action.name.c_str());
     u8g2->clearBuffer();
@@ -92,7 +123,7 @@ void DisplayManager::displayAction(const ActionData& action) {
 }
 
 
-void DisplayManager::drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr) {
+void drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr) {
 
     // Initialisiere die Fonts
     const uint8_t * currentNumberFont = numberFont; // Assuming default larger font

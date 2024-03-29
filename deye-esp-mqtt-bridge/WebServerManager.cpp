@@ -72,8 +72,17 @@ String WebServerManager::preparePagetemplate(String htmlRaw, String header, Stri
 
     page.replace("{{MENU}}", MENU_HTML);
     //serialCapture.println("Replaced MENU");
-    page.replace("{{STYLES}}", STYLES_HTML);
+
+
+    // Preparation for dark and light sheme
+    if (true){
+        page.replace("{{STYLES}}", STYLES_HTML_LIGHT);
+    }else{
+        page.replace("{{STYLES}}", STYLES_HTML_DARK);
+    }
     //serialCapture.println("Replaced SYTLES");
+
+
     page.replace("{{FOOTER}}", FOOTER_HTML);
     //serialCapture.println("Replaced FOOTER");
     page.replace("{{HEADLINE}}", header);
@@ -124,11 +133,11 @@ void WebServerManager::handleConfigPageOptions() {
     // Dynamically replace placeholders with actual preference values
 
     // Add print debug message
-    serialCapture.println("WebServerManager: Processing config options template...");
+    //serialCapture.println("WebServerManager: Processing config options template...");
     // print whole htmlContent
-    serialCapture.println(htmlContent);
+    //serialCapture.println(htmlContent);
     htmlContent = configOptionsTemplateProcessor(htmlContent);
-    serialCapture.println(htmlContent);
+    //serialCapture.println(htmlContent);
 
     server.send(200, "text/html", htmlContent);
 }
@@ -279,10 +288,13 @@ void WebServerManager::handleUpdateOptions() {
         preferencesManager.setApKey(apKey);
 
 
+        /*
+        Try to relaod (--> copy to variabled) of Preferences after writing. Otherwise the system should reboot
         if (preferencesCallback != nullptr) {
             serialCapture.println("RELOADING PREFERENCES");
             preferencesCallback(); // Call the callback function
         }
+        */
 
         server.sendHeader("Location", "/configoptions", true);
         server.send(303, "text/plain", "Preferences updated. Redirecting to main page...");
