@@ -259,6 +259,9 @@ void setup() {
   action.resultDetails = "";
   displayManager.displayAction(action);
   delay(5000);
+
+
+  
   clearActionDisplay();
   
     serialCapture.println("#------------------------------------------------------------- #");
@@ -294,9 +297,9 @@ void setup() {
   // print a statement to the serial monitor
 
 
-#ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+/* #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
     pinMode(buttonPin, INPUT_PULLUP);
-#endif
+#endif */
 
 }
 
@@ -322,7 +325,7 @@ void loop() {
         lastSetupTimeCalled = millis(); // Update the last time setupTime was called
     }
 
-    #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+    /* #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
         int reading = digitalRead(buttonPin);
         // Check if the button state has changed (for debouncing)
         if (reading != lastButtonState) {
@@ -347,7 +350,7 @@ void loop() {
         }
         // save the reading. Next time through the loop, it'll be the lastButtonState:
         lastButtonState = reading;
-    #endif
+    #endif */
     delay(5); // Dummy delay to simulate network activity
 }
 

@@ -7,10 +7,8 @@
 //#define SCREEN_ADDRESS 0x3C   // Address Examples: 0x3C, 0x3D, 0x78
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
-
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-
 
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
@@ -27,7 +25,7 @@
 #define USE_SECRETS_FILE_AS_DEFAULT
 
 
-#define USE_NEOPIXEL_LED
+//#define USE_NEOPIXEL_LED
 
 
 // Configurations that have been moved to the Preferences Manager and can be updated during Runtime

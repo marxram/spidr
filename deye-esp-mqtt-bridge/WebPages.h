@@ -376,7 +376,7 @@ const char HomePage_HTML[] PROGMEM = R"rawliteral(
         -->
         <div>
             <label>Current Power:</label>
-            <span>{{webdata_now_p}} kW</span>
+            <span>{{webdata_now_p}} W</span>
         </div>
         <div>
             <label>Energy Today:</label>

@@ -1,23 +1,35 @@
-
+#include "DisplayManager.h" 
 // # Benutzung von u8Gg2
 //
+
+
 // Die wichtigsten u8g2 Funktionen sind:
 
-    // Es gibt unzählige Fonts in verschiedenen Größe und Stilen.
-    setFont(font); 
+// Setzt den Font, der für die Textdarstellung verwendet wird. u8g2 unterstützt eine Vielzahl von Fonts in unterschiedlichen Größen und Stilen.
+u8g2.setFont(font);
 
-    // Zeichnet einen String an der Position x, y = untere Kante des Textes
-    drawStr(startX, lowerY, "Hallo Display");
+// drawStr(startX, lowerY, "Hallo Display"):
+// Zeichnet einen String an der Position (startX, lowerY), wobei lowerY die untere Kante des Textes angibt.
+// Diese Funktion ermöglicht es, Texte präzise auf dem Display zu positionieren.
+u8g2.drawStr(startX, lowerY, "Hallo Display");
 
-    // Gibt die Breite eines Strings in abhängigkeit
-    // aktuellen Font zurück ohne den String zu zeichnen. 
-    getStrWidth("Hallo Welt");
+// Gibt die Breite eines Strings zurück, abhängig vom aktuell gesetzten Font. Diese Funktion zeichnet den String nicht,
+// ist aber nützlich, um Layout-Berechnungen durchzuführen, z.B. um Texte zu zentrieren oder um festzustellen,
+// ob ein Text innerhalb eines bestimmten Bereichs passt.
+u8g2.getStrWidth("Hallo Welt");
 
-    // Löscht den Inhalt des Displays
-    clearBuffer();
+// clearBuffer():
+// Löscht den Inhalt des Display-Buffers. Diese Aktion entfernt alles, was zuvor gezeichnet wurde,
+// sodass man mit einem leeren Bildschirm beginnen kann. Es ist besonders nützlich, um das Display
+// für die nächste Anzeige vorzubereiten, ohne Reste der vorherigen Inhalte zu hinterlassen.
+u8g2.clearBuffer();
 
-    // Sendet das Update an das Display
-    sendBuffer();
+// sendBuffer():
+// Sendet das Update an das Display. Diese Funktion überträgt den Inhalt des Buffers auf das Display,
+// wodurch alle zuvor mit Zeichenfunktionen hinzugefügten Inhalte angezeigt werden. Es ist wichtig,
+// diese Funktion aufzurufen, nachdem man mit dem Zeichnen des Bildschirminhalts fertig ist,
+// um die Änderungen sichtbar zu machen.
+u8g2.sendBuffer();
 
 
 // Zu den Konstruktoren:
@@ -34,7 +46,7 @@
 
 // Für bestimmte boards habe ich die Konstruktoren mit den entsprechenden Pins und I2C Adressen versehen. 
 
-DisplayManager(SerialCaptureLines& serialCapture): serialCapture(serialCapture)  {
+DisplayManager::DisplayManager(SerialCaptureLines& serialCapture): serialCapture(serialCapture)  {
     // Conditional initialization based on board type
 #ifdef BOARD_WEMOS_OLED_128x64_ESP32
     u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/ 4, /* data=*/ 5, /* reset=*/ U8X8_PIN_NONE);
@@ -53,12 +65,6 @@ DisplayManager(SerialCaptureLines& serialCapture): serialCapture(serialCapture) 
 
 
 
-
-
-
-
-
-
 // Datentyp mit dem die Daten für eine Aktion übergeben werden
 struct ActionData {
   String name;
@@ -69,107 +75,91 @@ struct ActionData {
 };
 
 
-// Klasse für die Ansteuerung des Displays
-// ActionData wird als Parameter übergeben und damit 
-// alle Informationen für die Anzeige
-void displayAction(const ActionData& action) {
-    int yPositionBottomLine = SCREEN_HEIGHT - 1;
-    String actionStr(action.name.c_str());
-    u8g2->clearBuffer();
-
-    // Zentrieren der Headline
-    u8g2->setFont(displayActionFontHeader); // Assuming the font is okay
-    int actionNameWidth = u8g2->getStrWidth(action.name.c_str());
-    int startX = (SCREEN_WIDTH - actionNameWidth) / 2;
-    u8g2->drawStr(startX, lowerY_FirstLine, action.name.c_str());
-
-    // Schreiben des Detail String 
-    u8g2->setFont(displayActionFontBody);
-    u8g2->drawStr(0, lowerY_SecondLine, action.details.c_str());
-
-    // Schreiben aller Parameter Zeilen
+void DisplayManager::displayAction(const ActionData& action) {
+    int yPositionBottomLine = SCREEN_HEIGHT - 1;    // Berechnet die Y-Position der untersten Zeile
+    String actionStr(action.name.c_str());          // Konvertiert den Namen der Aktion in einen String
+    u8g2->clearBuffer();                            // Löscht den Display-Buffer
+    u8g2->setFont(displayActionFontHeader);         // Setzt den Font für die Überschrift
+    // Berechnet die Breite des Aktion-Namens
+    int actionNameWidth = u8g2->getStrWidth(action.name.c_str()); 
+    int startX = (SCREEN_WIDTH - actionNameWidth) / 2; // Berechnet den Startpunkt für zentrierten Text
+    u8g2->drawStr(startX, lowerY_FirstLine, action.name.c_str()); // Zeichnet den Namen der Aktion zentriert
+    u8g2->setFont(displayActionFontBody);           // Setzt den Font für den Detailtext
+    u8g2->drawStr(0, lowerY_SecondLine, action.details.c_str()); // Zeichnet die Details der Aktion
+    // Durchläuft alle Parameter und zeichnet sie, falls vorhanden
     for (int i = 0; i < 3 && i < sizeof(action.params) / sizeof(action.params[0]); ++i) {
         if (action.params[i].length() > 0) {
-        u8g2->drawStr(0, lowerY_ThirdLine + (i * 9), action.params[i].c_str());
+            u8g2->drawStr(0, lowerY_ThirdLine + (i * 9), action.params[i].c_str()); // Zeichnet jeden Parameter
         }
     }
-    // Nutze einen kleineren Font
-    u8g2->setFont(displayActionFontBodySmaller); // Using a small font
-
-    // Berechne die Breite des Result Strings und füge 8 Pixel Rand hinzu
-    int resultWidth = u8g2->getStrWidth(action.result.c_str()) + 8; // 4 pixels padding on each side
-    int resultStartX = 0; // Starting X position for result box
-
-    // Zeichne ein Hintergrund-Rechteck für den Result String
-    u8g2->setDrawColor(1); // Set color for background
-    u8g2->drawBox(resultStartX, yPositionBottomLine - 8, resultWidth, 10); // Height is approximate, adjust as needed
-
-    // Schreibe den Result String in invertierter Farbe
-    u8g2->setDrawColor(0); // Set color for text
-    u8g2->drawStr(resultStartX + 4, yPositionBottomLine, action.result.c_str());
-
-    // Setze die Farbe zurück auf normal
-    u8g2->setDrawColor(1);
-
-    // Berechne die Breite des Details Strings um ihn rechtsbündig zu setzen
-    int detailsWidth = u8g2->getStrWidth(action.resultDetails.c_str());
-    int detailsStartX = SCREEN_WIDTH - detailsWidth; // Calculate X position for details to align right
-
-    // Schreiben des Result Details Strings
-    u8g2->drawStr(detailsStartX, yPositionBottomLine, action.resultDetails.c_str());
-
-    // Update an das Display senden
-    u8g2->sendBuffer();
+    u8g2->setFont(displayActionFontBodySmaller);    // Setzt einen kleineren Font für den Ergebnistext
+    int resultWidth = u8g2->getStrWidth(action.result.c_str()) + 8; // Berechnet die Breite des Ergebnistexts inkl. Rand
+    int resultStartX = 0;                           // Startposition für das Ergebnis festlegen
+    u8g2->setDrawColor(1);                          // Setzt die Zeichenfarbe für das Hintergrund-Rechteck
+    u8g2->drawBox(resultStartX, yPositionBottomLine - 8, resultWidth, 10); // Zeichnet ein Hintergrund-Rechteck
+    u8g2->setDrawColor(0);                          // Invertiert die Farbe für den Ergebnistext
+    u8g2->drawStr(resultStartX + 4, yPositionBottomLine, action.result.c_str()); // Zeichnet den Ergebnistext
+    u8g2->setDrawColor(1);                           // Setzt die Zeichenfarbe zurück
+    int detailsWidth = u8g2->getStrWidth(action.resultDetails.c_str()); // Berechnet die Breite des Detailtexts des Ergebnisses
+    int detailsStartX = SCREEN_WIDTH - detailsWidth; // Berechnet den Startpunkt für rechtsbündigen Text
+    u8g2->drawStr(detailsStartX, yPositionBottomLine, action.resultDetails.c_str()); // Zeichnet die Detailinfos des Ergebnisses
+    u8g2->sendBuffer();                             // Sendet das gezeichnete Bild zum Display
 }
 
 
-void drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr) {
-
-    // Initialisiere die Fonts
-    const uint8_t * currentNumberFont = numberFont; // Assuming default larger font
-    const uint8_t* currentUnitFont = unitFont; // Assuming default larger font
-
-    // Umwandeln der Zahl in einen String
-    char numberBuffer[20]; // Buffer to hold the formatted number as a string
-    snprintf(numberBuffer, sizeof(numberBuffer), formattingStr.c_str(), number);
-
-    // Berechne die Breite des Zahlen-Strings
-    u8g2->setFont(currentNumberFont);
-    int numberWidth = u8g2->getStrWidth(numberBuffer);
-
-    // Berechne die Breite des Einheiten-Strings
-    u8g2->setFont(currentUnitFont);
-    int unitWidth = u8g2->getStrWidth(unit.c_str());
-
-    // Sind beide Strings breiter als das Display (inkl. 4 Pixel Abstand)
-    if ((numberWidth + unitWidth + 4) > 128) {
-        currentNumberFont = smallNumberFont; // Choose a suitable font for the action name
-        currentUnitFont = smallUnitFont;
-        // Setze kleinere Fonts ein und berechne die Breiten neu
-        u8g2->setFont(currentNumberFont);
-        numberWidth = u8g2->getStrWidth(numberBuffer);
-        u8g2->setFont(currentUnitFont);
-        unitWidth = u8g2->getStrWidth(unit.c_str());
+void DisplayManager::drawBigNumberNoHeader(float number, String unit, String annotation, String formattingStr) {
+    const uint8_t * currentNumberFont = numberFont; // Setzt den Standardfont für Zahlen
+    const uint8_t* currentUnitFont = unitFont;  // Setzt den Standardfont für Einheiten
+    char numberBuffer[20];                      // Puffer für die formatierte Zahl als String
+    // Formatieren der Zahl als String gemäß dem Formatierungsmuster
+    snprintf(numberBuffer, sizeof(numberBuffer), formattingStr.c_str(), number); 
+    u8g2->setFont(currentNumberFont);           // Setzt den Font für die Darstellung der Zahl
+    int numberWidth = u8g2->getStrWidth(numberBuffer); // Berechnet die Breite des Zahlenstrings
+    u8g2->setFont(currentUnitFont);             // Setzt den Font für die Darstellung der Einheit
+    int unitWidth = u8g2->getStrWidth(unit.c_str()); // Berechnet die Breite des Einheitenstrings
+    // Überprüft, ob die Breite von Zahl und Einheit größer als das Display ist
+    if ((numberWidth + unitWidth + 4) > 128) {  
+        currentNumberFont = smallNumberFont;    // Wechselt zu einem kleineren Font für die Zahl
+        currentUnitFont = smallUnitFont;        // Wechselt zu einem kleineren Font für die Einheit
+        u8g2->setFont(currentNumberFont);       // Setzt den neuen Font für die Zahl
+        numberWidth = u8g2->getStrWidth(numberBuffer); // Berechnet erneut die Breite des Zahlenstrings
+        u8g2->setFont(currentUnitFont);         // Setzt den neuen Font für die Einheit
+        unitWidth = u8g2->getStrWidth(unit.c_str()); // Berechnet erneut die Breite des Einheitenstrings
     }
-
-    // Berechne die Positionen
-    int unitX = 128 - unitWidth; // Position unit at the right edge
-    int unitY = SCREEN_HEIGHT -1; // Vertical position for the unit, adjust as needed
-    int numberX = unitX - numberWidth - 4; // Position number to the left of the unit, 4 pixels apart
-    int numberY = unitY; // Align the baseline of the number with the unit
-
-    // Schreibe die Zahlenüberschrift
-    u8g2->setFont(bigNumberAnnotationFont);
-    u8g2->drawStr(0, 28, annotation.c_str());
-
-    // Schreibe die Einheit mit dem (möglicherweise aktualisierten) Font
-    u8g2->setFont(currentUnitFont);
-    u8g2->drawStr(unitX, unitY, unit.c_str());
-
-    // Schreibe die Zahl mit dem (möglicherweise aktualisierten) Font
-    u8g2->setFont(currentNumberFont);
-    u8g2->drawStr(numberX, numberY, numberBuffer);
-
-    // Update an das Display senden
-    u8g2->sendBuffer();
+    int unitX = 128 - unitWidth;                // Position der Einheit am rechten Rand
+    int unitY = SCREEN_HEIGHT - 1;              // Vertikale Position für die Einheit, bedarf ggf. einer Anpassung
+    int numberX = unitX - numberWidth - 4;      // Positioniert die Zahl links von der Einheit mit 4 Pixel Abstand
+    int numberY = unitY;                        // Richtet die Basislinie der Zahl mit der der Einheit aus
+    u8g2->setFont(bigNumberAnnotationFont);     // Setzt den Font für die Überschrift
+    u8g2->drawStr(0, 28, annotation.c_str());   // Zeichnet die Überschrift
+    u8g2->setFont(currentUnitFont);             // Setzt den (eventuell aktualisierten) Font für die Einheit
+    u8g2->drawStr(unitX, unitY, unit.c_str());  // Zeichnet die Einheit
+    u8g2->setFont(currentNumberFont);           // Setzt den (eventuell aktualisierten) Font für die Zahl
+    u8g2->drawStr(numberX, numberY, numberBuffer); // Zeichnet die Zahl
+    u8g2->sendBuffer();                         // Sendet das Update an das Display
 }
+
+
+// Initiiere neues Action Display 
+ActionData action;
+action.name = "MQTT Sync";
+action.details = "Sende Daten";
+action.params[0] = "Broker: " + String(_broker);
+action.params[1] = "Port:   " + String(_port);
+action.result = "In Arbeit";
+
+displayManager.displayAction(action); // Sende die Daten zur Anzeige
+
+// Dinge werden getan...
+// ...
+// 
+
+action.result = "Done";                // überschreibt das Result und ResultDetails
+action.resultDetails = "Published";
+
+displayManager.displayAction(action);   // Sende die Daten zur Anzeige
+
+
+
+
+
