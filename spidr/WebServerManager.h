@@ -17,13 +17,20 @@
 
 #include "SerialCaptureLines.h"
 
+// Define a type for a callback function that takes no arguments and returns void
+typedef void (*PreferencesCallback)();
+
 class WebServerManager {
+
 public:
     WebServerManager(Inverter& inverter, SerialCaptureLines& serialCapture); // Modified constructor
     void begin();
     void stop();
     void handleClient();
     bool isServerActive();
+    void setPreferencesCallback(PreferencesCallback callback) {
+        this->preferencesCallback = callback;
+    }
 
 
 private:
@@ -57,6 +64,8 @@ private:
     String rootPageTemplateProcessor(const String& htmlTemplate);
 
     Inverter& inverter; // Reference to the Inverter instance
+    
+    PreferencesCallback preferencesCallback = nullptr; // Initialize to nullptr
 };
 
 #endif

@@ -23,7 +23,7 @@ public:
 
   Inverter(SerialCaptureLines& serialCapture);
   ParseStatus updateData(const String& html);
-  static const int bufferSize = 576; // Buffer size for 2 days of data at 5-minute intervals
+  static const int bufferSize = 192;  // Buffer size 16h @ 5-minute intervals
 
   String getInverterSerial() const;
   String getWebdataMsvn() const;
@@ -57,6 +57,8 @@ public:
   const DataPoint* getPowerData() const; // Returns a pointer to the power data array
   int getPowerDataSize() const; // Returns the current size or count of effective data points
   void generateTestData();
+  void initializeDataBuffer(float powerValue);
+  void resetEnergyTodayCounter();
 
 
 private:

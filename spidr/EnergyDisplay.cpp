@@ -96,7 +96,7 @@ void EnergyDisplay::stop() {
 void EnergyDisplay::displayCurrentTime() {
     ActionData action; // Assuming ActionData is properly defined elsewhere
 
-    action.name     =  "Current Time";
+    action.name     =  "Aktuelle Zeit";
     action.details  = "";
 
     time_t now = time(nullptr); // Get the current time
@@ -126,7 +126,7 @@ void EnergyDisplay::displayCurrentTime() {
     action.params[0] = dateStr;
     action.params[1] = timeStr;
     action.params[2] = syncStr;
-    action.result = _timeSynced ? "In Sync" : "Out of Sync";    
+    action.result = _timeSynced ? "Synchron" : "Nicht Synchron";    
     _displayManager.displayAction(action); // Update the display with the current time and sync status
 }
 

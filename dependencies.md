@@ -22,6 +22,7 @@ Current (07.03.2024) working list of used libraries
 * [Comes with board software] SPI in Version 1.0
 * [Comes with board software] Wire in Version 1.0
 * [Comes with board software] ESP8266WiFi in Version 1.0
+* [ToInstall] Adafruit NeoPixel by Adafruit Version 1.12.0
 
 
 ### Testing libs (other branches)

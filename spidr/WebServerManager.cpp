@@ -72,8 +72,17 @@ String WebServerManager::preparePagetemplate(String htmlRaw, String header, Stri
 
     page.replace("{{MENU}}", MENU_HTML);
     //serialCapture.println("Replaced MENU");
-    page.replace("{{STYLES}}", STYLES_HTML);
+
+
+    // Preparation for dark and light sheme
+    if (true){
+        page.replace("{{STYLES}}", STYLES_HTML_LIGHT);
+    }else{
+        page.replace("{{STYLES}}", STYLES_HTML_DARK);
+    }
     //serialCapture.println("Replaced SYTLES");
+
+
     page.replace("{{FOOTER}}", FOOTER_HTML);
     //serialCapture.println("Replaced FOOTER");
     page.replace("{{HEADLINE}}", header);
@@ -122,8 +131,14 @@ void WebServerManager::handleConfigPageOptions() {
     String htmlContent = preparePagetemplate(ConfigPageOptions_HTML, "Configuration of Optional Parameters", "S|P|I|D|R Config Options");
   
     // Dynamically replace placeholders with actual preference values
+
+    // Add print debug message
+    //serialCapture.println("WebServerManager: Processing config options template...");
+    // print whole htmlContent
+    //serialCapture.println(htmlContent);
     htmlContent = configOptionsTemplateProcessor(htmlContent);
-    
+    //serialCapture.println(htmlContent);
+
     server.send(200, "text/html", htmlContent);
 }
 
@@ -194,6 +209,12 @@ void WebServerManager::handleUpdate() {
         preferencesManager.setInverterWebPwd(inverterWebPwd);
         preferencesManager.setRelaisWebUser(relaisWebUser);
         preferencesManager.setRelaisWebPwd(relaisWebPwd);
+
+        if (preferencesCallback != nullptr) {
+            serialCapture.println("RELOADING PREFERENCES");
+            preferencesCallback(); // Call the callback function
+        }
+
 
         server.sendHeader("Location", "/config", true);
         server.send(303, "text/plain", "Preferences updated. Redirecting to main page...");
@@ -266,6 +287,15 @@ void WebServerManager::handleUpdateOptions() {
         preferencesManager.setApSSID(apSSID);
         preferencesManager.setApKey(apKey);
 
+
+        /*
+        Try to relaod (--> copy to variabled) of Preferences after writing. Otherwise the system should reboot
+        if (preferencesCallback != nullptr) {
+            serialCapture.println("RELOADING PREFERENCES");
+            preferencesCallback(); // Call the callback function
+        }
+        */
+
         server.sendHeader("Location", "/configoptions", true);
         server.send(303, "text/plain", "Preferences updated. Redirecting to main page...");
     } else {
@@ -313,6 +343,10 @@ String WebServerManager::configPageTemplateProcessor(const String& htmlTemplate)
 String WebServerManager::configOptionsTemplateProcessor(const String& htmlTemplate) {
     String processedHtml = htmlTemplate;
 
+
+    // print Debug preferencesManager.getNtpServerA()
+    serialCapture.println("WebServerManager: Processing config options template..." + preferencesManager.getNtpServerA());
+    
     // New NTP and timing preferences
     processedHtml.replace("{{ntpA}}", HTMLEscape(preferencesManager.getNtpServerA()));
     processedHtml.replace("{{ntpB}}", HTMLEscape(preferencesManager.getNtpServerB()));
@@ -360,7 +394,5 @@ String WebServerManager::rootPageTemplateProcessor(const String& htmlTemplate) {
     processedHtml.replace("{{status_a}}", HTMLEscape(statusA));
     processedHtml.replace("{{status_b}}", HTMLEscape(statusB));
     processedHtml.replace("{{status_c}}", HTMLEscape(statusC));
-
-    return processedHtml;
     return processedHtml;
 }

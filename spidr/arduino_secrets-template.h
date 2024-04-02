@@ -16,5 +16,5 @@
 #define  SECRET_INVERTER_WEBACCESS_USER "admin"
 #define  SECRET_INVERTER_WEBACCESS_PWD "admin"
 
-#define  SECRET_RELAIS_WEBACCESS_USER "check-Sticker"
-#define  SECRET_RELAIS_WEBACCESS_PWD "check-sticker"
+#define  SECRET_RELAIS_WEBACCESS_USER "admin"
+#define  SECRET_RELAIS_WEBACCESS_PWD "admin"
