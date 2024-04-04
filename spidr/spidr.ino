@@ -183,7 +183,7 @@ int remainingTimeInAP = 0;
 bool firstBoot = true;
 
 
-#ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+#ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
 const int buttonPin = 0; 
 bool displayOn = true;
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
@@ -240,7 +240,7 @@ void setup() {
     displayManager.setI2CAddress(SCREEN_ADDRESS); 
   #endif 
 
-  #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+  #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
     displayManager.setDisplayActive(displayOn);
     pinMode(ledPIN, OUTPUT);
   #endif
