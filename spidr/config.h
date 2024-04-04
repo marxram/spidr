@@ -1,3 +1,7 @@
+#define SW_VER "1.0"
+#define COMMIT "746ec207"
+
+
 ///////////////////////////////////////////////////////////////////////
 // HARDWARE SPECIFIC ADAPTIONS 
 // DISPLAY ------------------------------------------------------------
@@ -17,9 +21,28 @@
 
 //#define BOARD_WEMOS_OLED_128x64_ESP32
 //#define BOARD_HELTEC_OLED_128x32_ESP8266
-#define BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+#define BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
 //#define BOARD_WEMOS_OLED_128x32_ESP32_S2
 //#define BOARD_ESP8266_OLED_Black_128x64_SDA_D1__SDC_D2
+
+#ifdef BOARD_WEMOS_OLED_128x64_ESP32
+    #define HWTYPE "WEMOS-OLED-128x64"
+#elif defined(BOARD_HELTEC_OLED_128x32_ESP8266)
+   #define HWTYPE "HELTEC-OLED-128x32"
+#elif defined(BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32)
+    #define HWTYPE "HELTEC-OLED-128x64-WiFiKitV3"
+#elif defined(BOARD_WEMOS_OLED_128x32_ESP32_S2)
+    #define HWTYPE "WEMOS-OLED-128x32-S2"
+#elif defined(BOARD_ESP8266_OLED_Black_128x64_SDA_D1__SDC_D2)
+    #define HWTYPE "NodeMCU-OLED-128x64"
+#else
+    #ifdef ESP8266
+        #define HWTYPE "ESP-8266-GENERIC"
+    #endif
+    #ifdef ESP32
+        #define HWTYPE "ESP-32-GENERIC"
+    #endif
+#endif
 
 
 #define USE_SECRETS_FILE_AS_DEFAULT
@@ -58,5 +81,5 @@
 #define DEF_DISP_POWER_MS 5000 // Default display duration for power, in milliseconds
 #define DEF_DISP_ENERGY_TODAY_MS 5000 // Default display duration for energy today, in milliseconds
 #define DEF_DISP_ENERGY_TOTAL_MS 5000 // Default display duration for energy total, in milliseconds
-#define DEF_DISP_ENERGY_TIME_MS 10000 // Default display duration for energy time, in milliseconds
+#define DEF_DISP_ENERGY_TIME_MS  4000 // Default display duration for energy time, in milliseconds
 #define DEF_DISP_ENERGY_GRAPH_MS 10000 // Default display duration for energy graph, in milliseconds

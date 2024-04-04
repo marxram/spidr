@@ -7,7 +7,7 @@
 #define  SECRET_WIFI_RELAIS_SSID "EM_12345678"
 #define  SECRET_WIFI_RELAIS_KEY "check-sticker"
 
-#define  SECRET_MQTT_BROKER_HOST "BROKER-IP-or-Hostname"
+#define  SECRET_MQTT_BROKER_HOST "" // Empty for No MQTT
 #define  SECRET_MQTT_BROKER_PORT 1883
 #define  SECRET_MQTT_BROKER_USER "Client-USER"
 #define  SECRET_MQTT_BROKER_PWD "Client-PWD"

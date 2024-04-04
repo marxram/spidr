@@ -15,9 +15,9 @@ Inverter::Inverter(SerialCaptureLines& serialCapture): serialCapture(serialCaptu
     webdata_ssvn = "";
     webdata_pv_type = "";
     webdata_rate_p = "";
-    webdata_now_p = 0.0f;
-    webdata_today_e = 0.0f;
-    webdata_total_e = 0.0f;
+    webdata_now_p = -1.0f;
+    webdata_today_e = -1.0f;
+    webdata_total_e = -1.0f;
     webdata_alarm = "";
     webdata_utime = "";
     cover_mid = "";
@@ -199,11 +199,16 @@ bool Inverter::wasReadSuccessfull() const {
 }
 
 ParseStatus Inverter::extractVariables(const String& html) {
+    //ebdata_now_p = -1.0f;
+    //webdata_today_e = -1.0f;
+    //webdata_total_e = -1.0f;
+    
     serialCapture.println("Starting extractVariables");
     if (html.isEmpty()) {
         serialCapture.println("HTML is empty");
         return PARSE_HTML_ISSUES;
     }
+    serialCapture.println(html);
 
     int countParseErrors = 0;
     int countParseSuccess = 0;
@@ -216,7 +221,7 @@ ParseStatus Inverter::extractVariables(const String& html) {
     serialCapture.printf("Extracted float values: now_p=%f, today_e=%f, total_e=%f\n", temp_webdata_now_p, temp_webdata_today_e, temp_webdata_total_e);
 
     // Validate important float values
-    if (temp_webdata_total_e <= 0.0) {
+    if (temp_webdata_total_e < 0.0) {
         serialCapture.println("webdata_total_e is <= 0.0, indicating parsing issues");
         return PARSE_PARSING_ISSUES;    
     } // Global consistency check

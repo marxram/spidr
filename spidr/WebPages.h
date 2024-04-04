@@ -9,6 +9,7 @@ const char MENU_HTML[] PROGMEM = R"rawliteral(
     <a href="/configoptions">Config Options</a>
     <a href="/serial">Serial</a>
     <a href="/wiki">Wiki</a>
+    <a href="/firmware">Update</a>
 </div>
 )rawliteral";
 
@@ -102,7 +103,7 @@ const char STYLES_HTML_LIGHT[] PROGMEM = R"rawliteral(
 
 const char FOOTER_HTML[] PROGMEM = R"rawliteral(
 <div class="footer">
-    <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Visit S|P|I|D|R on Github</a>
+    SW: {{SW_VERSION}} - SW: {{SW_COMMIT}} - SW: {{HW_TYPE}}  <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Visit S|P|I|D|R on Github</a>
 </div>
 )rawliteral";
 
@@ -169,7 +170,7 @@ const char ConfigPage_HTML[] PROGMEM = R"rawliteral(
             <legend>MQTT Broker Settings</legend>
             <div>
                 <label for="mqttBrokerHost">MQTT Broker Host:</label>
-                <input type="text" id="mqttBrokerHost" name="mqttBrokerHost" value="{{mqttBrokerHost}}" required>
+                <input type="text" id="mqttBrokerHost" name="mqttBrokerHost" value="{{mqttBrokerHost}}" >
             </div>
             <div>
                 <label for="mqttBrokerPort">MQTT Broker Port:</label>
@@ -584,7 +585,7 @@ R| relay</p>
 <li>Special Boards were tested and have Config Defines<ul>
 <li>BOARD_WEMOS_OLED_128x64_ESP32</li>
 <li>BOARD_HELTEC_OLED_128x32_ESP8266</li>
-<li>BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32</li>
+<li>BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32</li>
 <li>BOARD_WEMOS_OLED_128x32_ESP32_S2</li>
 <li>Use Generic ESP32 or ESP8266 and set the I2C Address (SCREEN_ADDRESS
  0x3C) or change a U8g2 Constructor in the 
@@ -626,6 +627,42 @@ If this is working, check if the Constructor used in this project is set
 Hint: The different specific Board DEFINES also set the U8g2 
 Constructor. You might need to uncomment them out!</p>
 </div>
+{{FOOTER}}
+
+</body>
+</html>
+)rawliteral";
+
+const char OTA_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{PAGEHEAD}}</title>
+    <style>
+       {{STYLES}}
+    </style>
+</head>
+<body>
+<h1>{{PAGEHEAD}}</h1>
+
+{{MENU}}
+
+<div class="content">
+    <h2>{{HEADLINE}}</h2>
+<h1 id="s-p-i-d-r">S|P|I|D|R</h1>
+<p>S| mart Home and
+P| rivacy focused
+I| oT
+D| ata
+R| relay</p>
+<h2 id="">Firmware Update</h2>
+
+<form method="POST" action="/ota" enctype="multipart/form-data">
+<input type="file" name="update">
+<input type="submit" value="Update Firmware">
+</form>
+
 {{FOOTER}}
 
 </body>

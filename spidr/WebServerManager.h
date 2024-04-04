@@ -6,10 +6,12 @@
 
 #ifdef ESP32
     #include <WebServer.h>
+    #include <Update.h>
 #endif
 
 #ifdef ESP8266
     #include <ESP8266WebServer.h>
+    #include <ESP8266httpUpdate.h>
 #endif
 
  // Or <WebServer.h> for ESP32
@@ -51,6 +53,7 @@ private:
     void handleSerialPage();
     void handleConfigPageOptions();
     void handleWikiPage();
+    void handleOTAPage();
     String preparePagetemplate(String htmlRaw, String header, String pageHead);
 
     String HTMLEscape(const String& str);
