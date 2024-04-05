@@ -303,9 +303,9 @@ void setup() {
   // print a statement to the serial monitor
 
 
-/* #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
-    pinMode(buttonPin, INPUT_PULLUP);
-#endif */
+    #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
+        pinMode(buttonPin, INPUT_PULLUP);
+    #endif 
 
 }
 

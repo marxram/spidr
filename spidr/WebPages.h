@@ -21,6 +21,9 @@ const char STYLES_HTML_DARK[] PROGMEM = R"rawliteral(
         fieldset { padding: 10px; margin-bottom: 20px; }
         .footer { margin-top: 20px; padding: 20px; background-color: #252526; text-align: center; width: 100%; }
         .footer a { color: #2f848d;; text-decoration: none; }
+        .footer sw {color: #aeaeae; font-size: smaller;}
+        .footer commit{color: #aeaeae;font-size: smaller;}
+        .footer board{color: #aeaeae; font-size: smaller;}
         label { display: inline-block; width: 220px; margin-bottom: 10px; }
         input[type="text"], input[type="number"] { width: calc(100% - 240px); padding: 5px; }
         input[type="submit"] { width: auto; padding: 10px 20px; margin-top: 10px; }
@@ -103,7 +106,10 @@ const char STYLES_HTML_LIGHT[] PROGMEM = R"rawliteral(
 
 const char FOOTER_HTML[] PROGMEM = R"rawliteral(
 <div class="footer">
-    SW: {{SW_VERSION}} - SW: {{SW_COMMIT}} - SW: {{HW_TYPE}}  <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Visit S|P|I|D|R on Github</a>
+    <div class="sw">SW: {{SW_VERSION}}</div> 
+    <div class="commit"> Commit: {{SW_COMMIT}}</div>
+     <div class="board"> {{HW_TYPE}}</div>
+     <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Visit S|P|I|D|R on Github</a>
 </div>
 )rawliteral";
 
