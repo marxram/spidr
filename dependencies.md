@@ -3,14 +3,16 @@
 //Add url to the boardmanager:
 https://arduino.esp8266.com/stable/package_esp8266com_index.json
 
-Install boards "esp8266" by ESP8266 Community V3.1.2
+--> Install boards "esp8266" by ESP8266 Community V3.1.2
 
 ### ESP32 Support
+//Add url to the boardmanager:
+https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+
+--> Install "esp32" by Espressiv Systems from Board Manager
 
 
 ## Software dependencies
-
-Current (07.03.2024) working list of used libraries 
 * [To Install] PubSubClient in Version 2.8 / PubSubClient by Nick O'Leary <nick.oleary@gmail.com> Version 2.8.0 INSTALLED
 * [To Install] U8g2 in Version 2.34.22 / U8g2 by oliver <olikraus@gmail.com> Version 2.34.22 INSTALLED
 
@@ -22,7 +24,9 @@ Current (07.03.2024) working list of used libraries
 * [Comes with board software] SPI in Version 1.0
 * [Comes with board software] Wire in Version 1.0
 * [Comes with board software] ESP8266WiFi in Version 1.0
-* [ToInstall] Adafruit NeoPixel by Adafruit Version 1.12.0
+
+* [Optional] Adafruit NeoPixel by Adafruit Version 1.12.0
+
 
 
 ### Testing libs (other branches)
@@ -30,8 +34,6 @@ Current (07.03.2024) working list of used libraries
  Ticker by Stefan Staub Version 4.4.0 INSTALLED
  ArduinoOTA(esp32) Built-In by Ivan Grokhotkov and Hristo Gochkov Version 2.0.0 INSTALLED
  EEPROM Built-In by Ivan Grokhotkov Version 2.0.0 INSTALLED
-
-* [Not needed?] FreeRTOS by Richard Berry <info@freertos.org> Version 11.0.1-5 INSTALLED
 
 
 # Changes
