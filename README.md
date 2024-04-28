@@ -1,8 +1,7 @@
 # S|P|I|D|R Project📡
 
-<img src="./doc/img/SPIDR_Animation_HELTEC32.gif" alt="S|P|I|D|R Animation showing the basic features on a Heltec WiFi Kit32 V3" width="300" height="200"/>
+<img src="./doc/img/SPIDR_Animation_HELTEC32.gif" alt="S|P|I|D|R Animation showing the basic features on a Heltec WiFi Kit32 V3" width="400"/>
 
-![ESP Animation](./doc/img/SPIDR_Animation_HELTEC32.gif)
 
 
 ## Project Overview 🌟
@@ -11,13 +10,15 @@ The S|P|I|D|R Project project aims to provide a simple and effective solution fo
 
 This readme will guide you through the hardware and software requirements, as well as the steps to get started with this project.
 
-![ESP Architecture](./doc/img/SPIDR_Architecture.drawio.png)
+<img src="./doc/img/SPIDR_Architecture.drawio.png" alt="S|P|I|D|R Architecture" width="500"/>
+
 
 ### Motivation 🌍
 
 The Deye solar inverters are known to communicate with the Solarman Cloud, which utilizes servers located in the US and China (also Europe since 2024). However, for individuals and organizations in Europe 🇪🇺, there is a growing concern about data privacy and legal restrictions associated with transferring data outside of the European Union (EU). This project, "S|P|I|D|R," has been developed to address these concerns and provide a solution for users in Europe.
 
-![Previous Architecture](./doc/img/Connectivity_Standard.png)
+<img src="./doc/img/Connectivity_Standard.png" alt="Standard Communication Pattern" width="400"/>
+
 
 
 
@@ -37,7 +38,7 @@ The general workflow of the "deye-esp-solar-bridge" project is designed to give 
 
 With this solution, the reliance on cloud-based connections to the Solarman Cloud is no longer needed, thereby safeguarding data privacy and adhering to EU regulations. 
 
-![Program Flow](./doc/img/SPIDR_ProgrammFlow.drawio.png)
+<img src="./doc/img/SPIDR_ProgrammFlow.drawio.png" alt="SPIDR Programm Flow Chart" width="500"/>
 
 
 ## Key Features
@@ -78,9 +79,10 @@ The project currently supports both ESP8266 and ESP32 boards, specifically using
 - **Heltec ESP8266 NodeMCU** (128x32)
 - **Heltec Wifi Kit 32 v3 ESP32** (128x64)
 
-![Hardware Boards Top](./doc/img/HW_BoardsTop.jpg)
+<img src="./doc/img/HW_BoardsTop.jpg" alt="SPIDR - Supported and tested boards" width="400"/>
 
-![Hardware Boards Bottom](./doc/img/OLED_Examples.jpg)
+<img src="./doc/img/OLED_Examples.jpg" alt="SPIDR - Different Display Types" width="400"/>
+
 
 
 ### Software Requirements 💻
