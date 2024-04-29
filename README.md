@@ -73,11 +73,14 @@ The project currently supports both ESP8266 and ESP32 boards, specifically using
 
 ### Tested Boards
 
+- **Heltec Wifi Kit 32 v3 ESP32** (128x64) [3D printable cases on printables](https://www.printables.com/model/862028-spidr-branded-heltec-wifi-kit-v3-case-with-battery)
 - **Wemos Lolin S2 Pico ESP32-S2** (128x32)
 - **Wemos Lolin32 ESP32 OLED** (128x64)
 - **NodeMCU ESP8266 OLED HW-630** (128x64)
 - **Heltec ESP8266 NodeMCU** (128x32)
-- **Heltec Wifi Kit 32 v3 ESP32** (128x64)
+
+
+For the 
 
 <img src="./doc/img/HW_BoardsTop.jpg" alt="SPIDR - Supported and tested boards" width="400"/>
 
