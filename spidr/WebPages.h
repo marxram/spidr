@@ -109,7 +109,7 @@ const char FOOTER_HTML[] PROGMEM = R"rawliteral(
     <div class="sw">SW: {{SW_VERSION}}</div> 
     <div class="commit"> Commit: {{SW_COMMIT}}</div>
      <div class="board"> {{HW_TYPE}}</div>
-     <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Visit S|P|I|D|R on Github</a>
+     <a href="https://github.com/marxram/spidr" target="_blank">Visit S|P|I|D|R on Github</a>
 </div>
 )rawliteral";
 
