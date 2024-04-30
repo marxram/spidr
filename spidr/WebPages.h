@@ -102,7 +102,7 @@ const char STYLES_HTML_LIGHT[] PROGMEM = R"rawliteral(
 
 const char FOOTER_HTML[] PROGMEM = R"rawliteral(
 <div class="footer">
-    <a href="https://github.com/marxram/deye-esp-mqtt-bridge" target="_blank">Visit S|P|I|D|R on Github</a>
+    <a href="https://github.com/marxram/spidr" target="_blank">Visit S|P|I|D|R on Github</a>
 </div>
 )rawliteral";
 

@@ -75,7 +75,7 @@ String WebServerManager::preparePagetemplate(String htmlRaw, String header, Stri
 
 
     // Preparation for dark and light sheme
-    if (true){
+    if (false){
         page.replace("{{STYLES}}", STYLES_HTML_LIGHT);
     }else{
         page.replace("{{STYLES}}", STYLES_HTML_DARK);
