@@ -1,6 +1,7 @@
 #include "WebServerManager.h"
 #include "WebPages.h"
 #include "SerialCaptureLines.h"
+#include "config.h"
 
 WebServerManager::WebServerManager(Inverter& inverter, SerialCaptureLines& serialCapture) : server(80), inverter(inverter), serialCapture(serialCapture)   {}
 
@@ -42,6 +43,37 @@ void WebServerManager::setupRoutes() {
     // Recieve the Config Updates here
     server.on("/update", HTTP_POST, std::bind(&WebServerManager::handleUpdate, this));
     server.on("/updateoptions", HTTP_POST, std::bind(&WebServerManager::handleUpdateOptions, this));
+    
+    server.on("/firmware", HTTP_GET, std::bind(&WebServerManager::handleOTAPage, this));
+
+    
+
+server.on("/ota", HTTP_POST, [this]() { // Capture 'this' to access instance members
+  server.sendHeader("Connection", "close");
+  server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+  ESP.restart();
+}, [this]() {
+  HTTPUpload& upload = server.upload();
+  if (upload.status == UPLOAD_FILE_START) {
+    Serial.printf("Update: %s\n", upload.filename.c_str());
+    if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { // start with max available size
+      Update.printError(Serial);
+    }
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+      Update.printError(Serial);
+    }
+  } else if (upload.status == UPLOAD_FILE_END) {
+    if (Update.end(true)) { // true to set the size to the current progress
+      Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+    } else {
+      Update.printError(Serial);
+    }
+  }
+});
+
+
+
 }
 
 String WebServerManager::preparePagetemplate(String htmlRaw, String header, String pageHead){
@@ -73,6 +105,10 @@ String WebServerManager::preparePagetemplate(String htmlRaw, String header, Stri
     page.replace("{{MENU}}", MENU_HTML);
     //serialCapture.println("Replaced MENU");
 
+    String footerRaw = FOOTER_HTML;
+    footerRaw.replace("{{SW_VERSION}}", String(SW_VER));
+    footerRaw.replace("{{SW_COMMIT}}", String(COMMIT));
+    footerRaw.replace("{{HW_TYPE}}", String(HWTYPE));
 
     // Preparation for dark and light sheme
     if (false){
@@ -83,7 +119,7 @@ String WebServerManager::preparePagetemplate(String htmlRaw, String header, Stri
     //serialCapture.println("Replaced SYTLES");
 
 
-    page.replace("{{FOOTER}}", FOOTER_HTML);
+    page.replace("{{FOOTER}}", footerRaw);
     //serialCapture.println("Replaced FOOTER");
     page.replace("{{HEADLINE}}", header);
     //serialCapture.println("Replaced HEADLINE");
@@ -144,6 +180,12 @@ void WebServerManager::handleConfigPageOptions() {
 
 void WebServerManager::handleWikiPage() {
     String htmlContent = preparePagetemplate(WikiPage_HTML, "Knowledge Base and References", "S|P|I|D|R Wiki");
+    
+    server.send(200, "text/html", htmlContent);
+}
+
+void WebServerManager::handleOTAPage() {
+    String htmlContent = preparePagetemplate(OTA_HTML, "SoftawareUpdate", "S|P|I|D|R Update");
     
     server.send(200, "text/html", htmlContent);
 }

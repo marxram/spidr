@@ -58,7 +58,7 @@ R| relay
 * Special Boards were tested and have Config Defines
   * BOARD_WEMOS_OLED_128x64_ESP32
   * BOARD_HELTEC_OLED_128x32_ESP8266
-  * BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+  * BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
   * BOARD_WEMOS_OLED_128x32_ESP32_S2
   * Use Generic ESP32 or ESP8266 and set the I2C Address (SCREEN_ADDRESS 0x3C) or change a U8g2 Constructor in the DisplayManager::DisplayManager Constructor
 

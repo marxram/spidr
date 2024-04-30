@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include <PubSubClient.h>
 #include <Wire.h>
@@ -100,6 +101,7 @@ String WIFI_AP_PASSWORD = DEF_WIFI_AP_PASSWORD;
 ///////////////////////////////////////////////////////////////////////
 // Global variables
 
+
 // State Machine
 unsigned long lastStateChangeMillis = 0; // Last time the state was changed
 unsigned long lastInverterUpdateMillis = 0; // Timer for inverter update interval
@@ -181,7 +183,7 @@ int remainingTimeInAP = 0;
 bool firstBoot = true;
 
 
-#ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+#ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
 const int buttonPin = 0; 
 bool displayOn = true;
 unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
@@ -238,7 +240,7 @@ void setup() {
     displayManager.setI2CAddress(SCREEN_ADDRESS); 
   #endif 
 
-  #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
+  #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
     displayManager.setDisplayActive(displayOn);
     pinMode(ledPIN, OUTPUT);
   #endif
@@ -255,13 +257,11 @@ void setup() {
   action.params[1] = "I|oT  D|ata  R|elay";
   action.params[2] = "";
   action.params[3] = "";
-  action.result = "Starte";
-  action.resultDetails = "";
+  action.result = SW_VER;
+  action.resultDetails = COMMIT;
   displayManager.displayAction(action);
   delay(5000);
-
-
-  
+    
   clearActionDisplay();
   
     serialCapture.println("#------------------------------------------------------------- #");
@@ -275,12 +275,18 @@ void setup() {
     setupTime();
 
     // Initialize the MQTT Manager
-
-    if (mqttManager == nullptr) {
+    if (MQTT_BROKER_HOST != ""){
+        
+        if (mqttManager == nullptr && MQTT_BROKER_HOST != "" ) {
+            serialCapture.println("#------------------------------------------------------------- #");
+            serialCapture.println("# [Start Up] Initialize MQTT Manager                           #");
+            serialCapture.println("#------------------------------------------------------------- #");   
+            mqttManager = new MQTTManager(MQTT_BROKER_HOST.c_str(), MQTT_BROKER_PORT, MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str(), displayManager, inverter, serialCapture);
+        }
+    }else{
         serialCapture.println("#------------------------------------------------------------- #");
-        serialCapture.println("# [Start Up] Initialize MQTT Manager                           #");
-        serialCapture.println("#------------------------------------------------------------- #");   
-        mqttManager = new MQTTManager(MQTT_BROKER_HOST.c_str(), MQTT_BROKER_PORT, MQTT_BROKER_USER.c_str(), MQTT_BROKER_PWD.c_str(), displayManager, inverter, serialCapture);
+        serialCapture.println("# [Skipping] MQTT Manager as Server is empty                   #");
+        serialCapture.println("#------------------------------------------------------------- #");
     }
 
   // Initialize the State Machine
@@ -297,9 +303,9 @@ void setup() {
   // print a statement to the serial monitor
 
 
-/* #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
-    pinMode(buttonPin, INPUT_PULLUP);
-#endif */
+    #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
+        pinMode(buttonPin, INPUT_PULLUP);
+    #endif 
 
 }
 
@@ -325,32 +331,6 @@ void loop() {
         lastSetupTimeCalled = millis(); // Update the last time setupTime was called
     }
 
-    /* #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x32_ESP32
-        int reading = digitalRead(buttonPin);
-        // Check if the button state has changed (for debouncing)
-        if (reading != lastButtonState) {
-            // reset the debouncing timer
-            lastDebounceTime = millis();
-        }
-
-        if ((millis() - lastDebounceTime) > debounceDelay) {
-            // if the button state has changed:
-            if (reading != buttonState) {
-                buttonState = reading;
-
-                // only toggle the variable if the new button state is HIGH
-                if (buttonState == HIGH) {
-                    displayOn = !displayOn; // Toggle the global variable
-                    displayManager.setDisplayActive(displayOn); // Set the display active or not
-                    Serial.print("Screensaver Toggled via Button. Display is: ");
-                    Serial.println(displayOn);
-                    digitalWrite(ledPIN, !displayOn);
-                }
-            }
-        }
-        // save the reading. Next time through the loop, it'll be the lastButtonState:
-        lastButtonState = reading;
-    #endif */
     delay(5); // Dummy delay to simulate network activity
 }
 
@@ -503,7 +483,8 @@ void loadPreferencesIntoVariables() {
     serialCapture.println("Loaded Relais WiFi Key: [HIDDEN]");
 
 
-    MQTT_BROKER_HOST = prefsManager.getMqttBrokerHost().length() > 0 ? prefsManager.getMqttBrokerHost() : SECRET_MQTT_BROKER_HOST;
+    // MQTT may be empty to disable the function
+    MQTT_BROKER_HOST = prefsManager.getMqttBrokerHost(); //.length() > 0 ? prefsManager.getMqttBrokerHost() : SECRET_MQTT_BROKER_HOST;
     MQTT_BROKER_PORT = prefsManager.getMqttBrokerPort() != 0 ? prefsManager.getMqttBrokerPort() : SECRET_MQTT_BROKER_PORT;
     serialCapture.println("Loaded MQTT Broker Host: " + MQTT_BROKER_HOST);
     serialCapture.print("Loaded MQTT Broker Port: ");
@@ -527,8 +508,8 @@ void loadPreferencesIntoVariables() {
     serialCapture.println("NTP Sync Enabled: " + String(USE_NTP_SYNC));
 
 
-    GMT_OFFSET_SECONDS = prefsManager.getNtpGmtOffset() != 0 ? prefsManager.getNtpGmtOffset() : DEF_GMT_OFFSET_SECONDS;
-    DST_OFFSET_SECONDS = prefsManager.getNtpDstOffset() != 0 ? prefsManager.getNtpDstOffset() : DEF_DST_OFFSET_SECONDS;
+    GMT_OFFSET_SECONDS = prefsManager.getNtpGmtOffset(); //  != 0 ? prefsManager.getNtpGmtOffset() : DEF_GMT_OFFSET_SECONDS;
+    DST_OFFSET_SECONDS = prefsManager.getNtpDstOffset(); // != 0 ? prefsManager.getNtpDstOffset() : DEF_DST_OFFSET_SECONDS;
     serialCapture.println("GMT Offset Seconds: " + String(GMT_OFFSET_SECONDS));
     serialCapture.println("DST Offset Seconds: " + String(DST_OFFSET_SECONDS));
 
@@ -1142,10 +1123,14 @@ void handleHomeNetworkMode() {
         // Update and Publish Data if new data is available  
         if (newInverterDataAvailable){
             // Debugging MQTT
-            //if (true){
-            updateAndPublishData();
-            newInverterDataAvailable = false;
-            delay(1000); // Show data for 3 Seconds
+            if (MQTT_BROKER_HOST != ""){
+                updateAndPublishData();
+                newInverterDataAvailable = false;
+                delay(1000); // Show data for 3 Seconds
+            }else{
+                serialCapture.println("[MQTT Manager] Skip as no Server configured");
+                newInverterDataAvailable = false;
+            }
         }
     }else{
         connectedToInverterNetwork = false;
@@ -1308,6 +1293,7 @@ bool cndInverterNetworkToHomeNetwork(){
 };
 
 bool cndAPToHomeNetwork() {
+    remainingTimeInAP = ( DURATION_STAY_IN_AP_NETWORK_MS - (lastStateChangeMillis - millis())  ) / 1000;
     return (!hasClientConnected() && millis() - lastStateChangeMillis > DURATION_STAY_IN_AP_NETWORK_MS);
 }
 
