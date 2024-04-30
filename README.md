@@ -89,6 +89,10 @@ The project currently supports both ESP8266 and ESP32 boards, specifically using
 
 The major configuration Settings are the WiFi and Webserver Credentials for the Inverter and the MQTT Broker
 
+
+<img src="./doc/img/Features__Config_Server.png" alt="Configuration of SPIDR via the Webserver" width="500"/>
+
+
  ```cpp
 // Content of the default arduino-secrets-template.h File
 // This can be copied and renamed to arduino-secrets.h to set the configurations during compile time
@@ -113,7 +117,7 @@ The major configuration Settings are the WiFi and Webserver Credentials for the 
 #define  SECRET_INVERTER_WEBACCESS_PWD "admin"
 ```
 
-## Updateing the Software on a running instance
+## Updating the Software on a running instance
 There is a SOTA Feature that can update the programm easily via the Webbrowser. 
 
 > [!NOTE]
@@ -121,6 +125,9 @@ There is a SOTA Feature that can update the programm easily via the Webbrowser.
 
 > [!NOTE]
 > If you just flash a new version of SPIDR on your ESP, the parameters should prevail in the EEPROM / Filesystem. 
+
+<img src="./doc/img/Features__SOTA_Server.png" alt="Configuration of SPIDR via the Webserver" width="500"/>
+
 
 
 ## Roadmap 🗺️

@@ -185,7 +185,7 @@ void WebServerManager::handleWikiPage() {
 }
 
 void WebServerManager::handleOTAPage() {
-    String htmlContent = preparePagetemplate(OTA_HTML, "SoftawareUpdate", "S|P|I|D|R Update");
+    String htmlContent = preparePagetemplate(OTA_HTML, "SoftwareUpdate", "S|P|I|D|R Update");
     
     server.send(200, "text/html", htmlContent);
 }
@@ -294,7 +294,7 @@ void WebServerManager::handleUpdateOptions() {
         // Previous code for serial output of WiFi, MQTT, and Web Access Credentials remains unchanged
 
         // Serial output for NTP Configuration and Timing Behavior Settings
-         serialCapture.println("\n[UpdateOptions] Values Rcieved:");
+         serialCapture.println("\n[UpdateOptions] Values received:");
         
         serialCapture.println("NTP Configuration:");
         serialCapture.println("NTP Server A: " + ntpServerA);

@@ -1,35 +1,22 @@
 
 > [!NOTE]
-> Here I documented some code parts with explanaitions to be able to better understand and extend the project. Keep in mind that some translations have been performed with ChatGPT. So I hope everything is making sense at the end - Please checkout the real code for a working set. 
+> Here I documented some code parts with explanations to be able to better understand and extend the project. Keep in mind that some translations have been performed with ChatGPT. So I hope everything is making sense at the end - Please checkout the real code for a working set. 
 
 ## Table of Contents
 - [SPIDR.ino - Main Program](#spidrino---main-program)
   - [setup Function](#setup-function)
   - [loop Function](#loop-function)
   - [Statemachine](#statemachine)
-  - [setupTime](#setuptime)
-  - [loadPreferencesIntoVariables](#loadpreferencesintovariables)
-  - [activateAPMode - Start AccessPoint Mode](#activateapmode---start-accesspoint-mode)
-  - [deactivateAPMode - Stop AccessPoint Mode](#deactivateapmode---stop-accesspoint-mode)
-  - [Screenscraping - Reading the Data from the Inverter's HTML page](#screenscraping---reading-the-data-from-the-inverters-html-page)
   - [Statemachine Inverter Mode - handleInverterNetworkMode](#statemachine-inverter-mode---handleinverternetworkmode)
   - [Statemachine Home Network Mode - handleHomeNetworkMode](#statemachine-home-network-mode---handlehomenetworkmode)
   - [Statemachine Accesspoint Mode - handleAPMode](#statemachine-accesspoint-mode---handleapmode)
 - [Display Manager](#display-manager)
   - [u8g2 Library Functions](#u8g2-library-functions)
-    - [Set Font](#set-font)
-    - [Draw String](#draw-string)
-    - [Get String Width](#get-string-width)
-    - [Clear Buffer](#clear-buffer)
-    - [Send Buffer](#send-buffer)
   - [Display Manager Constructor Explanation](#display-manager-constructor-explanation)
   - [Action Display](#action-display)
-  - [Invoking the Display Action Method](#invoking-the-display-action-method)
   - [DisplayManager::drawBigNumberNoHeader Method](#displaymanagerdrawbignumbernoheader-method)
 - [Inverter Class Documentation](#inverter-class-documentation)
-  - [printVariables](#printvariables)
   - [updateData](#updatedata)
-  - [getInverterPowerNow_W](#getinverterpowernoww)
   - [extractVariables](#extractvariables)
   - [extractValue and extractFloatValue](#extractvalue-and-extractfloatvalue)
 - [MQTTManager Class Documentation](#mqttmanager-class-documentation)
@@ -38,7 +25,6 @@
     - [publish](#publish)
     - [publishAllData](#publishalldata)
   - [Home Assistant Autodiscovery Configurations](#home-assistant-autodiscovery-configurations)
-
 
 
 # SPIDR.ino - Main Program
@@ -107,37 +93,7 @@ void setupTime() {
 }
 
 ```
-## loadPreferencesIntoVariables
-```cpp
 
-void loadPreferencesIntoVariables() {
-    // Loads parameters and writes them to local variables
-    // ...
-}
-
-void wifi_connect(String ssid, String passkey, String comment) {
-    // Disconnects Wi-Fi to prevent errors
-    WiFi.disconnect(true);
-    delay(500);
-    WiFi.mode(WIFI_AP_STA); // Sets the station mode
-    // ...
-    // For the inverter Wi-Fi, the IP is manually set to avoid disturbing the Wi-Fi relay
-    if (ssid == WIFI_INVERTER_SSID) {
-        IPAddress staticIP(10, 10, 100, 149);
-        IPAddress gateway(10, 10, 100, 254);
-        IPAddress subnet(255, 255, 255, 0);
-        IPAddress dns(8, 8, 8, 8); // Not needed
-        WiFi.config(staticIP, gateway, subnet, dns);
-    } else {
-        // Use DHCP for other networks
-        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
-    }
-    // Establishes connection to the network
-    WiFi.begin(ssid.c_str(), passkey.c_str());
-    // ... Error handling and attempts ...
-}
-
-```
 ## activateAPMode - Start AccessPoint Mode 
 ```cpp
 
@@ -150,7 +106,6 @@ void activateAPMode() {
 ```
 ## deactivateAPMode - Stop AccessPoint Mode 
 ```cpp
-
 void deactivateAPMode() {
     WiFi.mode(WIFI_STA);
     webServerManager.stop();
@@ -384,7 +339,7 @@ DisplayManager::DisplayManager(SerialCaptureLines& serialCapture): serialCapture
 This constructor is designed to accommodate a variety of boards by setting the correct pin configurations and I2C addresses as needed.
 
 
-### Action Display
+## Action Display
 
 <img src="./doc/img/Code_Display_Explained.png" alt="The SPIDR Action Display" width="400"/>
 
@@ -432,12 +387,6 @@ void DisplayManager::displayAction(const ActionData& action) {
 This method handles all the graphical operations needed to display the action's data on the screen, providing clear visual feedback to the user.
 
 
-## Invoking the Display Action Method
-
-### Overview
-
-The `displayAction` method is used to display an action's current state and details on a screen. This example demonstrates how to use the `ActionData` struct to send data to the `displayManager` for display at different stages of an action, such as during an MQTT synchronization process.
-
 ### Step-by-Step Usage
 
 1. **Initialize ActionData Object**
@@ -476,7 +425,13 @@ The `displayAction` method is used to display an action's current state and deta
    displayManager.displayAction(action);  // Display the updated data on the screen
    ```
 
-### DisplayManager::drawBigNumberNoHeader Method
+### Summary
+
+The `displayAction` method is used to display an action's current state and details on a screen. This example demonstrates how to use the `ActionData` struct to send data to the `displayManager` for display at different stages of an action, such as during an MQTT synchronization process.
+
+
+
+## DisplayManager::drawBigNumberNoHeader Method
 
 ### Purpose
 This method is designed to display a large number along with its unit and an annotation on the display. It dynamically adjusts font sizes to ensure the number and unit fit within the display width.
@@ -577,15 +532,6 @@ ParseStatus Inverter::updateData(const String& html) {
 }
 ```
 
-### `getInverterPowerNow_W`
-
-A getter function that provides external access to the current power output of the inverter.
-
-```cpp
-float Inverter::getInverterPowerNow_W() const {
-    return webdata_now_p;
-}
-```
 
 ### `extractVariables`
 
@@ -650,8 +596,6 @@ float Inverter::extractFloatValue(const String& html, const String& variableName
 ## Summary
 
 The `Inverter` class serves as a critical component for managing and interpreting data from inverters in solar power systems, ensuring data accuracy and providing real-time updates for system monitoring and management.
-
-
 
 
 # MQTTManager Class Documentation

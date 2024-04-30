@@ -1,5 +1,5 @@
-#define SW_VER "1.0"
-#define COMMIT "407df0c9"
+#define SW_VER "1.1"
+#define COMMIT "1f8c113"
 
 
 ///////////////////////////////////////////////////////////////////////

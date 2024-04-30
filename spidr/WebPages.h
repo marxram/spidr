@@ -549,7 +549,7 @@ R| relay</p>
 <h2 id="features">Features</h2>
 <h3 id="networking">Networking</h3>
 <ul>
-<li>WiFi Accesspoint Mode if Home Network is not available or set incorrectly</li>
+<li>WiFi Access Point Mode if Home Network is not available or set incorrectly</li>
 <li>Retry if Networks were not reachable for the first time (necessary debugging)</li>
 <li>Option: NTP Time Sync (needed for special things like resetting the daily counter, etc.)</li>
 </ul>
