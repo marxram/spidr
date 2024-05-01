@@ -25,7 +25,7 @@ SystemHealth::SystemHealth() {
 }
 
 void SystemHealth::update() {
-  freeRAM = ESP.getFreeHeap();
+  freeRAM = ESP.getFreeHeap() / 1000;
   uptimeSeconds = millis() / 1000;
 
 

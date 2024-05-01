@@ -89,15 +89,14 @@ const char* configEnergyTotal = R"({
     "value_template": "{{ value }}"
 })";
 
-// Configuration for the Energy Total sensor
 const char* configSpidrTemperature = R"({
     "unique_id": "spidr_esp_temperature",
     "device_class": "temperature",
-    "suggested_display_precision": 1, 
+    "suggested_display_precision": 0, 
     "icon": "mdi:thermometer",
     "device": {
-    "identifiers": ["deye_600_12345678_SPIDR"],
-    "name": "SPIDR",
+    "identifiers": ["deye_600_12345678"],
+    "name": "Solar Inverter",
     "model": "EU 600W",
     "via_device": "SPIDR",
     "manufacturer": "Deye"},
@@ -107,31 +106,29 @@ const char* configSpidrTemperature = R"({
     "value_template": "{{ value }}"
 })";
 
-// Configuration for the Energy Total sensor
 const char* configSpidrHeap = R"({
     "unique_id": "spidr_esp_freeheap",
-    "suggested_display_precision": 1, 
+    "suggested_display_precision": 0, 
     "icon": "mdi:memory",
     "device": {
-    "identifiers": ["deye_600_12345678_SPIDR"],
-    "name": "SPIDR",
+    "identifiers": ["deye_600_12345678"],
+    "name": "Solar Inverter",
     "model": "EU 600W",
     "via_device": "SPIDR",
     "manufacturer": "Deye"},
-    "name": "ESP Temperature",
+    "name": "ESP Free Heap",
     "state_topic": "spidr/health/freeheap_esp",
     "unit_of_measurement": "kB",
     "value_template": "{{ value }}"
 })";
 
-// Configuration for the Energy Total sensor
 const char* configSpidrResetReason = R"({
     "unique_id": "spidr_esp_resetreason",
-    "suggested_display_precision": 1, 
+    "suggested_display_precision": 0, 
     "icon": "mdi:reload",
     "device": {
-    "identifiers": ["deye_600_12345678_SPIDR"],
-    "name": "SPIDR",
+    "identifiers": ["deye_600_12345678"],
+    "name": "Solar Inverter",
     "model": "EU 600W",
     "via_device": "SPIDR",
     "manufacturer": "Deye"},
@@ -144,17 +141,33 @@ const char* configSpidrResetReason = R"({
 // Configuration for the Energy Total sensor
 const char* configSpidrUptime = R"({
     "unique_id": "spidr_esp_uptime",
-    "suggested_display_precision": 1, 
+    "suggested_display_precision": 0, 
     "icon": "mdi:timer-sand",
     "device": {
-    "identifiers": ["deye_600_12345678_SPIDR"],
+    "identifiers": ["deye_600_12345678"],
     "name": "SPIDR",
     "model": "EU 600W",
     "via_device": "SPIDR",
     "manufacturer": "Deye"},
-    "name": "ESP Reset Reason",
+    "name": "ESP Uptime",
     "state_topic": "spidr/health/uptime_esp",
     "unit_of_measurement": "s",
+    "value_template": "{{ value }}"
+})";
+
+// Configuration for the Energy Total sensor
+const char* configSpidrUptimeString = R"({
+    "unique_id": "spidr_esp_uptime", 
+    "icon": "mdi:timer-sand",
+    "device": {
+    "identifiers": ["deye_600_12345678"],
+    "name": "SPIDR",
+    "model": "EU 600W",
+    "via_device": "SPIDR",
+    "manufacturer": "Deye"},
+    "name": "ESP Uptime String",
+    "state_topic": "spidr/health/uptime_string_esp",
+    "unit_of_measurement": "",
     "value_template": "{{ value }}"
 })";
 
@@ -209,11 +222,16 @@ if ( mqttClient.connected() ) {
         serialCapture.println("[ERR] Failed to publish config for ESP Uptime.");
     }
 
+        publishSuccess = mqttClient.publish("homeassistant/sensor/spidr/uptime_string/config",configSpidrUptimeString , true);
+    if (!publishSuccess) {
+        serialCapture.println("[ERR] Failed to publish config for ESP Uptime.");
+    }
+
     delay(100); // Wait for the config messages to be processed by the broker
 
     // Publishing all fields using the updated InverterData struct
     // Publish data directly from the Inverter instance
-    // Only ESP32 has temnperature Sensor builtin
+    // Only ESP32 has temperature Sensor builtin
     
     //#ifdef ESP32
     //publish("spidr/health/temperature_esp", String(systemHealth.getTemperature()).c_str());
@@ -222,7 +240,8 @@ if ( mqttClient.connected() ) {
     publish("spidr/health/freeheap_esp", String(systemHealth.getFreeRAM()).c_str());
     publish("spidr/health/resetreason_esp", String(systemHealth.getResetReason()).c_str());
     publish("spidr/health/uptime_esp", String(systemHealth.getUptimeSeconds()).c_str());
-}
+    publish("spidr/health/uptime_string_esp", String(systemHealth.getFormattedUptime()).c_str());
+    }
 }
 
 

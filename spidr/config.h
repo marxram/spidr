@@ -1,4 +1,4 @@
-#define SW_VER "1.1"
+#define SW_VER "1.1_health"
 #define COMMIT "1f8c113"
 
 
