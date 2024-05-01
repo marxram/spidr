@@ -78,7 +78,6 @@ void EnergyDisplay::updateDisplay(const Inverter& inverter) {
         //serialCapture.println(_currentState);
         //_lastUpdateTime = currentTime;
     }
-
 }
 
 

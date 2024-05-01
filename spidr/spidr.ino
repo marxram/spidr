@@ -24,6 +24,9 @@
 #include "EnergyDisplay.h"
 #include "SerialCaptureLines.h"
 
+#include "SystemHealth.h"
+
+
 #ifdef USE_NEOPIXEL_LED
 #include <Adafruit_NeoPixel.h>
 #endif
@@ -130,6 +133,7 @@ InverterUdp inverterUdp(serialCapture);
 PreferencesManager prefsManager;
 WebServerManager webServerManager (inverter,  serialCapture); // Create an instance of WebServerManager
 EnergyDisplay energyDisplay(displayManager, timeSynced, lastSyncTime, serialCapture);
+SystemHealth systemHealth; // Create an instance of SystemHealth
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -214,8 +218,8 @@ void setStripColor(uint32_t color) {
 // SETUP Function
 
 void setup() {
-  Serial.begin(115200);
-  delay(500); 
+    Serial.begin(115200);
+    delay(500); 
     serialCapture.println("#------------------------------------------------------------- #");
     serialCapture.println("# [Start Up] Setup()                                           #");
     serialCapture.println("#------------------------------------------------------------- #");   
@@ -230,39 +234,39 @@ void setup() {
     // Initialize Preferences Manager
     serialCapture.println("Initialize Preferences Manager...");
 
-  prefsManager.begin();
-  webServerManager.setPreferencesCallback(loadPreferencesIntoVariables);
+    prefsManager.begin();
+    webServerManager.setPreferencesCallback(loadPreferencesIntoVariables);
 
-  serialCapture.println("Load Preferences into Variables...");
-  loadPreferencesIntoVariables();
+    serialCapture.println("Load Preferences into Variables...");
+    loadPreferencesIntoVariables();
 
-  #ifdef SCREEN_ADDRESS
-    displayManager.setI2CAddress(SCREEN_ADDRESS); 
-  #endif 
+    #ifdef SCREEN_ADDRESS
+        displayManager.setI2CAddress(SCREEN_ADDRESS); 
+    #endif 
 
-  #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
-    displayManager.setDisplayActive(displayOn);
-    pinMode(ledPIN, OUTPUT);
-  #endif
+    #ifdef BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
+        displayManager.setDisplayActive(displayOn);
+        pinMode(ledPIN, OUTPUT);
+    #endif
 
-  serialCapture.println("Initialize Display Manager...");
-  displayManager.init();
-   // Show also more output and Parameters like Url, IP etc. 
-  displayManager.verboseDisplay = true;
+    serialCapture.println("Initialize Display Manager...");
+    displayManager.init();
+    // Show also more output and Parameters like Url, IP etc. 
+    displayManager.verboseDisplay = true;
 
-  // Display Initialization
-  action.name = "S|P|I|D|R";
-  action.details =   "S|mart Home and";
-  action.params[0] = "P|rivacy focused";
-  action.params[1] = "I|oT  D|ata  R|elay";
-  action.params[2] = "";
-  action.params[3] = "";
-  action.result = SW_VER;
-  action.resultDetails = COMMIT;
-  displayManager.displayAction(action);
-  delay(5000);
-    
-  clearActionDisplay();
+    // Display Initialization
+    action.name = "S|P|I|D|R";
+    action.details =   "S|mart Home and";
+    action.params[0] = "P|rivacy focused";
+    action.params[1] = "I|oT  D|ata  R|elay";
+    action.params[2] = "";
+    action.params[3] = "";
+    action.result = SW_VER;
+    action.resultDetails = COMMIT;
+    displayManager.displayAction(action);
+    delay(5000);
+        
+    clearActionDisplay();
   
     serialCapture.println("#------------------------------------------------------------- #");
     serialCapture.println("# [Start Up] Setup Time()                                      #");
@@ -329,6 +333,9 @@ void loop() {
     if (millis() - lastSetupTimeCalled >= intervalSetupTime) {
         setupTime(); // Call the setupTime function
         lastSetupTimeCalled = millis(); // Update the last time setupTime was called
+    
+        // Also update the system health
+        systemHealth.update(); 
     }
 
     delay(5); // Dummy delay to simulate network activity
@@ -933,7 +940,9 @@ void updateStateMachine() {
                     strip.setBrightness(100); // Set BRIGHTNESS to about 1/5 (max = 255)
                     setStripColor(strip.Color(110  , 110, 255, 100)); 
                     strip.show(); // Initialize all pixels to 'off'
-                #endif  
+                #endif
+                systemHealth.update(); // Update the system health
+                mqttManager->publishSystemHealth(systemHealth);  
             }
             handleHomeNetworkMode();
             break;
