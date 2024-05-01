@@ -1,7 +1,7 @@
 {
-    "configuration": "FlashFreq=80,PartitionScheme=default,CPUFreq=240,UploadSpeed=921600,DebugLevel=none,EraseFlash=none",
-    "board": "esp32:esp32:lolin32",
+    "configuration": "xtal=80,vt=flash,exception=disabled,stacksmash=disabled,ssl=all,mmu=3232,non32xfer=fast,eesz=4M2M,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=115200",
+    "board": "esp8266:esp8266:wifi_kit_8",
     "port": "COM17",
-    "sketch": "deye-esp-mqtt-bridge\\deye-esp-mqtt-bridge.ino",
+    "sketch": "spidr\\spidr.ino",
     "output": "../ArduinoOutput"
 }

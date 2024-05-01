@@ -1,5 +1,5 @@
-#define SW_VER "1.1"
-#define COMMIT "1f8c113"
+#define SW_VER "1.1_health"
+#define COMMIT "501c17d"
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -11,7 +11,7 @@
 //#define SCREEN_ADDRESS 0x3C   // Address Examples: 0x3C, 0x3D, 0x78
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
 ///////////////////////////////////////////////////////////////////////
@@ -21,8 +21,8 @@
 
 //#define BOARD_WEMOS_OLED_128x64_ESP32
 //#define BOARD_HELTEC_OLED_128x32_ESP8266
-#define BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
-//#define BOARD_WEMOS_OLED_128x32_ESP32_S2
+//#define BOARD_HELTEC_WiFiKit_32_V3_OLED_128x64_ESP32
+#define BOARD_WEMOS_OLED_128x32_ESP32_S2
 //#define BOARD_ESP8266_OLED_Black_128x64_SDA_D1__SDC_D2
 
 #ifdef BOARD_WEMOS_OLED_128x64_ESP32

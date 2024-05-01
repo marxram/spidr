@@ -9,12 +9,14 @@
 #include "Inverter.h" // Ensure Inverter is accessible
 #include <WiFiClient.h>
 #include "SerialCaptureLines.h"
-
+#include "SystemHealth.h"
 
 class MQTTManager {
 public:
     MQTTManager(const char* broker, uint16_t port, const char* user, const char* pwd, DisplayManager& displayManager, Inverter& inverter,SerialCaptureLines& serialCapture);
     void publishAllData(); // Single method to publish all predefined topics
+    // Add a method to publish system health data
+    void publishSystemHealth(const SystemHealth& systemHealth);
 
 private:
     WiFiClient espClient;

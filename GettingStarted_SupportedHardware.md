@@ -68,7 +68,10 @@ You can find my case including it's Fusion360 Source Code in printables: [3D pri
 ```
 
 ### Arduino IDE Board Setting
-Select the board called **WEMOS LOLIN32 Lite**
+Select the board called **WEMOS LOLINS2 Pico**
+
+<img src="./doc/img/HW_Boards_WEMOS_S2_128x32_Pico_Arduino.png" alt="Wemos Lolin S2 Pico ESP32-S2 (128x32) Arduino Settings" width="400"/>
+
 
 
 ### Wemos ESP32 OLED baord(128x64)
@@ -94,10 +97,19 @@ Select the board called **WEMOS LOLIN32 Lite**
 ```
 
 ### Arduino IDE Board Setting
-Select the board called **TBD**
+Select the board called **WEMOS LOLIN 32**
+
+<img src="./doc/img/HW_Boards_WEMOS_ESP32_128-64_Arduino.png" alt="Wemos ESP32 OLED baord(128x64) Arduino Settings" width="400"/>
+
+
 
 
 ### NodeMCU ESP8266 OLED HW-630 (128x64)
+
+> [!NOTE]
+> ESP8266 based boards are currently not supported due to compatibility and performance issues with the newest software! Consider using ESP32 based systems!
+
+
 
 <img src="./doc/img/HW_Boards_ESP8266_Black_HW-630_OLED_128x64.png" alt="NodeMCU ESP8266 OLED HW-630 (128x64)" width="400"/>
 
@@ -121,11 +133,14 @@ Select the board called **TBD**
 ```
 
 ### Arduino IDE Board Setting
-Select the board called **Generic ESP8266 Module**
+Select the board called **TBD**
 
 
 
 ### Heltec - WiFi Kit 8 - ESP8266 (128x32)
+
+> [!NOTE]
+> ESP8266 based boards are currently not supported due to compatibility and performance issues with the newest software! Consider using ESP32 based systems!
 
 <img src="./doc/img/HW_Boards_HELTEC_OLED_128x32.png" alt=" Heltec - WiFi Kit 8 - ESP8266 (128x32)" width="400"/>
 
@@ -151,9 +166,14 @@ Select the board called **Generic ESP8266 Module**
 ### Arduino IDE Board Setting
 Select the board called **WiFi Kit 8**
 
+<img src="./doc/img/HW_Boards_HELTEC_WifiKit8_Arduino.png" alt="Heltec Wifi Kit 32 v3 ESP32 (128x64) Arduino Settings" width="400"/>
 
 
 ### Generic ESP8266 Node MCU with generic OLED Display (128x64)
+
+> [!NOTE]
+> ESP8266 based boards are currently not supported due to compatibility and performance issues with the newest software! Consider using ESP32 based systems!
+
 <img src="./doc/img/HW_Boards_Generic_ESP8266_Generic_OLED_Display_128x64.png" alt="Generic ESP8266 Node MCU with generic OLED Display (128x64)" width="400"/>
 
 
