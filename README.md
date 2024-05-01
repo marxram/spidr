@@ -76,10 +76,14 @@ S|P|I|D|R is designed to be both cost-effective and energy-efficient. While I en
 
 The project currently supports both ESP8266 and ESP32 boards, specifically using OLED displays with resolutions of 128x32 or 128x64. Several boards with integrated displays have been thoroughly tested and have had specific adjustments and defines created for them. Details are described on the [Getting Started Compilation Page](./GettingStarted_Compilation.md)
 
+> [!WARNING]
+> Currently ESP8266 boards do not run with the latest software. I would highly advice to use ESP32 based boards, as it will reduce complexity for code maintenance and more features are supported. If you still want to use ESP8266 boards, you can go back to revisions around [e6b043](https://github.com/marxram/spidr/tree/e6b04367831b76b78344f86b6f89856a129126d9)
+
+
 - **Heltec Wifi Kit 32 v3 ESP32** (128x64) [3D printable cases on printables](https://www.printables.com/model/862028-spidr-branded-heltec-wifi-kit-v3-case-with-battery)
 - **Wemos Lolin S2 Pico ESP32-S2** (128x32)
 - **Wemos Lolin32 ESP32 OLED** (128x64)
-- **NodeMCU ESP8266 OLED HW-630** (128x64)
+- **NodeMCU ESP8266 OLED HW-630** (128x64) 
 - **Heltec ESP8266 NodeMCU** (128x32)
 
 <img src="./doc/img/HW_BoardsTop.jpg" alt="SPIDR - Supported and tested boards" width="400"/>

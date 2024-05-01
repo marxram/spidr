@@ -3,6 +3,12 @@
 #include "SerialCaptureLines.h"
 #include "config.h"
 
+#ifdef ESP8266
+#include <ESP8266httpUpdate.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266WiFi.h>
+#endif
+
 WebServerManager::WebServerManager(Inverter& inverter, SerialCaptureLines& serialCapture) : server(80), inverter(inverter), serialCapture(serialCapture)   {}
 
 void WebServerManager::begin() {
@@ -46,31 +52,32 @@ void WebServerManager::setupRoutes() {
     
     server.on("/firmware", HTTP_GET, std::bind(&WebServerManager::handleOTAPage, this));
 
-    
-
-server.on("/ota", HTTP_POST, [this]() { // Capture 'this' to access instance members
-  server.sendHeader("Connection", "close");
-  server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-  ESP.restart();
-}, [this]() {
-  HTTPUpload& upload = server.upload();
-  if (upload.status == UPLOAD_FILE_START) {
-    Serial.printf("Update: %s\n", upload.filename.c_str());
-    if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { // start with max available size
-      Update.printError(Serial);
+    // Handle firmware updates only for ESP32 yet
+    #ifdef ESP32
+    server.on("/ota", HTTP_POST, [this]() { // Capture 'this' to access instance members
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    ESP.restart();
+    }, [this]() {
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+        Serial.printf("Update: %s\n", upload.filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { // start with max available size
+        Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_END) {
+        if (Update.end(true)) { // true to set the size to the current progress
+        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+        } else {
+        Update.printError(Serial);
+        }
     }
-  } else if (upload.status == UPLOAD_FILE_WRITE) {
-    if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-      Update.printError(Serial);
-    }
-  } else if (upload.status == UPLOAD_FILE_END) {
-    if (Update.end(true)) { // true to set the size to the current progress
-      Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-    } else {
-      Update.printError(Serial);
-    }
-  }
-});
+    });
+    #endif
 
 
 
@@ -185,8 +192,13 @@ void WebServerManager::handleWikiPage() {
 }
 
 void WebServerManager::handleOTAPage() {
-    String htmlContent = preparePagetemplate(OTA_HTML, "SoftwareUpdate", "S|P|I|D|R Update");
-    
+    #ifdef ESP8266
+        String htmlContent = preparePagetemplate(OTA_HTML_ESP8266, "SoftwareUpdate", "S|P|I|D|R Update");
+    #endif
+
+    #ifdef ESP32
+        String htmlContent = preparePagetemplate(OTA_HTML, "SoftwareUpdate", "S|P|I|D|R Update");
+    #endif
     server.send(200, "text/html", htmlContent);
 }
 

@@ -233,12 +233,12 @@ void setup() {
 
     // Initialize Preferences Manager
     serialCapture.println("Initialize Preferences Manager...");
-
     prefsManager.begin();
     webServerManager.setPreferencesCallback(loadPreferencesIntoVariables);
-
     serialCapture.println("Load Preferences into Variables...");
     loadPreferencesIntoVariables();
+
+
 
     #ifdef SCREEN_ADDRESS
         displayManager.setI2CAddress(SCREEN_ADDRESS); 

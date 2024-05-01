@@ -29,12 +29,6 @@ void SystemHealth::update() {
   uptimeSeconds = millis() / 1000;
 
 
-  #ifdef ESP32
-  resetReason = verbose_reset_reasonESP32();
-  #else
-  resetReason = ESP.getResetReason();
-  #endif
-
     /*
   #ifdef ESP32
   resetReason = verbose_reset_reasonESP32();
@@ -78,7 +72,7 @@ String SystemHealth::formatUptime(unsigned long seconds) const {
   return String(days) + "d " + String(hours) + "h " + String(minutes) + "m " + String(seconds) + "s";
 }
 
-
+/*
 String SystemHealth::verbose_reset_reasonESP32()
 {
   int reset_reason = rtc_get_reset_reason(0);
@@ -102,3 +96,5 @@ String SystemHealth::verbose_reset_reasonESP32()
     default : return "NO_MEAN";
   }
 }
+
+*/

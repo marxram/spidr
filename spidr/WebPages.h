@@ -677,5 +677,39 @@ R| relay</p>
 
 
 
+
+const char OTA_HTML_ESP8266[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{PAGEHEAD}}</title>
+    <style>
+       {{STYLES}}
+    </style>
+</head>
+<body>
+<h1>{{PAGEHEAD}}</h1>
+
+{{MENU}}
+
+<div class="content">
+    <h2>{{HEADLINE}}</h2>
+<h1 id="s-p-i-d-r">S|P|I|D|R</h1>
+<p>S| mart Home and
+P| rivacy focused
+I| oT
+D| ata
+R| relay</p>
+<h2 id="">Firmware Update - NOT AVAILABLE FOR ESP8266 yet </h2>
+
+{{FOOTER}}
+
+</body>
+</html>
+)rawliteral";
+
+
+
  
 #endif /* WebPages_h */

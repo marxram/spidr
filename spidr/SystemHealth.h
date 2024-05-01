@@ -20,7 +20,7 @@ private:
   float temperature;  // Only for ESP32
 
   String formatUptime(unsigned long seconds) const;
-  String verbose_reset_reasonESP32();
+  //String verbose_reset_reasonESP32();
 
 };
 
