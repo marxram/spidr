@@ -851,7 +851,7 @@ bool readInverterDataFromWebInterface(String url, String web_user, String web_pa
     client.stop();
 
     // Check parse result and update display accordingly
-    if (result == OK) {
+    if (result == PARSE_OK) {
         action.params[2] = "Parsen: Fertig";
         action.result = "abgeschlossen";
         action.resultDetails = "OK";
