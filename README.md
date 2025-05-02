@@ -1,4 +1,4 @@
-# S|P|I|D|R Project📡
+# S|P|I|D|R Project📡 Security and Privacy focused IoT Data Relay
 
 <img src="./doc/img/SPIDR_Animation_HELTEC32.gif" alt="S|P|I|D|R Animation showing the basic features on a Heltec WiFi Kit32 V3" width="400"/>
 
